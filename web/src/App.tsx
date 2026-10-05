@@ -1,0 +1,1667 @@
+import Classroom from "./Classroom";
+import { useEffect, useState, type ReactNode, type FormEvent } from "react";
+import {
+  ShieldCheck,
+  LayoutDashboard,
+  Monitor,
+  ClipboardCheck,
+  History,
+  Settings2,
+  Plus,
+  ArrowUpRight,
+  ChevronRight,
+  X,
+  Play,
+  LockKeyhole,
+  UnlockKeyhole,
+  Check,
+  Wifi,
+  WifiOff,
+  Eye,
+  Smartphone,
+  Users,
+  Download,
+  LogOut,
+  FlaskConical,
+  Video,
+  Link2,
+  LoaderCircle,
+  CheckCheck,
+} from "lucide-react";
+import {
+  api,
+  clock,
+  eventNames,
+  decisionNames,
+  type Snapshot,
+  type Device,
+  type Exam,
+  type Incident,
+  type Target,
+} from "./types";
+const empty: Snapshot = { devices: [], exams: [], events: [], commands: [] };
+const directions = [
+  ["DOWN", "Вниз"],
+  ["LEFT", "Влево"],
+  ["RIGHT", "Вправо"],
+] as const;
+function Badge({
+  children,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  tone?: string;
+}) {
+  return <span className={"badge " + tone}>{children}</span>;
+}
+function Modal({
+  title,
+  subtitle,
+  children,
+  onClose,
+  wide = false,
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+  onClose: () => void;
+  wide?: boolean;
+}) {
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, [onClose]);
+  return (
+    <div
+      className="overlay"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className={"modal " + (wide ? "wide" : "")}
+      >
+        <header>
+          <div>
+            <h2>{title}</h2>
+            {subtitle && <p>{subtitle}</p>}
+          </div>
+          <button className="icon-btn" onClick={onClose} aria-label="Закрыть">
+            <X size={20} />
+          </button>
+        </header>
+        {children}
+      </section>
+    </div>
+  );
+}
+function Auth({
+  setup,
+  onLogin,
+}: {
+  setup: boolean;
+  onLogin: (u: { name: string }) => void;
+}) {
+  const [name, setName] = useState(""),
+    [password, setPassword] = useState(""),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      onLogin(
+        (await api("/auth/" + (setup ? "setup" : "login"), { name, password }))
+          .user,
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="auth-layout">
+      <aside className="auth-story">
+        <div className="brand">
+          <ShieldCheck />
+          <span>
+            qorgau<span className="brand-dot">.</span>
+          </span>
+        </div>
+        <div>
+          <span className="eyebrow">ЛОКАЛЬНЫЙ ПРОКТОРИНГ</span>
+          <h1>
+            Тест проходит
+            <br />
+            привычно.
+            <br />
+            <em>Контроль — рядом.</em>
+          </h1>
+          <p>
+            Единая панель преподавателя для наблюдения за аудиторией и разбора
+            спорных моментов.
+          </p>
+          <div className="auth-points">
+            <span>
+              <Monitor size={18} /> Любая согласованная среда теста
+            </span>
+            <span>
+              <Eye size={18} /> События с контекстом и видео
+            </span>
+            <span>
+              <ShieldCheck size={18} /> Решение остаётся за преподавателем
+            </span>
+          </div>
+        </div>
+        <footer>Qostanai Industry Hackathon · 2026</footer>
+      </aside>
+      <main className="auth-form">
+        <div>
+          <span className="eyebrow">ПАНЕЛЬ ПРЕПОДАВАТЕЛЯ</span>
+          <h2>{setup ? "Начнём с вашего кабинета" : "С возвращением"}</h2>
+          <p>
+            {setup
+              ? "Создайте локальную учётную запись. Она будет управлять сеансами этой установки."
+              : "Войдите, чтобы продолжить работу с аудиторией."}
+          </p>
+          <form onSubmit={submit}>
+            <label>
+              Имя преподавателя
+              <input
+                autoFocus
+                required
+                minLength={2}
+                maxLength={80}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoComplete="username"
+                placeholder="Например, Айгуль Сапарова"
+              />
+            </label>
+            <label>
+              Пароль
+              <input
+                required
+                type="password"
+                minLength={8}
+                maxLength={128}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete={setup ? "new-password" : "current-password"}
+                placeholder="Не менее 8 символов"
+              />
+            </label>
+            {error && <div className="error">{error}</div>}
+            <button className="btn primary full" disabled={busy}>
+              {busy ? (
+                <LoaderCircle className="spin" size={18} />
+              ) : (
+                <ArrowUpRight size={18} />
+              )}{" "}
+              {setup ? "Создать кабинет" : "Войти в кабинет"}
+            </button>
+          </form>
+          <p className="fine">
+            Данные этой установки хранятся на локальном сервере. Камеры
+            включаются только при запуске агента с режимом видео.
+          </p>
+        </div>
+      </main>
+    </div>
+  );
+}
+export default function App() {
+  const [auth, setAuth] = useState<{
+      setup_required: boolean;
+      user: { name: string } | null;
+    } | null>(null),
+    [data, setData] = useState<Snapshot>(empty),
+    [page, setPage] = useState("room"),
+    [connected, setConnected] = useState(false),
+    [fatal, setFatal] = useState(""),
+    [toast, setToast] = useState(""),
+    [busy, setBusy] = useState(false);
+  const [examId, setExamId] = useState(""),
+    [newExam, setNewExam] = useState(false),
+    [deviceId, setDeviceId] = useState<string | null>(null),
+    [eventId, setEventId] = useState<string | null>(null),
+    [pairCode, setPairCode] = useState("");
+  const [action, setAction] = useState<{ device: Device; type: string } | null>(
+      null,
+    ),
+    [reason, setReason] = useState("");
+  const user = auth?.user;
+  const exam = data.exams.find((x) => x.id === examId) || data.exams[0];
+  const devices = exam
+    ? Object.values(exam.participants).map(
+        (p) =>
+          data.devices.find((d) => d.id === p.id && d.exam_id === exam.id) || p,
+      )
+    : [];
+  const events = exam ? data.events.filter((e) => e.exam_id === exam.id) : [];
+  const selectedDevice =
+    devices.find((d) => d.id === deviceId) ||
+    data.devices.find((d) => d.id === deviceId);
+  const selectedEvent = data.events.find((e) => e.id === eventId);
+  const pending = data.events.filter((e) => e.decision === "PENDING");
+  async function refresh() {
+    setData(await api<Snapshot>("/snapshot"));
+  }
+  useEffect(() => {
+    api("/auth/status")
+      .then(setAuth)
+      .catch((e) => setFatal(e.message));
+  }, []);
+  useEffect(() => {
+    if (!user) return;
+    let stopped = false;
+    let socket: WebSocket;
+    let timer: number;
+    const connect = () => {
+      socket = new WebSocket(
+        `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/teacher`,
+      );
+      socket.onopen = () => setConnected(true);
+      socket.onmessage = (e) => setData(JSON.parse(e.data));
+      socket.onclose = () => {
+        setConnected(false);
+        if (!stopped) timer = window.setTimeout(connect, 2000);
+      };
+      socket.onerror = () => socket.close();
+    };
+    refresh().catch((e) => setToast(e.message));
+    connect();
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+      socket?.close();
+    };
+  }, [user?.name]);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(""), 6000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+  async function run(fn: () => Promise<unknown>, message?: string) {
+    setBusy(true);
+    try {
+      await fn();
+      await refresh();
+      if (message) setToast(message);
+    } catch (e) {
+      setToast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function command(d: Device, type: string, why = "") {
+    return api("/devices/" + d.id + "/commands", {
+      type,
+      expected_version: d.state.version,
+      lock_id: d.state.lock_id,
+      reason: why,
+    });
+  }
+  function ask(d: Device, type: string) {
+    setAction({ device: d, type });
+    setReason("");
+  }
+  if (fatal)
+    return (
+      <div className="loading error">
+        Сервер недоступен. {fatal}
+        <button className="btn" onClick={() => location.reload()}>
+          Повторить
+        </button>
+      </div>
+    );
+  if (!auth)
+    return (
+      <div className="loading">
+        <LoaderCircle className="spin" /> Загружаем кабинет…
+      </div>
+    );
+  if (!user)
+    return (
+      <Auth
+        setup={auth.setup_required}
+        onLogin={(u) => setAuth({ setup_required: false, user: u })}
+      />
+    );
+  const nav = [
+    { id: "room", name: "Аудитория", icon: LayoutDashboard },
+    { id: "review", name: "Проверка событий", icon: ClipboardCheck },
+    { id: "history", name: "Сеансы и отчёты", icon: History },
+    { id: "devices", name: "Компьютеры", icon: Monitor },
+    { id: "rules", name: "Правила контроля", icon: Settings2 },
+  ];
+  return (
+    <div className="app">
+      <aside className="sidebar">
+        <a
+          className="brand"
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            setPage("room");
+          }}
+        >
+          <ShieldCheck />
+          <span>
+            qorgau<span className="brand-dot">.</span>
+          </span>
+        </a>
+        <span className="nav-label">ПРЕПОДАВАТЕЛЬ</span>
+        <nav>
+          {nav.map((n) => (
+            <button
+              key={n.id}
+              onClick={() => setPage(n.id)}
+              className={page === n.id ? "active" : ""}
+            >
+              <n.icon size={19} />
+              <span>{n.name}</span>
+              {n.id === "review" && pending.length > 0 && (
+                <b>{pending.length}</b>
+              )}
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-tip">
+          <ShieldCheck size={24} />
+          <strong>Вы принимаете решение</strong>
+          <p>
+            Система отмечает события. Спорные моменты проверяет преподаватель.
+          </p>
+        </div>
+        <div className="profile">
+          <div className="avatar">{user.name.slice(0, 1)}</div>
+          <div>
+            <strong>{user.name}</strong>
+            <span>Преподаватель</span>
+          </div>
+          <button
+            className="icon-btn"
+            aria-label="Выйти"
+            onClick={async () => {
+              await api("/auth/logout", {});
+              setAuth({ ...auth, user: null });
+              setData(empty);
+            }}
+          >
+            <LogOut size={18} />
+          </button>
+        </div>
+      </aside>
+      <div className="workspace">
+        <header className="topbar">
+          <div className="breadcrumb">
+            Кабинет преподавателя <ChevronRight size={14} />
+            <strong>{nav.find((n) => n.id === page)?.name}</strong>
+          </div>
+          <div className="connection">
+            {connected ? <Wifi size={15} /> : <WifiOff size={15} />}
+            <span>
+              {connected ? "Сервер подключён" : "Восстанавливаем связь"}
+            </span>
+            <span className={"dot " + (connected ? "green" : "amber")} />
+          </div>
+        </header>
+        <main className="main">
+          <div className="page-heading">
+            <div>
+              <div className="eyebrow">QORGAU / КАБИНЕТ ПРЕПОДАВАТЕЛЯ</div>
+              <h1>
+                {page === "room"
+                  ? "Аудитория"
+                  : page === "review"
+                    ? "Проверка событий"
+                    : page === "history"
+                      ? "Сеансы и отчёты"
+                      : page === "devices"
+                        ? "Компьютеры аудитории"
+                        : "Правила контроля"}
+              </h1>
+              <p>
+                {page === "room"
+                  ? exam
+                    ? `${exam.title} · ${exam.group}`
+                    : "Подключите компьютеры и начните первый сеанс."
+                  : page === "review"
+                    ? "Изучите контекст и подтвердите или отклоните событие."
+                    : page === "history"
+                      ? "Результаты контроля, решения и записи каждого сеанса."
+                      : page === "devices"
+                        ? "Подключите локальные агенты и проверьте доступные среды."
+                        : "Отдельные счётчики направлений. Контекст вместо автоматических обвинений."}
+              </p>
+            </div>
+            {["room", "history"].includes(page) && (
+              <button className="btn primary" onClick={() => setNewExam(true)}>
+                <Plus size={18} /> Новый сеанс
+              </button>
+            )}
+            {page === "devices" && (
+              <button
+                className="btn primary"
+                disabled={busy}
+                onClick={() =>
+                  run(async () =>
+                    setPairCode((await api("/pairings", {})).code),
+                  )
+                }
+              >
+                <Link2 size={18} /> Подключить компьютер
+              </button>
+            )}
+          </div>
+          {page === "room" && (
+            <>
+              {!exam ? (
+                <section className="welcome panel">
+                  <div className="welcome-icon">
+                    <Monitor size={35} />
+                  </div>
+                  <Badge tone="green">Готово к первому сеансу</Badge>
+                  <h2>Соберите аудиторию в одном окне</h2>
+                  <p>
+                    Добавьте компьютеры с локальным агентом или начните со
+                    стенда: четыре виртуальных ученика и все сценарии проверки.
+                  </p>
+                  <div className="button-row">
+                    <button
+                      className="btn primary"
+                      disabled={busy}
+                      onClick={() =>
+                        run(async () => {
+                          await api("/demo/devices", {});
+                          await refresh();
+                          setNewExam(true);
+                        })
+                      }
+                    >
+                      <FlaskConical size={18} /> Попробовать на стенде
+                    </button>
+                    <button className="btn" onClick={() => setPage("devices")}>
+                      Подключить компьютеры <ArrowUpRight size={16} />
+                    </button>
+                  </div>
+                  <div className="welcome-steps">
+                    <div>
+                      <span>01</span>
+                      <strong>Выберите среду</strong>
+                      <p>Сайт в браузере или приложение</p>
+                    </div>
+                    <div>
+                      <span>02</span>
+                      <strong>Начните контроль</strong>
+                      <p>Тест остаётся в привычной системе</p>
+                    </div>
+                    <div>
+                      <span>03</span>
+                      <strong>Проверьте события</strong>
+                      <p>Решения сохраняются в отчёте</p>
+                    </div>
+                  </div>
+                </section>
+              ) : (
+                <Classroom
+                  exam={exam}
+                  exams={data.exams}
+                  devices={devices}
+                  events={events}
+                  busy={busy}
+                  onExam={setExamId}
+                  onDevice={setDeviceId}
+                  onEvent={setEventId}
+                  onUpdate={refresh}
+                  notify={setToast}
+                  onStart={() =>
+                    run(async () => {
+                      const results = await Promise.allSettled(
+                        devices
+                          .filter((d) => d.state.lifecycle === "READY")
+                          .map((d) => command(d, "START")),
+                      );
+                      const failed = results.filter(
+                        (r) => r.status === "rejected",
+                      );
+                      if (failed.length)
+                        throw new Error(
+                          `Не удалось запустить ${failed.length} компьютеров. Проверьте их состояние и повторите.`,
+                        );
+                    }, "Команды начала контроля отправлены")
+                  }
+                  onEnd={() =>
+                    run(async () => {
+                      const results = await Promise.allSettled(
+                        devices
+                          .filter((d) => d.state.lifecycle !== "COMPLETED")
+                          .map((d) =>
+                            command(
+                              d,
+                              "END_AND_RELEASE",
+                              "Преподаватель завершил сеанс",
+                            ),
+                          ),
+                      );
+                      const failed = results.filter(
+                        (r) => r.status === "rejected",
+                      );
+                      if (failed.length)
+                        throw new Error(
+                          `Не удалось завершить ${failed.length} компьютеров. Проверьте их состояние и повторите.`,
+                        );
+                    }, "Команды завершения отправлены")
+                  }
+                />
+              )}
+            </>
+          )}
+          {page === "review" && (
+            <section className="panel">
+              <div className="panel-toolbar">
+                <div>
+                  <h2>
+                    Очередь проверки{" "}
+                    <span className="count">{pending.length}</span>
+                  </h2>
+                  <p>Отклонение события само по себе не снимает блокировку.</p>
+                </div>
+              </div>
+              <EventTable events={data.events} onSelect={setEventId} />
+            </section>
+          )}
+          {page === "history" && (
+            <div className="history-list">
+              {data.exams.length === 0 ? (
+                <Empty text="Здесь появятся ваши сеансы и отчёты" />
+              ) : (
+                data.exams.map((e) => {
+                  const ev = data.events.filter((x) => x.exam_id === e.id);
+                  return (
+                    <article className="panel history-card" key={e.id}>
+                      <div className="history-title">
+                        <span className="session-icon">
+                          <ClipboardCheck size={23} />
+                        </span>
+                        <div>
+                          <h2>{e.title}</h2>
+                          <p>
+                            {new Date(e.created_at * 1000).toLocaleDateString(
+                              "ru-RU",
+                            )}{" "}
+                            · {e.group} · {e.room}
+                          </p>
+                        </div>
+                        <Badge
+                          tone={e.status === "COMPLETED" ? "neutral" : "green"}
+                        >
+                          {e.status === "COMPLETED"
+                            ? "Завершён"
+                            : e.status === "RUNNING"
+                              ? "Идёт контроль"
+                              : "Готов к запуску"}
+                        </Badge>
+                        {e.simulated && <Badge>Стенд</Badge>}
+                      </div>
+                      <div className="history-metrics">
+                        <div>
+                          <strong>{Object.keys(e.participants).length}</strong>
+                          <span>учеников</span>
+                        </div>
+                        <div>
+                          <strong>{ev.length}</strong>
+                          <span>событий</span>
+                        </div>
+                        <div>
+                          <strong>
+                            {
+                              ev.filter((x) => x.decision === "CONFIRMED")
+                                .length
+                            }
+                          </strong>
+                          <span>подтверждено</span>
+                        </div>
+                        <div>
+                          <strong>
+                            {ev.filter((x) => x.decision === "PENDING").length}
+                          </strong>
+                          <span>на проверке</span>
+                        </div>
+                        <button
+                          className="btn"
+                          onClick={() => {
+                            setExamId(e.id);
+                            setPage("room");
+                          }}
+                        >
+                          Открыть сеанс <ChevronRight size={16} />
+                        </button>
+                        <a
+                          className="btn"
+                          href={"/api/exams/" + e.id + "/report.csv"}
+                        >
+                          <Download size={16} /> Отчёт CSV
+                        </a>
+                      </div>
+                      <div className="table-scroll">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Ученик</th>
+                              <th>Вниз</th>
+                              <th>Влево</th>
+                              <th>Вправо</th>
+                              <th>Телефон</th>
+                              <th>На проверке</th>
+                              <th>Блокировки</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {Object.values(e.participants).map((d) => {
+                              const own = ev.filter(
+                                  (x) => x.device_id === d.id,
+                                ),
+                                valid = own.filter(
+                                  (x) => x.decision !== "REJECTED",
+                                );
+                              return (
+                                <tr key={d.id}>
+                                  <td>
+                                    <strong>{d.student}</strong>
+                                    <small>{d.name}</small>
+                                  </td>
+                                  {directions.map(([k]) => (
+                                    <td key={k}>
+                                      {
+                                        valid.filter(
+                                          (x) => x.type === "GAZE_" + k,
+                                        ).length
+                                      }
+                                    </td>
+                                  ))}
+                                  <td>
+                                    {
+                                      valid.filter(
+                                        (x) => x.type === "PHONE_DETECTED",
+                                      ).length
+                                    }
+                                  </td>
+                                  <td>
+                                    {
+                                      own.filter(
+                                        (x) => x.decision === "PENDING",
+                                      ).length
+                                    }
+                                  </td>
+                                  <td>{d.state.locks}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="table-note">
+                        События за весь сеанс, кроме отклонённых. Текущие
+                        счётчики после разблокировки показаны в аудитории.
+                      </p>
+                    </article>
+                  );
+                })
+              )}
+            </div>
+          )}
+          {page === "devices" && (
+            <>
+              <div className="notice">
+                <Monitor size={18} />
+                <span>
+                  Агент устанавливается на каждый компьютер. Подключение по
+                  одноразовому коду, действующему 5 минут.
+                </span>
+              </div>
+              {data.devices.length === 0 ? (
+                <Empty text="Компьютеры ещё не подключены" />
+              ) : (
+                <div className="panel table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Рабочее место</th>
+                        <th>Связь</th>
+                        <th>Доступная среда</th>
+                        <th>Возможности</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.devices.map((d) => (
+                        <tr key={d.id}>
+                          <td>
+                            <strong>{d.name}</strong>
+                            <small>{d.student}</small>
+                          </td>
+                          <td>
+                            <Badge tone={d.online ? "green" : "red"}>
+                              {d.simulated
+                                ? "Виртуальный"
+                                : d.online
+                                  ? "Подключён"
+                                  : "Нет связи"}
+                            </Badge>
+                          </td>
+                          <td>
+                            {d.targets.map((t) => t.name).join(", ") ||
+                              "Агент ещё не передал список"}
+                          </td>
+                          <td>
+                            {d.simulated
+                              ? "Тренировочный стенд"
+                              : d.capabilities.camera
+                                ? "Камера · наблюдение"
+                                : "Наблюдение без камеры"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <button
+                className="btn demo-add"
+                disabled={busy}
+                onClick={() =>
+                  run(
+                    () => api("/demo/devices", {}),
+                    "Четыре виртуальных компьютера готовы",
+                  )
+                }
+              >
+                <FlaskConical size={16} /> Добавить тренировочные компьютеры
+              </button>
+            </>
+          )}
+          {page === "rules" && (
+            <>
+              <div className="notice">
+                <ShieldCheck size={18} />
+                <span>
+                  Правила версии 2.0 зафиксированы для прототипа. Пороговые
+                  значения видны ученику и преподавателю.
+                </span>
+              </div>
+              <div className="rules-grid">
+                <Rule
+                  icon={<Eye />}
+                  title="Три независимых счётчика"
+                  text="Вниз, влево и вправо считаются отдельно. Непрерывный эпизод от 5 секунд даёт один балл. На третьем в одном направлении — блокировка по правилам."
+                />
+                <Rule
+                  icon={<Smartphone />}
+                  title="Телефон — критическое событие"
+                  text="Два уверенных обнаружения на коротком интервале вызывают блокировку без накопления баллов. Наличие телефона не доказывает факт фотографирования."
+                />
+                <Rule
+                  icon={<Users />}
+                  title="Второе лицо — на проверку"
+                  text="Появление второго лица на секунду и дольше сохраняется как спорный момент. Само по себе не блокирует ученика."
+                />
+                <Rule
+                  icon={<History />}
+                  title="Частые короткие отвлечения"
+                  text="Три коротких эпизода за минуту общей длительностью от 6 секунд отправляются преподавателю. Не добавляют баллы за взгляд."
+                />
+                <Rule
+                  icon={<UnlockKeyhole />}
+                  title="Продолжение только по решению"
+                  text="Возврат взгляда и отклонение события не снимают блокировку. Преподаватель разрешает продолжить с указанием причины. Начинается новый цикл счётчиков, история остаётся."
+                />
+                <Rule
+                  icon={<Monitor />}
+                  title="Внешний тест, отдельный контроль"
+                  text="Перед стартом выбираются доступный браузер и адрес сайта либо приложение. В текущей сборке доступно наблюдение; строгая защита Windows ещё не реализована."
+                />
+              </div>
+            </>
+          )}
+          <footer className="page-footer">
+            <span>
+              <ShieldCheck size={14} /> Qorgau · Локальный контроль, осознанные
+              решения
+            </span>
+            <span>Прототип 0.1 · Режим наблюдения</span>
+          </footer>
+        </main>
+      </div>
+      {newExam && (
+        <NewExam
+          devices={data.devices}
+          onClose={() => setNewExam(false)}
+          onCreate={async (body) => {
+            const e = await api<Exam>("/exams", body);
+            await refresh();
+            setExamId(e.id);
+            setNewExam(false);
+            setPage("room");
+          }}
+        />
+      )}
+      {selectedDevice && deviceId && (
+        <Modal
+          title={selectedDevice.student}
+          subtitle={
+            selectedDevice.name +
+            " · " +
+            (selectedDevice.simulated
+              ? "виртуальный ученик"
+              : "локальный агент")
+          }
+          onClose={() => setDeviceId(null)}
+          wide
+        >
+          <div className="modal-body">
+            <div className="student-status">
+              <Badge
+                tone={
+                  selectedDevice.state.access === "LOCKED" ? "red" : "green"
+                }
+              >
+                {selectedDevice.state.access === "LOCKED"
+                  ? "Блокировка по правилам"
+                  : selectedDevice.state.lifecycle === "RUNNING"
+                    ? "Под контролем"
+                    : selectedDevice.state.lifecycle === "COMPLETED"
+                      ? "Сеанс завершён"
+                      : "Ожидает начала"}
+              </Badge>
+              <span>Цикл {selectedDevice.state.epoch}</span>
+              {selectedDevice.state.reason && (
+                <span>
+                  {eventNames[selectedDevice.state.reason] ||
+                    "Решение преподавателя"}
+                </span>
+              )}
+            </div>
+            <Counters d={selectedDevice} />
+            <div className="button-row">
+              {selectedDevice.exam_id === exam?.id &&
+                selectedDevice.state.lifecycle === "READY" && (
+                  <button
+                    className="btn primary"
+                    disabled={busy}
+                    onClick={() => run(() => command(selectedDevice, "START"))}
+                  >
+                    <Play size={16} /> Начать контроль
+                  </button>
+                )}
+              {selectedDevice.exam_id === exam?.id &&
+                selectedDevice.state.lifecycle === "RUNNING" && (
+                  <>
+                    <button
+                      className={
+                        "btn " +
+                        (selectedDevice.state.access === "LOCKED"
+                          ? "primary"
+                          : "")
+                      }
+                      disabled={busy}
+                      onClick={() =>
+                        ask(
+                          selectedDevice,
+                          selectedDevice.state.access === "LOCKED"
+                            ? "UNLOCK"
+                            : "LOCK",
+                        )
+                      }
+                    >
+                      {selectedDevice.state.access === "LOCKED" ? (
+                        <UnlockKeyhole size={16} />
+                      ) : (
+                        <LockKeyhole size={16} />
+                      )}{" "}
+                      {selectedDevice.state.access === "LOCKED"
+                        ? "Разрешить продолжить"
+                        : "Заблокировать"}
+                    </button>
+                    <button
+                      className="btn"
+                      onClick={() => ask(selectedDevice, "END_AND_RELEASE")}
+                    >
+                      Завершить контроль
+                    </button>
+                  </>
+                )}
+            </div>
+            {selectedDevice.simulated &&
+              selectedDevice.exam_id === exam?.id && (
+                <div className="simulator">
+                  <h3>
+                    <FlaskConical size={17} /> Сценарии тренировочного стенда
+                  </h3>
+                  <p>
+                    Создают искусственные наблюдения для проверки правил. Это не
+                    результаты камеры.
+                  </p>
+                  <div className="simulation-buttons">
+                    {[
+                      ["DOWN", "Взгляд вниз · 5 с"],
+                      ["LEFT", "Взгляд влево · 5 с"],
+                      ["RIGHT", "Взгляд вправо · 5 с"],
+                      ["PHONE", "Телефон"],
+                      ["SECOND_FACE", "Второе лицо"],
+                      ["FREQUENT", "Частые отвлечения"],
+                    ].map(([id, label]) => (
+                      <button
+                        className="btn"
+                        key={id}
+                        disabled={
+                          busy ||
+                          selectedDevice.state.lifecycle !== "RUNNING" ||
+                          selectedDevice.state.access === "LOCKED"
+                        }
+                        onClick={() =>
+                          run(() =>
+                            api("/devices/" + selectedDevice.id + "/simulate", {
+                              scenario: id,
+                            }),
+                          )
+                        }
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            <h3 className="subheading">События ученика</h3>
+            <EventTable
+              events={events.filter((e) => e.device_id === selectedDevice.id)}
+              onSelect={(id) => {
+                setDeviceId(null);
+                setEventId(id);
+              }}
+            />
+            {data.commands
+              .filter(
+                (c) =>
+                  c.device_id === selectedDevice.id &&
+                  ["PENDING", "REJECTED", "EXPIRED"].includes(c.status),
+              )
+              .slice(0, 3)
+              .map((c) => (
+                <p className="fine" key={c.id}>
+                  Команда{" "}
+                  {{
+                    START: "Начать контроль",
+                    LOCK: "Заблокировать",
+                    UNLOCK: "Разрешить продолжить",
+                    END_AND_RELEASE: "Завершить контроль",
+                    REVIEW: "Пересмотреть событие",
+                  }[c.type] || "Управление сеансом"}
+                  :{" "}
+                  {c.status === "PENDING"
+                    ? "ожидает подтверждения агента"
+                    : c.status === "EXPIRED"
+                      ? "истёк срок действия"
+                      : "не выполнена"}{" "}
+                  {c.error}
+                </p>
+              ))}
+          </div>
+        </Modal>
+      )}
+      {selectedEvent && (
+        <EventReview
+          event={selectedEvent}
+          onClose={() => setEventId(null)}
+          onUpdate={refresh}
+          notify={setToast}
+        />
+      )}
+      {pairCode && (
+        <Modal
+          title="Подключение компьютера"
+          subtitle="Одноразовый код · действует 5 минут"
+          onClose={() => setPairCode("")}
+        >
+          <div className="modal-body">
+            <label>
+              Адрес этого сервера
+              <input readOnly value={location.origin} />
+            </label>
+            <div className="pair-code">{pairCode}</div>
+            <p>
+              Администратор вводит адрес сервера, название компьютера и этот код
+              один раз. После регистрации агент работает в трее и получает
+              сеансы автоматически. Для каждого компьютера нужен отдельный код.
+            </p>
+            <p className="fine">
+              Ученику не нужны логин и код. Имя ученика назначается в новом
+              сеансе. Для компьютеров аудитории используйте доступный им
+              HTTPS-адрес сервера.
+            </p>
+            <button
+              className="btn full"
+              onClick={() =>
+                navigator.clipboard
+                  .writeText(pairCode)
+                  .then(() => setToast("Код скопирован"))
+                  .catch(() => setToast("Выделите и скопируйте код вручную"))
+              }
+            >
+              Скопировать код
+            </button>
+          </div>
+        </Modal>
+      )}
+      {action && (
+        <Modal
+          title={
+            action.type === "UNLOCK"
+              ? "Разрешить продолжить?"
+              : action.type === "LOCK"
+                ? "Заблокировать ученика?"
+                : "Завершить контроль?"
+          }
+          subtitle={action.device.student + " · " + action.device.name}
+          onClose={() => setAction(null)}
+        >
+          <form
+            className="modal-body"
+            onSubmit={(e) => {
+              e.preventDefault();
+              run(async () => {
+                await command(action.device, action.type, reason);
+                setAction(null);
+              }, "Решение отправлено и записано в журнал");
+            }}
+          >
+            <p>
+              {action.type === "UNLOCK"
+                ? "Начнётся новый цикл трёх счётчиков. Все события и решения сохранятся в истории."
+                : action.type === "END_AND_RELEASE"
+                  ? "Контроль этого ученика завершится, блокировка будет снята. Внешний тест автоматически не отправляется."
+                  : "Состояние будет заблокировано по решению преподавателя. В режиме наблюдения операционная система остаётся доступной."}
+            </p>
+            <label>
+              Причина решения
+              <textarea
+                autoFocus
+                required
+                value={reason}
+                maxLength={500}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Например: проверено видео, разрешено продолжить"
+              />
+            </label>
+            <div className="button-row end">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setAction(null)}
+              >
+                Отмена
+              </button>
+              <button className="btn primary" disabled={busy || !reason.trim()}>
+                Подтвердить решение
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {toast && (
+        <div className="toast" role="status">
+          <span>{toast}</span>
+          <button
+            className="icon-btn"
+            onClick={() => setToast("")}
+            aria-label="Скрыть уведомление"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+function Counters({ d }: { d: Device }) {
+  return (
+    <div className="counters">
+      {directions.map(([id, label]) => (
+        <div key={id}>
+          <span>{label}</span>
+          <strong className={d.state.counts[id] >= 3 ? "danger-text" : ""}>
+            {d.state.counts[id]}
+            <small>/3</small>
+          </strong>
+          <div className="ticks">
+            {[1, 2, 3].map((n) => (
+              <i
+                key={n}
+                className={
+                  d.state.counts[id] >= n ? (n === 3 ? "red" : "amber") : ""
+                }
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+function Empty({ text }: { text: string }) {
+  return (
+    <div className="empty panel">
+      <ClipboardCheck size={30} />
+      <h3>{text}</h3>
+    </div>
+  );
+}
+function Rule({
+  icon,
+  title,
+  text,
+}: {
+  icon: ReactNode;
+  title: string;
+  text: string;
+}) {
+  return (
+    <article className="panel rule">
+      <span className="rule-icon">{icon}</span>
+      <h2>{title}</h2>
+      <p>{text}</p>
+    </article>
+  );
+}
+function EventTable({
+  events,
+  onSelect,
+}: {
+  events: Incident[];
+  onSelect: (id: string) => void;
+}) {
+  return events.length === 0 ? (
+    <div className="empty">
+      <CheckCheck size={28} />
+      <p>Событий пока нет</p>
+    </div>
+  ) : (
+    <div className="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Ученик / время</th>
+            <th>Событие</th>
+            <th>Видео</th>
+            <th>Решение</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {events.map((e) => (
+            <tr key={e.id}>
+              <td>
+                <strong>{e.student}</strong>
+                <small>
+                  {e.device_name} · {clock(e.created_at)}
+                </small>
+              </td>
+              <td>
+                <strong>{eventNames[e.type] || e.type}</strong>
+                <small>
+                  {e.simulated
+                    ? "Тренировочный сценарий"
+                    : e.category === "CRITICAL"
+                      ? "Критическое событие"
+                      : "Наблюдение агента"}
+                </small>
+              </td>
+              <td>
+                {e.media.length ? (
+                  <span className="with-icon">
+                    <Video size={15} /> {e.media.length} фрагм.
+                  </span>
+                ) : (
+                  <span className="muted">Нет записи</span>
+                )}
+              </td>
+              <td>
+                <Badge
+                  tone={
+                    e.decision === "CONFIRMED"
+                      ? "red"
+                      : e.decision === "REJECTED"
+                        ? "green"
+                        : "amber"
+                  }
+                >
+                  {decisionNames[e.decision]}
+                </Badge>
+              </td>
+              <td>
+                <button className="btn small" onClick={() => onSelect(e.id)}>
+                  Проверить <ChevronRight size={14} />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+function NewExam({
+  devices,
+  onClose,
+  onCreate,
+}: {
+  devices: Device[];
+  onClose: () => void;
+  onCreate: (body: unknown) => Promise<void>;
+}) {
+  const available = devices.filter(
+      (d) => (!d.exam_id || d.state.lifecycle === "COMPLETED") && d.online,
+    ),
+    [selected, setSelected] = useState<string[]>(available.map((d) => d.id)),
+    [studentNames, setStudentNames] = useState<Record<string, string>>({}),
+    [kind, setKind] = useState("BROWSER"),
+    [target, setTarget] = useState(""),
+    [title, setTitle] = useState("Промежуточное тестирование"),
+    [group, setGroup] = useState("ИС-23"),
+    [room, setRoom] = useState("Аудитория 301"),
+    [url, setUrl] = useState("https://example.com"),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  const chosen = available.filter((d) => selected.includes(d.id));
+  const targets: Target[] =
+    chosen[0]?.targets.filter(
+      (t) =>
+        t.kind === kind &&
+        chosen.every((d) =>
+          d.targets.some((x) => x.id === t.id && x.kind === kind),
+        ),
+    ) || [];
+  const resolved = targets.some((t) => t.id === target)
+    ? target
+    : targets[0]?.id || "";
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await onCreate({
+        title,
+        group,
+        room,
+        device_ids: selected,
+        student_names: Object.fromEntries(
+          selected.map((id) => [id, studentNames[id]?.trim() || ""]),
+        ),
+        mode: "OBSERVE",
+        environment: {
+          kind,
+          target_id: resolved,
+          ...(kind === "BROWSER" ? { url } : {}),
+        },
+      });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal
+      title="Новый сеанс контроля"
+      subtitle="Ученик проходит тест во внешней среде. Здесь вы настраиваете контроль."
+      onClose={onClose}
+      wide
+    >
+      <form className="modal-body" onSubmit={submit}>
+        <label>
+          Название сеанса
+          <input
+            autoFocus
+            required
+            minLength={2}
+            maxLength={120}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </label>
+        <div className="form-grid">
+          <label>
+            Группа
+            <input
+              required
+              value={group}
+              onChange={(e) => setGroup(e.target.value)}
+              maxLength={80}
+            />
+          </label>
+          <label>
+            Аудитория
+            <input
+              required
+              value={room}
+              onChange={(e) => setRoom(e.target.value)}
+              maxLength={80}
+            />
+          </label>
+        </div>
+        <h3 className="subheading">Где проходит тест</h3>
+        <div className="choice-row">
+          {[
+            ["BROWSER", "Сайт в браузере"],
+            ["APP", "Приложение"],
+          ].map(([id, label]) => (
+            <button
+              type="button"
+              key={id}
+              className={"choice " + (kind === id ? "chosen" : "")}
+              onClick={() => setKind(id)}
+            >
+              <Monitor size={19} />
+              {label}
+              {kind === id && <Check size={17} />}
+            </button>
+          ))}
+        </div>
+        <label>
+          {kind === "BROWSER"
+            ? "Браузер на компьютерах"
+            : "Установленное приложение"}
+          <select
+            required
+            value={resolved}
+            onChange={(e) => setTarget(e.target.value)}
+          >
+            <option value="" disabled>
+              Выберите доступную среду
+            </option>
+            {targets.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {kind === "BROWSER" && (
+          <label>
+            Адрес теста
+            <input
+              type="url"
+              required
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://…"
+            />
+          </label>
+        )}
+        <h3 className="subheading">
+          Рабочие места <span className="count">{selected.length}</span>
+        </h3>
+        {available.length === 0 ? (
+          <div className="notice">
+            Нет свободных подключённых компьютеров. Завершите предыдущий сеанс
+            или добавьте устройства.
+          </div>
+        ) : (
+          <div className="check-list">
+            {available.map((d) => (
+              <div className="workstation-assignment" key={d.id}>
+                <label className="workstation-choice">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(d.id)}
+                    onChange={(e) =>
+                      setSelected(
+                        e.target.checked
+                          ? [...selected, d.id]
+                          : selected.filter((id) => id !== d.id),
+                      )
+                    }
+                  />
+                  <strong>{d.name}</strong>
+                  {d.simulated && <Badge>Стенд</Badge>}
+                </label>
+                <input
+                  aria-label={`Ученик на ${d.name}`}
+                  placeholder="Имя ученика (необязательно)"
+                  maxLength={80}
+                  disabled={!selected.includes(d.id)}
+                  value={studentNames[d.id] || ""}
+                  onChange={(e) =>
+                    setStudentNames({ ...studentNames, [d.id]: e.target.value })
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="notice">
+          <Eye size={17} />
+          <span>
+            Режим наблюдения. Строгая защита ОС в этой версии недоступна. Среда
+            должна быть установлена на всех выбранных компьютерах.
+          </span>
+        </div>
+        {error && <div className="error">{error}</div>}
+        <div className="button-row end">
+          <button className="btn" type="button" onClick={onClose}>
+            Отмена
+          </button>
+          <button
+            className="btn primary"
+            disabled={busy || !selected.length || !resolved}
+          >
+            {busy ? (
+              <LoaderCircle className="spin" size={17} />
+            ) : (
+              <Plus size={17} />
+            )}{" "}
+            Создать сеанс
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+function EventReview({
+  event: e,
+  onClose,
+  onUpdate,
+  notify,
+}: {
+  event: Incident;
+  onClose: () => void;
+  onUpdate: () => Promise<void>;
+  notify: (s: string) => void;
+}) {
+  const [reason, setReason] = useState(""),
+    [busy, setBusy] = useState(false),
+    [index, setIndex] = useState(0);
+  async function decide(decision: string) {
+    setBusy(true);
+    try {
+      await api("/events/" + e.id + "/review", {
+        decision,
+        expected_revision: e.revision,
+        reason,
+      });
+      await onUpdate();
+      notify("Решение сохранено");
+      setReason("");
+    } catch (err) {
+      notify((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function upload(file?: File) {
+    if (!file) return;
+    setBusy(true);
+    try {
+      if (file.size > 50 * 1024 * 1024) throw new Error("Максимум 50 МБ");
+      const r = await fetch("/api/events/" + e.id + "/demo-video", {
+        method: "POST",
+        headers: {
+          "X-Requested-With": "Qorgau",
+          "Content-Type": file.type || "video/mp4",
+        },
+        body: file,
+      });
+      if (!r.ok) throw new Error("Не удалось загрузить видео");
+      await onUpdate();
+      notify("Тестовый фрагмент прикреплён");
+    } catch (err) {
+      notify((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal
+      title={eventNames[e.type] || e.type}
+      subtitle={e.student + " · " + e.device_name + " · " + clock(e.created_at)}
+      onClose={onClose}
+      wide
+    >
+      <div className="modal-body">
+        <div className="student-status">
+          <Badge
+            tone={
+              e.decision === "PENDING"
+                ? "amber"
+                : e.decision === "REJECTED"
+                  ? "green"
+                  : "red"
+            }
+          >
+            {decisionNames[e.decision]}
+          </Badge>
+          {e.simulated && <Badge>Тренировочное событие</Badge>}
+          <span>Версия решения {e.revision}</span>
+        </div>
+        {e.media.length ? (
+          <>
+            <video
+              className="evidence-video"
+              key={e.media[index]?.id}
+              controls
+              preload="metadata"
+              onLoadedMetadata={(x) => {
+                const offset = e.at - (e.media[index]?.clip_start || 0);
+                if (offset > 0 && offset < x.currentTarget.duration)
+                  x.currentTarget.currentTime = offset;
+              }}
+              src={e.media[index]?.url}
+            />
+            {e.media.length > 1 && (
+              <select
+                aria-label="Фрагмент видео"
+                value={index}
+                onChange={(x) => setIndex(Number(x.target.value))}
+              >
+                {e.media.map((m, i) => (
+                  <option key={m.id} value={i}>
+                    Фрагмент {i + 1}
+                  </option>
+                ))}
+              </select>
+            )}
+          </>
+        ) : (
+          <div className="video-empty">
+            <Video size={34} />
+            <h3>Запись не прикреплена</h3>
+            <p>
+              {e.simulated
+                ? "Это искусственный сценарий. Для проверки проигрывателя можно прикрепить тестовый фрагмент."
+                : "Агент ещё не передал фрагмент. Решение доступно, но визуального подтверждения пока нет."}
+            </p>
+            {e.simulated && (
+              <label className="btn upload">
+                Прикрепить тестовое видео
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm"
+                  disabled={busy}
+                  onChange={(x) => upload(x.target.files?.[0])}
+                />
+              </label>
+            )}
+          </div>
+        )}
+        <div className="evidence-info">
+          <span>
+            Начало: <strong>{e.start.toFixed(1)} с</strong>
+          </span>
+          <span>
+            Срабатывание: <strong>{e.at.toFixed(1)} с</strong>
+          </span>
+          {e.duration && (
+            <span>
+              Длительность: <strong>{e.duration.toFixed(1)} с</strong>
+            </span>
+          )}
+        </div>
+        <p className="fine">
+          Время указано от начала контроля. Автоматическое событие — основание
+          для проверки; оно не является доказательством нарушения само по себе.
+        </p>
+        <label>
+          Комментарий к решению
+          <textarea
+            value={reason}
+            maxLength={500}
+            onChange={(x) => setReason(x.target.value)}
+            placeholder="Что видно на записи и почему вы приняли это решение"
+          />
+        </label>
+        <div className="button-row">
+          <button
+            className="btn"
+            disabled={busy || !reason.trim()}
+            onClick={() => decide("REJECTED")}
+          >
+            <X size={16} /> Отклонить событие
+          </button>
+          <button
+            className="btn primary"
+            disabled={busy || !reason.trim()}
+            onClick={() => decide("CONFIRMED")}
+          >
+            <Check size={16} /> Подтвердить событие
+          </button>
+        </div>
+        <p className="fine">
+          Отклонение корректирует счётчик, но не разблокирует ученика
+          автоматически.
+        </p>
+        {e.reviews.length > 0 && (
+          <div className="review-log">
+            <h3>История решений</h3>
+            {[...e.reviews].reverse().map((r, i) => (
+              <div key={i}>
+                <strong>
+                  {decisionNames[r.decision as keyof typeof decisionNames]} ·{" "}
+                  {r.author}
+                </strong>
+                <small>{clock(r.at)}</small>
+                <p>{r.reason}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}

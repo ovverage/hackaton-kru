@@ -1,0 +1,41 @@
+Generator: built-in image_gen; new image, no reference images.
+Purpose: visual design concept only; no implementation changes.
+
+Use case: ui-mockup.
+Create ONE high fidelity, exceptionally well art-directed desktop WEB APPLICATION DESIGN IMAGE for Qorgau (qorgau.), the teacher's control room for local university exam proctoring in Kostanay. It must look like a carefully designed, real, mature software product made by a thoughtful senior product designer. The user explicitly wants a beautiful design without the recognizable generic AI-generated website aesthetic.
+
+Output: a single flat, straight-on, full-screen desktop UI screenshot, wide 16:10 composition, preferably 1920x1200 or similarly high resolution. Sharp typography and hairline dividers. No laptop, browser chrome, perspective, surrounding presentation board, annotations, multiple screens or device mockups.
+
+Established product context: installed student desktop agents monitor an EXTERNAL test website or application; teacher uses this web panel to select the environment, watch individual student states, review incidents with video and allow continuation. All example data is fictional. Separate DOWN, LEFT, RIGHT gaze counters each have limit 3. Phone is critical; second face is a review item.
+
+Visual direction: restrained, editorial and utilitarian, calm warm off-white background, near-black ink, existing Qorgau deep forest green as a selective accent, subdued amber and terracotta only for meaningful status. Slim pale navigation sidebar with subtle vertical border, active nav as a simple forest-green accent. Generous but efficient whitespace, impeccably aligned baseline grid, mature typography with a slightly humanist sans serif supporting Cyrillic, restrained 6–8 px corners. Strong hierarchy, readable text, real data density, thoughtful small details. The interest should come from proportion, typography, meaningful information, and careful composition. NOT a landing page.
+
+Layout: narrow left sidebar about 205 px. Main workspace fills the rest with a spacious but compact title row. Main content split roughly 72/28: large students table on left; a carefully composed incident review rail on right. A slim context bar above them shows the live session, environment and elapsed time. Summary numbers should sit in one simple inline typographic strip separated by vertical rules — NOT four chunky stat cards. A compact filter/search bar above table. Eight visible student rows, aligned cells, thin dividers; small 42x42 softly desaturated realistic webcam thumbnails or tasteful initial avatars, student name and PC number, precise status, three tiny separate direction counters. One selected amber-tinted row. Design real controls at sane sizes.
+
+Exact Russian text wherever specified:
+Sidebar wordmark "qorgau."
+Small section label "ПРЕПОДАВАТЕЛЬ"
+Nav "Аудитория" (selected), "Проверка событий" with small count 3, "Сеансы и отчёты", "Компьютеры", "Правила контроля".
+Sidebar bottom account "Айгуль Сапарова" with smaller "Преподаватель".
+Header title "Аудитория" and quiet subtitle "Промежуточное тестирование · ИС-23".
+Small date "16 октября 2026".
+Primary top-right button "+ Новый сеанс".
+Context bar: green status dot "Контроль идёт", "Аудитория 301", "Chrome · moodle.kru.kz", "00:24:18". Quiet outlined button "Завершить сеанс".
+Inline summaries: "24 Ученика", "20 Под контролем", "1 Приостановлен", "3 На проверке".
+Filters: "Все ученики 24", "Требуют внимания 4", search placeholder "Найти ученика".
+Table columns: "Ученик", "Статус", "Вниз", "Влево", "Вправо", "Последнее событие".
+Rows:
+"Алина Серикова" / "ПК-01" / "Под контролем" / 0/3 1/3 0/3 / "Взгляд влево · 10:24"
+"Данияр Омаров" / "ПК-02" / "На проверке" / 1/3 0/3 0/3 / "Второе лицо · 10:25"
+"Аружан Касымова" / "ПК-03" / "Приостановлен" / 0/3 0/3 0/3 / "Телефон · 10:26"
+"Тимур Ахметов" / "ПК-04" / "Под контролем" / 0/3 0/3 0/3 / "Нет событий"
+"Диана Исаева" / "ПК-05" / "Под контролем" / 1/3 0/3 0/3 / "Взгляд вниз · 10:21"
+"Арман Нурланов" / "ПК-06" / "Под контролем" / 0/3 0/3 1/3 / "Взгляд вправо · 10:20"
+"Камила Оспанова" / "ПК-07" / "На проверке" / 0/3 1/3 0/3 / "Частые отвлечения · 10:23"
+"Ерасыл Алимов" / "ПК-08" / "Под контролем" / 0/3 0/3 0/3 / "Нет событий".
+Footer table "Показаны 8 из 24" with compact pagination.
+
+Right incident rail: title "На проверке" with count 3. Featured amber-labelled incident "Второе лицо", student "Данияр Омаров · ПК-02", timestamp "10:25:42". Medium 16:9 webcam evidence still depicting an ordinary adult male student at a classroom computer and another adult softly visible at the edge, natural imperfect webcam image, no futuristic bounding boxes, no sci-fi AI graphics. Under it: simple real video controls, slim timeline with small amber event marker, time "00:05 / 00:15". Caption "Фрагмент события". Two grounded buttons "Подтвердить" and "Отклонить". A thin divider and two compact next incidents "Телефон" / "Аружан Касымова · 10:26" with terracotta dot, "Частые отвлечения" / "Камила Оспанова · 10:23" with amber dot. Small muted note "Решение принимает преподаватель".
+Use elegant thin consistent line icons sparingly. Adult students are fictional and small peripheral imagery; the UI is the subject.
+
+Avoid: purple/blue gradient backgrounds, neon, glassmorphism, glowing blobs, robots, sparkles, AI badges, fake line charts, gratuitous graphs, giant marketing slogans, giant pill buttons, excessive rounded tiles, drop shadows on everything, ornamental shields everywhere, rainbow avatar circles, stock-photo smiles, microscopic illegible text, lorem ipsum, decorative empty space, brand logos other than qorgau. Do not claim the image is human-made; simply achieve the requested crafted aesthetic. Render natural, correctly spelled Cyrillic, consistent spacing, no malformed labels.

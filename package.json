@@ -1,0 +1,10 @@
+{
+  "name": "qostanai-proctor-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "npm --prefix web run build",
+    "test": "node scripts/test.mjs",
+    "student": "node scripts/student.mjs"
+  }
+}
