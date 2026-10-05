@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="620" viewBox="0 0 1080 620" role="img" aria-labelledby="title desc">
+  <title id="title">Архитектура Qorgau</title>
+  <desc id="desc">Камера и локальные модели работают на ПК студента. События и клипы отправляются по HTTPS на собственный сервер. Преподаватель получает их в кабинете и отправляет команды через API.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2859bc"/></marker>
+    <style>text{font-family:Arial,sans-serif;fill:#152a4b}.lane{fill:#f4f7fc;stroke:#d7e0ed;stroke-width:2}.node{fill:white;stroke:#91aedb;stroke-width:2}.flow{fill:none;stroke:#2859bc;stroke-width:3;marker-end:url(#arrow)}.small{font-size:17px;fill:#52657f}.label{font-size:22px;font-weight:700}</style>
+  </defs>
+  <rect width="1080" height="620" rx="20" fill="#fff"/>
+  <text x="35" y="45" font-size="29" font-weight="700">Как работает Qorgau</text>
+  <text x="35" y="74" class="small">Режим наблюдения 0.3.0 · анализ на ПК, решение у преподавателя</text>
+  <rect class="lane" x="25" y="103" width="380" height="450" rx="16"/>
+  <rect class="lane" x="439" y="103" width="310" height="450" rx="16"/>
+  <rect class="lane" x="784" y="103" width="270" height="450" rx="16"/>
+  <text x="47" y="137" class="label">ПК студента</text>
+  <text x="461" y="137" class="label">Свой сервер</text>
+  <text x="806" y="137" class="label">Преподаватель</text>
+  <rect class="node" x="48" y="164" width="334" height="65" rx="10"/>
+  <text x="215" y="203" text-anchor="middle" font-size="21">Камера · без записи звука</text>
+  <path class="flow" d="M215 230 V255"/>
+  <rect class="node" x="48" y="258" width="334" height="83" rx="10"/>
+  <text x="215" y="290" text-anchor="middle" class="label">YOLO11n + MediaPipe</text>
+  <text x="215" y="318" text-anchor="middle" class="small">Локальный анализ → правила</text>
+  <path class="flow" d="M215 342 V369"/>
+  <rect class="node" x="48" y="372" width="334" height="92" rx="10"/>
+  <text x="215" y="407" text-anchor="middle" class="label">События и клипы</text>
+  <text x="215" y="435" text-anchor="middle" class="small">Очередь на диске, повтор доставки</text>
+  <path class="flow" d="M383 403 H458"/>
+  <text x="397" y="390" class="small" font-size="15">HTTPS</text>
+  <rect class="node" x="462" y="362" width="264" height="101" rx="10"/>
+  <text x="594" y="397" text-anchor="middle" class="label">API и хранилище</text>
+  <text x="594" y="425" text-anchor="middle" class="small">Токены, доступ, аудит</text>
+  <path class="flow" d="M727 403 H802"/>
+  <text x="740" y="390" class="small" font-size="15">WSS</text>
+  <rect class="node" x="806" y="355" width="226" height="120" rx="10"/>
+  <text x="919" y="389" text-anchor="middle" class="label">Веб-кабинет</text>
+  <text x="919" y="419" text-anchor="middle" class="small">Видео и причина</text>
+  <text x="919" y="447" text-anchor="middle" class="small">Решение и отчёт</text>
+  <path class="flow" d="M919 354 V206 H727"/>
+  <rect class="node" x="462" y="165" width="264" height="83" rx="10"/>
+  <text x="594" y="199" text-anchor="middle" class="label">Команды и ACK</text>
+  <text x="594" y="226" text-anchor="middle" class="small">Старт, пауза, продолжение</text>
+  <path class="flow" d="M462 208 H423 V299 H384"/>
+  <text x="49" y="510" class="small">Модели работают без облачного CV</text>
+  <text x="462" y="510" class="small">7 дней + продление, копии</text>
+  <text x="806" y="510" class="small">Итог решает человек</text>
+  <text x="35" y="589" class="small">LOCKED — состояние контроля. Защита Windows проверяется отдельно и пока не принята.</text>
+</svg>

@@ -1,0 +1,9 @@
+# Deployment files must keep Unix line endings when packaged from Windows.
+*.sh text eol=lf
+deploy/*.service text eol=lf
+deploy/*.timer text eol=lf
+deploy/Caddyfile.ip text eol=lf
+
+*.png binary
+*.pptx binary
+*.docx binary

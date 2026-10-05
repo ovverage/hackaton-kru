@@ -7,6 +7,7 @@ REASONS = {
     "PHONE_DETECTED": "Камера обнаружила телефон.",
     "TEACHER_LOCK": "Преподаватель приостановил контроль.",
     "CAMERA_UNAVAILABLE": "Не удалось получить или сохранить видео камеры.",
+    "FACE_ABSENCE_TECHNICAL": "Лицо не было видно 10 секунд. Вернитесь в кадр и дождитесь преподавателя.",
     "AGENT_RESTARTED": "Приложение было перезапущено во время контроля.",
 }
 
@@ -53,7 +54,7 @@ def present(snapshot):
         "tone": tone,
         "badge": badge,
         "can_open": lifecycle == "RUNNING" and not locked,
-        "can_calibrate": lifecycle != "RUNNING"
+        "can_calibrate": (lifecycle != "RUNNING" or (locked and state.get("reason") in ("AGENT_RESTARTED", "CAMERA_UNAVAILABLE")))
         and not snapshot.get("camera_preparing", False),
         "locked": locked,
         "complete": lifecycle == "COMPLETED",

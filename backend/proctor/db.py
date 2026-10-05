@@ -1,11 +1,16 @@
 from contextlib import contextmanager
 from pathlib import Path
 import sqlite3, json
+import threading
+from contextlib import nullcontext
 
 
 class Database:
     def __init__(self, path):
         self.path = Path(path)
+        # Queue this worker's writes without 50 SQLite busy-handler retry loops.
+        # SQLite still arbitrates other processes; transaction durability is unchanged.
+        self.write_lock = threading.RLock()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as c:
             c.executescript("""
@@ -13,6 +18,8 @@ class Database:
             CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,name TEXT NOT NULL,password TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS logins(token TEXT PRIMARY KEY,user_id TEXT NOT NULL,expires REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS pairings(code TEXT PRIMARY KEY,user_id TEXT NOT NULL,expires REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS student_packages(id TEXT PRIMARY KEY,owner TEXT NOT NULL,token_hash TEXT UNIQUE NOT NULL,body TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS package_devices(package_id TEXT NOT NULL,installation_hash TEXT NOT NULL,device_id TEXT NOT NULL,PRIMARY KEY(package_id,installation_hash));
             CREATE TABLE IF NOT EXISTS devices(id TEXT PRIMARY KEY,owner TEXT NOT NULL,token TEXT UNIQUE,body TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS exams(id TEXT PRIMARY KEY,owner TEXT NOT NULL,body TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY,exam_id TEXT NOT NULL,device_id TEXT NOT NULL,body TEXT NOT NULL);
@@ -25,6 +32,12 @@ class Database:
 
     @contextmanager
     def connect(self, write=False):
+        with self.write_lock if write else nullcontext():
+            with self._connection(write) as c:
+                yield c
+
+    @contextmanager
+    def _connection(self, write=False):
         c = sqlite3.connect(self.path, timeout=15)
         c.row_factory = sqlite3.Row
         try:

@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Qorgau video retention
+
+[Timer]
+OnCalendar=*-*-* 04:15:00 UTC
+RandomizedDelaySec=900
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -142,3 +142,33 @@ def test_event_start_matches_qualifying_direction_not_prior_departure():
     event = f.run(5, "DOWN")[0]
     assert event["start"] == expected_start
     assert event["at"] - event["start"] == pytest.approx(5)
+
+
+def test_absence_three_second_review_ten_second_technical_block():
+    f = Feed()
+    assert not f.run(2.9, faces=0)
+    events = f.run(.1, faces=0)
+    assert events[0]["type"] == "FACE_ABSENCE_REVIEW"
+    assert f.e.state.access == "OPEN"
+    events = f.run(7, faces=0)
+    assert any(x["type"] == "FACE_ABSENCE_TECHNICAL" for x in events)
+    assert f.e.state.reason == "FACE_ABSENCE_TECHNICAL"
+    assert not f.run(20, faces=0)
+
+
+def test_unknown_short_frame_breaks_continuous_gaze():
+    f = Feed()
+    f.run(4.9, "DOWN")
+    f.run(.1, "UNKNOWN")
+    assert not f.run(.5, "DOWN")
+
+
+def test_phone_interval_keeps_recording_until_phone_disappears():
+    f = Feed()
+    events = f.run(10, phone=.9)
+    assert len(events) == 1 and events[0]["ongoing"]
+    updates = []
+    for i in range(15):
+        f.t += .1
+        updates.extend(f.e.observe(f.t, phone_confidence=0))
+    assert any(x.get("update") and x["id"] == events[0]["id"] for x in updates)

@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-06",
+  "command": "python -m pytest -q -rs",
+  "passed": 76,
+  "skipped": 0,
+  "warnings": 1,
+  "seconds": 13.4,
+  "warning": "Starlette TestClient deprecates httpx integration; no test skipped",
+  "python": "3.12.14",
+  "platform": "Windows x64"
+}

@@ -1,0 +1,9 @@
+{
+  "result": "PASS",
+  "kind": "synthetic packaging test; no webcam or accuracy claim",
+  "models_verified": true,
+  "onnx_inference": true,
+  "face_landmarker": true,
+  "h264_encode_decode": true,
+  "phone_cpu_median_ms": 46.94
+}

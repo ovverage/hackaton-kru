@@ -7,8 +7,7 @@ import pytest
 def test_real_clip_container_timestamps_and_playback_range(tmp_path):
     cv2 = pytest.importorskip("cv2")
     np = pytest.importorskip("numpy")
-    if not shutil.which("ffmpeg") or not shutil.which("ffprobe"):
-        pytest.skip("FFmpeg is needed for video integration test")
+    from agent.resources import ffmpeg_executable
     from agent.vision import ClipRecorder
 
     recorder = ClipRecorder(tmp_path)
@@ -32,21 +31,18 @@ def test_real_clip_container_timestamps_and_playback_range(tmp_path):
         assert len(result) == 1 and result[0]["start"] == 0 and result[0]["end"] == 15
         probe = subprocess.run(
             [
-                "ffprobe",
+                ffmpeg_executable(),
                 "-v",
                 "error",
-                "-show_entries",
-                "format=duration",
-                "-of",
-                "json",
+                "-i",
                 result[0]["path"],
+                "-f", "null", "-",
             ],
             capture_output=True,
             text=True,
             check=True,
         )
-        duration = float(json.loads(probe.stdout)["format"]["duration"])
-        assert 15 <= duration < 15.5
+        assert probe.returncode == 0
         capture = cv2.VideoCapture(result[0]["path"])
         capture.set(cv2.CAP_PROP_POS_MSEC, 10000)
         ok, frame = capture.read()

@@ -21,6 +21,7 @@ export type Device = {
   exam_id: string | null;
   targets: Target[];
   capabilities: Record<string, unknown>;
+  revoked_at?: number;
 };
 export type Exam = {
   id: string;
@@ -51,12 +52,16 @@ export type Incident = {
   simulated: boolean;
   decision: "PENDING" | "CONFIRMED" | "REJECTED";
   revision: number;
+  retain_until?: number;
+  media_expired_at?: number;
   media: {
     id: string;
     url: string;
     mime: string;
     clip_start?: number;
     clip_end?: number;
+    complete?: boolean | null;
+    gaps?: [number, number][];
   }[];
   reviews: { author: string; reason: string; decision: string; at: number }[];
 };
@@ -103,6 +108,8 @@ export const eventNames: Record<string, string> = {
   BROWSER_ATTEMPT: "Смена вкладки или сайта",
   HEAD_TURN_REVIEW: "Поворот головы",
   FACE_ABSENCE_REVIEW: "Нет лица в кадре",
+  FACE_ABSENCE_TECHNICAL: "Лицо отсутствует 10 секунд · техническая блокировка",
+  PHONE_AIM_REVIEW: "Возможная попытка съёмки",
 };
 export const decisionNames = {
   PENDING: "На проверке",

@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
 )
 
 from .client import Agent
-from .provision import enroll
+from .provision import EnrollmentUnavailable, auto_enroll, enroll
 from .student_state import present
 
 STYLE = """
@@ -103,14 +103,21 @@ class EnrollmentWorker(QThread):
     succeeded = Signal(object)
     failed = Signal(str)
 
-    def __init__(self, folder, server, code, name):
+    def __init__(self, folder, server=None, code=None, name=None, *, bootstrap=None):
         super().__init__()
         self.arguments = (folder, server, code, name)
+        self.bootstrap = bootstrap
+        self.retryable = False
 
     def run(self):
         try:
-            self.succeeded.emit(enroll(*self.arguments))
+            self.succeeded.emit(
+                auto_enroll(self.arguments[0], self.bootstrap)
+                if self.bootstrap
+                else enroll(*self.arguments)
+            )
         except Exception as error:  # noqa: BLE001 - report worker failures through Qt signals
+            self.retryable = isinstance(error, EnrollmentUnavailable)
             self.failed.emit(str(error))
 
 
@@ -133,10 +140,18 @@ class AgentWorker(QThread):
 
 class StudentWindow(QWidget):
     def __init__(
-        self, folder: Path, server=None, agent=None, stop=None, *, run_worker=True
+        self,
+        folder: Path,
+        server=None,
+        agent=None,
+        stop=None,
+        *,
+        run_worker=True,
+        bootstrap=None,
     ):
         super().__init__()
         self.folder = folder
+        self.bootstrap = bootstrap
         self.server_override = server
         self.agent = None
         self.stop = stop or threading.Event()
@@ -187,12 +202,17 @@ class StudentWindow(QWidget):
         side.hide()
         self.pages = QStackedWidget()
         root.addWidget(self.pages, 1)
-        self.pages.addWidget(self.build_setup(server))
+        self.pages.addWidget(
+            self.build_auto_setup() if bootstrap else self.build_setup(server)
+        )
         self.pages.addWidget(self.build_dashboard())
         self.create_tray()
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
         self.timer.start(500)
+        self.retry_timer = QTimer(self)
+        self.retry_timer.setSingleShot(True)
+        self.retry_timer.timeout.connect(self.register)
         if agent is not None:
             self.attach(agent)
         elif (folder / "config.json").exists():
@@ -204,6 +224,41 @@ class StudentWindow(QWidget):
                 )
                 self.setup_error.show()
                 self.connect_button.setEnabled(False)
+        elif bootstrap:
+            self.retry_timer.start(0)
+
+    def build_auto_setup(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(38, 30, 38, 28)
+        layout.setSpacing(18)
+        layout.addWidget(label("QORGAU / ПОДКЛЮЧЕНИЕ", "eyebrow"))
+        layout.addWidget(label("Подключаем компьютер", "title"))
+        layout.addWidget(
+            label(f"Аудитория {self.bootstrap['room']} · {socket.gethostname()}")
+        )
+        layout.addWidget(
+            label(
+                "Настройки уже в приложении. Дождитесь подключения — преподаватель увидит этот компьютер и сможет назначить тест."
+            )
+        )
+        layout.addWidget(label("Сервер: " + self.bootstrap["server"], "small"))
+        self.setup_error = label("", "error")
+        self.setup_error.hide()
+        layout.addWidget(self.setup_error)
+        self.connect_button = QPushButton("Подключаем компьютер…")
+        self.connect_button.setObjectName("primary")
+        self.connect_button.setEnabled(False)
+        self.connect_button.clicked.connect(self.register)
+        layout.addWidget(self.connect_button)
+        layout.addWidget(
+            label(
+                "Подключение не включает камеру и не запускает тест. Подготовка камеры доступна в состоянии компьютера.",
+                "notice",
+            )
+        )
+        layout.addStretch()
+        return page
 
     def build_setup(self, server):
         page = QWidget()
@@ -243,7 +298,7 @@ class StudentWindow(QWidget):
         form.addWidget(self.code_input)
         form.addWidget(
             label(
-                "Код создаётся на сайте: «Компьютеры → Подключить компьютер». Срок — 5 минут. Имя ученика назначит преподаватель перед тестом.",
+                "Код создаётся на сайте: «Компьютеры → Подключить вручную по коду». Срок — 5 минут. Имя ученика назначит преподаватель перед тестом.",
                 "small",
             )
         )
@@ -373,19 +428,25 @@ class StudentWindow(QWidget):
         return outer
 
     def register(self):
+        if self.shutting_down or self.agent:
+            return
         if self.enrollment and self.enrollment.isRunning():
             return
+        self.retry_timer.stop()
         self.setup_error.hide()
         self.connect_button.setEnabled(False)
         self.connect_button.setText("Подключаем компьютер…")
-        for field in (self.server_input, self.name_input, self.code_input):
-            field.setEnabled(False)
-        self.enrollment = EnrollmentWorker(
-            self.folder,
-            self.server_input.text(),
-            self.code_input.text(),
-            self.name_input.text(),
-        )
+        if self.bootstrap:
+            self.enrollment = EnrollmentWorker(self.folder, bootstrap=self.bootstrap)
+        else:
+            for field in (self.server_input, self.name_input, self.code_input):
+                field.setEnabled(False)
+            self.enrollment = EnrollmentWorker(
+                self.folder,
+                self.server_input.text(),
+                self.code_input.text(),
+                self.name_input.text(),
+            )
         self.enrollment.failed.connect(self.registration_failed)
         self.enrollment.succeeded.connect(self.registration_succeeded)
         self.enrollment.start()
@@ -394,12 +455,20 @@ class StudentWindow(QWidget):
         self.setup_error.setText(message)
         self.setup_error.show()
         self.connect_button.setEnabled(True)
-        self.connect_button.setText("Подключить компьютер  →")
-        for field in (self.server_input, self.name_input, self.code_input):
-            field.setEnabled(True)
+        self.connect_button.setText(
+            "Повторить подключение" if self.bootstrap else "Подключить компьютер  →"
+        )
+        if self.bootstrap:
+            if self.enrollment and self.enrollment.retryable:
+                self.retry_timer.start(10000)
+        else:
+            for field in (self.server_input, self.name_input, self.code_input):
+                field.setEnabled(True)
 
     def registration_succeeded(self, _config):
-        self.code_input.clear()
+        self.retry_timer.stop()
+        if not self.bootstrap:
+            self.code_input.clear()
         try:
             self.attach(Agent(self.folder))
             if self.tray:
@@ -527,7 +596,7 @@ class StudentWindow(QWidget):
             if snap.get("camera_fault")
             else "Подготовка камеры…"
             if snap.get("camera_preparing")
-            else "● Камера готова · запись при активном контроле"
+            else "● Камера включена · локальный буфер; преподавателю отправляются события экзамена"
             if snap.get("camera")
             else "○ Камера выключена · анализ взгляда и телефона не выполняется"
         )
@@ -630,6 +699,7 @@ class StudentWindow(QWidget):
 
     def finish_exit(self):
         self.timer.stop()
+        self.retry_timer.stop()
         if self.tray:
             self.tray.hide()
         self.hide()
@@ -655,7 +725,15 @@ class StudentWindow(QWidget):
         self.request_exit()
 
 
-def launch(folder: Path, server=None, agent=None, stop=None, *, show_window=False):
+def launch(
+    folder: Path,
+    server=None,
+    agent=None,
+    stop=None,
+    *,
+    show_window=False,
+    bootstrap=None,
+):
     app = QApplication.instance() or QApplication(sys.argv[:1])
     app.setApplicationName("Qorgau Agent")
     app.setQuitOnLastWindowClosed(False)
@@ -671,7 +749,7 @@ def launch(folder: Path, server=None, agent=None, stop=None, *, show_window=Fals
             "Агент уже работает. Нажмите значок Qorgau в трее, чтобы открыть состояние компьютера.",
         )
         return
-    window = StudentWindow(folder, server, agent, stop)
+    window = StudentWindow(folder, server, agent, stop, bootstrap=bootstrap)
     window.start_visibility(show_window)
     try:
         app.exec()

@@ -1,0 +1,24 @@
+# Append these blocks to the existing Caddyfile; preserve all other sites.
+# Certificate and HTTP challenge files are in the existing persistent /data volume.
+# Also add `default_sni 212.19.134.23` to the global options block at the top
+# of the complete Caddyfile. TLS clients omit SNI for IP literals.
+http://212.19.134.23 {
+    handle /.well-known/acme-challenge/* {
+        root * /data/qorgau-acme
+        file_server
+    }
+    handle {
+        redir https://212.19.134.23{uri} permanent
+    }
+}
+
+https://212.19.134.23 {
+    tls /data/qorgau-tls/fullchain.pem /data/qorgau-tls/privkey.pem
+    encode gzip
+    request_body {
+        max_size 52MB
+    }
+    @internal path /api/auth/setup /docs /redoc /openapi.json
+    respond @internal 404
+    reverse_proxy 172.19.0.1:8765
+}

@@ -1,0 +1,29 @@
+[Unit]
+Description=Qorgau teacher dashboard and agent API
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=qorgau
+Group=qorgau
+WorkingDirectory=/opt/qorgau/current
+EnvironmentFile=/etc/qorgau/server.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/qorgau/venv/bin/python -m uvicorn backend.proctor.app:app --host 172.19.0.1 --port 8765 --workers 1 --proxy-headers --forwarded-allow-ips 172.19.0.4 --no-access-log
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/qorgau
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=768M
+TasksMax=128
+
+[Install]
+WantedBy=multi-user.target

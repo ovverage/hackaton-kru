@@ -191,8 +191,35 @@ def test_media_validation_idempotency_and_authorization(client):
     )
     url = "/api/media/" + r.json()["id"]
     assert client.get(url).status_code == 200
+    # Static images can produce identical bytes in adjacent parts of one incident.
+    # Only the same bytes AND interval are a retry; the other interval must survive.
+    next_part = client.post(path, content=fixture, headers={"Content-Type": "video/mp4", "X-Clip-Start": "30", "X-Clip-End": "33"})
+    assert next_part.status_code == 200 and next_part.json()["id"] != r.json()["id"]
+    assert len(next(e for e in snapshot(client)["events"] if e["id"] == ev["id"])["media"]) == 2
     client.cookies.clear()
     assert client.get(url).status_code == 401
+
+
+def test_media_low_disk_rejects_upload_without_losing_event_and_allows_retry(client, monkeypatch):
+    from types import SimpleNamespace
+
+    d = prepare(client)[0]
+    assert cmd(client, d, "START").status_code == 200
+    client.post("/api/devices/" + d["id"] + "/simulate", json={"scenario": "PHONE"})
+    event = snapshot(client)["events"][0]
+    path = "/api/events/" + event["id"] + "/demo-video"
+    content = b"\x00\x00\x00\x18ftypisom" + b"\x00" * 30
+    media_dir = client.app.state.db.path.parent / "media"
+    with monkeypatch.context() as patch:
+        patch.setattr("shutil.disk_usage", lambda _: SimpleNamespace(free=0))
+        response = client.post(path, content=content, headers={"Content-Type": "video/mp4"})
+    assert response.status_code == 507
+    assert list(media_dir.iterdir()) == []
+    saved = next(e for e in snapshot(client)["events"] if e["id"] == event["id"])
+    assert saved["media"] == []
+    response = client.post(path, content=content, headers={"Content-Type": "video/mp4"})
+    assert response.status_code == 200
+    assert len(list(media_dir.iterdir())) == 1
 
 
 def test_agent_state_validation_and_cross_device_event_collision(client):

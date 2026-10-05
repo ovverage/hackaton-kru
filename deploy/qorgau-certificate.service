@@ -1,0 +1,9 @@
+[Unit]
+Description=Renew Qorgau IP certificate
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/qorgau/certbot/bin/certbot renew --cert-name qorgau-ip --quiet
+TimeoutStartSec=10min

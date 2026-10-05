@@ -1,0 +1,16 @@
+{
+  "health": {
+    "status": "ok",
+    "version": "0.3.0"
+  },
+  "web_assets": "ok",
+  "login_cookie": "Secure HttpOnly SameSite=Strict",
+  "websocket": "authenticated snapshot received",
+  "exe_bytes": 209940212,
+  "exe_sha256": "a07e5305d7d1bb30c59091e47a7ec9fb6d77765c68c7f03142bfcd58653c1f14",
+  "base_exe_sha256": "d872d6f73d0df4a5c47df126862ac0bdc984dce2213d2dfaeb53c9ef66a75c50",
+  "real_exe": "Two isolated profiles on one Windows PC; HTTPS enrollment, distinct tokens, heartbeat, restart without duplicate",
+  "revoked_download_status": 403,
+  "revoked_device_token_status": 401,
+  "logout": "session revoked"
+}

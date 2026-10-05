@@ -50,6 +50,7 @@ def test_actual_agent_enrollment_sync_commands_restart(tmp_path):
         "/api/exams",
         json={
             "title": "Real agent",
+            "require_camera": False,  # This test exercises transport, not CV hardware.
             "group": "A",
             "room": "1",
             "device_ids": [registered["device_id"]],

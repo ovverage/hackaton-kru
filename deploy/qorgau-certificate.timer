@@ -1,0 +1,10 @@
+[Unit]
+Description=Check Qorgau IP certificate renewal twice daily
+
+[Timer]
+OnCalendar=*-*-* 00,12:15:00 UTC
+RandomizedDelaySec=20m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
