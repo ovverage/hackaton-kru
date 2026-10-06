@@ -2,6 +2,7 @@
 *.sh text eol=lf
 deploy/*.service text eol=lf
 deploy/*.timer text eol=lf
+deploy/apply_release.py text eol=lf
 deploy/Caddyfile.ip text eol=lf
 
 *.png binary
