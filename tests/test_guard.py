@@ -282,6 +282,11 @@ def test_windows_hooks_can_start_and_release_on_a_test_window():
         assert guard.allowed(hwnd)
         guard.stop()
         assert guard.hooks == [] and guard.target is None
+        guard.start(desktop=True)
+        assert len(guard.hooks) == 2 and guard.target is None
+        assert guard.allowed(hwnd)
+        guard.stop()
+        assert not guard.hooks and not guard.desktop
     finally:
         guard.stop()
         guard.u.DestroyWindow(hwnd)

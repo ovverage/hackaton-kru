@@ -76,3 +76,43 @@ def test_native_browser_navigation_uses_exact_origin():
         assert not ExamPage.acceptNavigationRequest(page, QUrl(url), None, True)
         assert not ExamPage.acceptNavigationRequest(page, QUrl(url), None, False)
     assert len(reports) == 8
+
+
+def test_desktop_overlay_only_during_lock_and_release_after_end(app, tmp_path):
+    from unittest.mock import Mock
+    from PySide6.QtWidgets import QWidget
+    from agent.exam_ui import ExamController
+
+    atomic_json(tmp_path / 'config.json', {'server': 'http://localhost:8000', 'token': 'fixture'})
+    agent = Agent(tmp_path)
+    agent.environment = {'kind': 'DESKTOP', 'guarded': True}
+    agent.journal['exam_id'] = 'test-desktop'
+    agent.launch_environment()
+    parent = QWidget()
+    controller = ExamController(agent, parent)
+    controller.timer.stop()
+    # Never install global input hooks on the developer's desktop.
+    guard = Mock(hooks=[], locked=False, target=None)
+    guard.tick.return_value = None
+    def start(**kwargs):
+        assert kwargs == {'desktop': True}
+        guard.hooks = [1, 2]
+    guard.start.side_effect = start
+    controller.guard = guard
+    agent.engine.start()
+    agent.last_synced_at = __import__('time').monotonic()
+    controller.tick()
+    assert controller.surfaces and not any(s.isVisible() for s in controller.surfaces)
+    agent.engine.lock('PHONE_DETECTED')
+    controller.tick()
+    assert all(s.isVisible() for s in controller.surfaces)
+    assert guard.tick.call_args.kwargs['locked'] is True
+    agent.engine.unlock(agent.engine.state.lock_id, agent.engine.state.version)
+    controller.tick()
+    assert not any(s.isVisible() for s in controller.surfaces)
+    agent.engine.end()
+    controller.tick()
+    guard.stop.assert_called_once()
+    assert not any(s.isVisible() for s in controller.surfaces)
+    controller.release()
+    agent.http.close()

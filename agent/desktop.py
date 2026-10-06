@@ -494,7 +494,10 @@ class StudentWindow(QWidget):
         self.hero_title.setStyleSheet(
             f"color:{color[2]};font-size:23px;font-weight:600;"
         )
-        self.test_button.setVisible(state["lifecycle"] == "RUNNING")
+        legacy_environment = (snap.get("environment") or {}).get("kind") in ("APP", "BROWSER")
+        self.test_button.setVisible(state["lifecycle"] == "RUNNING" and legacy_environment)
+        self.target_button.setVisible(legacy_environment)
+        self.target_status.setVisible(legacy_environment)
         self.test_button.setEnabled(model["can_open"] and not self.failure)
         self.epoch.setText(f"Цикл {state['epoch']}")
         for key, value in self.count_labels.items():

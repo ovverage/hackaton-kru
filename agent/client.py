@@ -243,6 +243,9 @@ class Agent:
 
     def launch_environment(self):
         env = self.environment or {}
+        if env.get("kind") == "DESKTOP":
+            self.guard_target = {"desktop": True}
+            return
         target = next(
             (
                 t
@@ -567,7 +570,7 @@ class Agent:
                         for t in self.targets
                         if t["id"] == (self.environment or {}).get("target_id")
                     ),
-                    "Среда не выбрана",
+                    "Контроль рабочего стола" if (self.environment or {}).get("kind") == "DESKTOP" else "Ожидание сеанса",
                 ),
             }
 

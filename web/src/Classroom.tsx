@@ -58,13 +58,7 @@ export default function Classroom(p: Props) {
   const pages = Math.max(1, Math.ceil(filtered.length / 8));
   const currentPage = Math.min(page, pages - 1);
   const incident = pending.find((e) => e.id === selected) || pending[0];
-  const target = p.devices
-    .flatMap((d) => d.targets || [])
-    .find((t) => t.id === p.exam.environment.target_id);
-  const environment =
-    p.exam.environment.kind === "BROWSER"
-      ? `${target?.name || "Браузер"} · ${new URL(p.exam.environment.url!).hostname}`
-      : target?.name || "Приложение";
+  const environment = "Контроль рабочего стола";
   useEffect(() => {
     setSelected(null);
     setPage(0);
@@ -110,7 +104,7 @@ export default function Classroom(p: Props) {
             Начать контроль
           </button>
         )}
-        {p.devices.some((d) => d.state.lifecycle === "RUNNING") && (
+        {Object.values(p.exam.participants).some((d) => d.state.lifecycle !== "COMPLETED") && (
           <button
             className="btn"
             disabled={p.busy}
@@ -123,7 +117,7 @@ export default function Classroom(p: Props) {
       <div className="class-metrics">
         <div>
           <strong>{p.devices.length}</strong>
-          <span>Учеников</span>
+          <span>Компьютеров онлайн</span>
         </div>
         <div>
           <strong>
@@ -160,7 +154,7 @@ export default function Classroom(p: Props) {
                   setPage(0);
                 }}
               >
-                Все ученики <b>{p.devices.length}</b>
+                Компьютеры онлайн <b>{p.devices.length}</b>
               </button>
               <button
                 className={attention ? "selected" : ""}
@@ -249,7 +243,6 @@ export default function Classroom(p: Props) {
                               <strong>{d.student}</strong>
                               <small>
                                 {d.name}
-                                {d.simulated ? " · стенд" : ""}
                               </small>
                             </span>
                           </button>
@@ -390,9 +383,7 @@ export default function Classroom(p: Props) {
       <div className="class-mode">
         <Info size={15} />
         <span>
-          {p.exam.simulated
-            ? "Тренировочный стенд · события создаются вручную, камера и блокировка ОС не используются."
-            : "Режим задаётся при создании сеанса: наблюдение или ограничение Windows. События проверяет преподаватель."}
+          В списке только работающие агенты. При потере связи компьютер исчезает в течение 6 секунд. События остаются в отчёте.
         </span>
       </div>
       {ending && (
@@ -505,9 +496,7 @@ function InlineReview({
           <Video size={30} />
           <strong>Фрагмент не прикреплён</strong>
           <span>
-            {e.media_expired_at ? "Срок хранения записи истёк" : e.simulated
-              ? "Тренировочное событие"
-              : "Ожидаем передачу от агента"}
+            {e.media_expired_at ? "Срок хранения записи истёк" : "Ожидаем передачу от агента"}
           </span>
           <button onClick={onDetails}>
             Открыть событие <ArrowUpRight size={13} />

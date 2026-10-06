@@ -6,7 +6,7 @@ from backend.proctor.app import create_app
 
 @pytest.fixture
 def client(tmp_path):
-    with TestClient(create_app(tmp_path)) as client:
+    with TestClient(create_app(tmp_path, allow_demo=True)) as client:
         client.headers["X-Requested-With"] = "Qorgau"
         assert (
             client.post(

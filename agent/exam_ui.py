@@ -342,6 +342,7 @@ class ExamController(QObject):
 
             self.guard = WindowsGuard()
             agent.capabilities["window_guard"] = True
+            agent.capabilities["desktop_monitor"] = True
         if agent.engine.state.lifecycle == "RUNNING" and agent.guarded:
             # Recover the selected environment after an agent restart while
             # keeping AGENT_RESTARTED locked until the teacher authorizes it.
@@ -397,6 +398,8 @@ class ExamController(QObject):
                 self.release()
             return
         screens = QApplication.screens()
+        desktop = (snap.get("environment") or {}).get("kind") == "DESKTOP"
+        locked = snap["state"]["access"] == "LOCKED"
         if not self.active_exam:
             self.active_exam = snap["exam_id"]
             self.displays = len(screens)
@@ -408,13 +411,15 @@ class ExamController(QObject):
         if len(screens) != self.displays:
             self.agent.security_event("DISPLAY_CHANGED")
             self.displays = len(screens)
+        snap = self.agent.snapshot()
+        locked = snap["state"]["access"] == "LOCKED"
         while len(self.surfaces) < len(screens):
             self.surfaces.append(LockScreen(self.agent))
         for i, screen in enumerate(screens):
             surface = self.surfaces[i]
             surface.setGeometry(screen.geometry())
             surface.update_state(snap)
-            surface.show()
+            surface.setVisible(locked or not desktop)
         for extra in self.surfaces[len(screens) :]:
             extra.hide()
         if not self.guard:
@@ -423,7 +428,9 @@ class ExamController(QObject):
         try:
             from .windows_guard import WindowTarget
 
-            if not self.guard.target:
+            if desktop and not self.guard.hooks:
+                self.guard.start(desktop=True)
+            if not desktop and not self.guard.target:
                 selected = self.agent.guard_target
                 if selected and "hwnd" in selected:
                     target = WindowTarget(**selected)
@@ -465,7 +472,7 @@ class ExamController(QObject):
                     surface.raise_()
                 self.surfaces[0].activateWindow()
                 self.surfaces[0].password.setFocus()
-            elif not locked:
+            elif not locked and not desktop:
                 self.guard.u.SetWindowPos(self.guard.target.hwnd, -1, 0, 0, 0, 0, 0x13)
         except (OSError, ValueError):
             self.agent.capabilities["guard_active"] = False

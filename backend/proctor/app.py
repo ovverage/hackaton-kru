@@ -64,7 +64,7 @@ class ExamInput(BaseModel):
     room: str = Field(min_length=1, max_length=80)
     device_ids: list[str] = Field(min_length=1, max_length=100)
     student_names: dict[str, str] = Field(default_factory=dict, max_length=100)
-    environment: dict
+    environment: dict = Field(default_factory=lambda: {"kind": "DESKTOP"})
     mode: str = "OBSERVE"
     require_camera: bool = True
 
@@ -111,7 +111,7 @@ class DeviceUpdate(BaseModel):
     exam_id: str | None = None
 
 
-def create_app(data_dir=None):
+def create_app(data_dir=None, *, allow_demo=False):
     base = Path(data_dir or os.getenv("PROCTOR_DATA", ROOT / ".local"))
     base.mkdir(parents=True, exist_ok=True)
     media_dir = base / "media"
@@ -335,7 +335,18 @@ def create_app(data_dir=None):
                 )
             ]
         for d in devices:
-            d["online"] = d["simulated"] or time.time() - d.get("last_seen", 0) < 6
+            d["online"] = not d.get("revoked_at") and (
+                (allow_demo and d["simulated"])
+                or time.time() - d.get("last_heartbeat_at", 0) < 6
+            )
+        if not allow_demo:
+            devices = [d for d in devices if not d["simulated"]]
+            exams = [e for e in exams if not e.get("simulated")]
+            for e in exams:
+                e["participants"] = {key: value for key, value in e["participants"].items() if not value.get("simulated")}
+            events = [e for e in events if not e.get("simulated")]
+            real_ids = {d["id"] for d in devices}
+            commands = [c for c in commands if c["device_id"] in real_ids]
         return {
             "devices": devices,
             "exams": exams,
@@ -489,6 +500,8 @@ def create_app(data_dir=None):
     @app.post("/api/demo/devices")
     def demo(request: Request):
         u = user(request)
+        if not allow_demo:
+            raise HTTPException(404, "Тренировочные устройства отключены")
         with db.connect(True) as c:
             existing = [
                 decode(r)
@@ -544,8 +557,10 @@ def create_app(data_dir=None):
         env = body.environment
         # Policy comes from the teacher's mode, never an unchecked environment field.
         env = {**env, "guarded": body.mode == "GUARDED"}
-        if env.get("kind") not in ("BROWSER", "APP"):
+        if env.get("kind") not in ("BROWSER", "APP", "DESKTOP"):
             raise HTTPException(422, "Выберите среду")
+        if env["kind"] == "DESKTOP":
+            env = {"kind": "DESKTOP", "guarded": body.mode == "GUARDED"}
         if env["kind"] == "BROWSER":
             address = urlparse(env.get("url", ""))
             if (
@@ -558,6 +573,8 @@ def create_app(data_dir=None):
         with db.connect(True) as c:
             devices = [owned(c, "devices", id, u["id"]) for id in body.device_ids]
             for d in devices:
+                if d["simulated"] and not allow_demo:
+                    raise HTTPException(409, "Тренировочные устройства отключены")
                 if d.get("revoked_at"):
                     raise HTTPException(409, f"{d['name']}: доступ отозван")
                 if d.get("capabilities", {}).get("recording_tail"):
@@ -566,7 +583,9 @@ def create_app(data_dir=None):
                     raise HTTPException(409, f"{d['name']}: завершите текущий сеанс")
                 if not d["simulated"] and time.time() - d.get("last_seen", 0) >= 6:
                     raise HTTPException(409, f"{d['name']}: нет связи")
-                if not any(
+                if env["kind"] == "DESKTOP" and time.time() - d.get("last_heartbeat_at", 0) >= 6:
+                    raise HTTPException(409, f"{d['name']}: приложение не подключено")
+                if env["kind"] != "DESKTOP" and not any(
                     t["id"] == env.get("target_id") and t["kind"] == env["kind"]
                     for t in d["targets"]
                 ):
@@ -587,7 +606,9 @@ def create_app(data_dir=None):
                         409,
                         f"{d['name']}: нужны Windows-агент, подготовленная камера и запись",
                     )
-                if body.mode == "GUARDED":
+                if env["kind"] == "DESKTOP" and not d["capabilities"].get("desktop_monitor"):
+                    raise HTTPException(409, f"{d['name']}: обновите приложение Qorgau")
+                if body.mode == "GUARDED" and env["kind"] != "DESKTOP":
                     target = next(
                         t for t in d["targets"] if t["id"] == env["target_id"]
                     )
@@ -635,6 +656,8 @@ def create_app(data_dir=None):
         u = user(request)
         with db.connect(True) as c:
             d = owned(c, "devices", device_id, u["id"])
+            if d.get("simulated") and not allow_demo:
+                raise HTTPException(404, "Тренировочные устройства отключены")
             if d["state"]["lifecycle"] == "RUNNING":
                 raise HTTPException(409, "Сначала завершите активный контроль устройства")
             if d.get("simulated"):
@@ -659,6 +682,10 @@ def create_app(data_dir=None):
             d = owned(c, "devices", device_id, u["id"])
             if not d.get("exam_id"):
                 raise HTTPException(409, "Сначала создайте сеанс")
+            if d.get("revoked_at") or (d["simulated"] and not allow_demo):
+                raise HTTPException(409, "Устройство недоступно")
+            if body.type == "START" and not d["simulated"] and time.time() - d.get("last_heartbeat_at", 0) >= 6:
+                raise HTTPException(409, "Нет связи с компьютером")
             if d["state"]["lifecycle"] == "COMPLETED":
                 raise HTTPException(409, "Сеанс уже завершён")
             if body.type in ("LOCK", "UNLOCK") and d["state"]["lifecycle"] != "RUNNING":
@@ -672,7 +699,7 @@ def create_app(data_dir=None):
                 if time.time() - d.get("last_seen", 0) >= 6:
                     raise HTTPException(409, "Нет связи с компьютером")
                 if not caps.get("camera") or not caps.get("recording") or caps.get("camera_fault"):
-                    raise HTTPException(409, "Камера и запись не готовы. Выполните калибровку в приложении студента.")
+                    raise HTTPException(409, "Камера и запись не готовы. Включите камеру в приложении студента.")
             cmd = {
                 "id": uid(),
                 "device_id": device_id,
@@ -787,6 +814,8 @@ def create_app(data_dir=None):
 
     @app.post("/api/devices/{device_id}/simulate")
     def simulate(device_id: str, body: SimulationInput, request: Request):
+        if not allow_demo:
+            raise HTTPException(404, "Тренировочные события отключены")
         u = user(request)
         if body.scenario not in (
             "DOWN",
@@ -892,6 +921,7 @@ def create_app(data_dir=None):
         with db.connect(True) as c:
             _row, d = device_auth(request, c)
             d["last_seen"] = time.time()
+            d["last_heartbeat_at"] = d["last_seen"]
             d["targets"] = body.targets
             # STRICT remains unavailable until the managed Windows implementation is certified.
             d["capabilities"] = {**body.capabilities, "strict": False}
@@ -1094,6 +1124,8 @@ def create_app(data_dir=None):
 
     @app.post("/api/events/{event_id}/demo-video")
     async def demo_video(event_id: str, request: Request):
+        if not allow_demo:
+            raise HTTPException(404, "Тренировочные события отключены")
         u = user(request)
         with db.connect() as c:
             r = c.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()

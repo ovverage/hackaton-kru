@@ -77,6 +77,7 @@ class WindowsGuard:
         self.k.GetModuleHandleW.restype = W.HMODULE
         self.hooks = []
         self.target = None
+        self.desktop = False
         self.overlay_handles = set()
         self.locked = False
         self.attempted = False
@@ -134,17 +135,21 @@ class WindowsGuard:
         return (
             root in self.overlay_handles
             if self.locked
-            else bool(self.target and root == self.target.hwnd)
+            else self.desktop or bool(self.target and root == self.target.hwnd)
         )
 
-    def start(self, target):
-        if not self.valid(target):
+    def start(self, target=None, *, desktop=False):
+        if not desktop and not self.valid(target):
             raise OSError("Выбранное окно закрыто. Выберите его заново.")
         self.stop()
         self.target = target
+        self.desktop = desktop
+        self.locked = False
+        self.attempted = False
         self.teacher_requested = False
-        self.original_rect = W.RECT()
-        self.u.GetWindowRect(target.hwnd, C.byref(self.original_rect))
+        if target:
+            self.original_rect = W.RECT()
+            self.u.GetWindowRect(target.hwnd, C.byref(self.original_rect))
 
         class Keyboard(C.Structure):
             _fields_ = [
@@ -175,6 +180,8 @@ class WindowsGuard:
                 if vk == 0x51 and down(0x11) and down(0x12):  # Ctrl+Alt+Q
                     self.teacher_requested = True
                     return 1
+                if self.desktop and not self.locked:
+                    return self.u.CallNextHookEx(None, code, message, data)
                 if not self.allowed(self.u.GetForegroundWindow()) or blocked_key(
                     vk,
                     ctrl=down(0x11),
@@ -191,7 +198,7 @@ class WindowsGuard:
             if code >= 0 and message != 0x200:  # never stop pointer movement
                 point = C.cast(data, C.POINTER(Mouse)).contents.point
                 if not self.allowed(self.u.WindowFromPoint(point)) or (
-                    not self.locked
+                    not self.locked and not self.desktop
                     and message in (0x204, 0x205, 0x207, 0x208, 0x20B, 0x20C)
                 ):
                     self.attempted = True
@@ -207,9 +214,10 @@ class WindowsGuard:
                 self.stop()
                 raise OSError("Windows не разрешила включить защиту ввода")
             self.hooks.append(hook)
-        self.u.ShowWindow(target.hwnd, 3)
-        self.u.SetWindowPos(target.hwnd, -1, 0, 0, 0, 0, 0x3)
-        self.u.SetForegroundWindow(target.hwnd)
+        if target:
+            self.u.ShowWindow(target.hwnd, 3)
+            self.u.SetWindowPos(target.hwnd, -1, 0, 0, 0, 0, 0x3)
+            self.u.SetForegroundWindow(target.hwnd)
 
     def tick(self, *, locked=False, overlays=()):
         self.locked = locked
@@ -217,11 +225,11 @@ class WindowsGuard:
         if getattr(self, "teacher_requested", False):
             self.teacher_requested = False
             return "TEACHER_REQUEST"
-        if not self.target or not self.valid(self.target):
+        if not self.desktop and (not self.target or not self.valid(self.target)):
             return "TARGET_CLOSED"
         if self.u.GetSystemMetrics(0x1000):  # SM_REMOTESESSION
             return "REMOTE_SESSION"
-        if self.u.OpenClipboard(None):
+        if (locked or not self.desktop) and self.u.OpenClipboard(None):
             try:
                 self.u.EmptyClipboard()
             finally:
@@ -259,4 +267,7 @@ class WindowsGuard:
                     0x14,
                 )
         self.target = None
+        self.desktop = False
+        self.locked = False
+        self.attempted = False
         self.original_rect = None
