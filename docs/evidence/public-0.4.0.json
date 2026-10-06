@@ -10,7 +10,7 @@
     "/assets/index-D6xDNlsj.css"
   ],
   "wss_and_cookie": "PASS",
-  "base_exe_sha256": "ad8bdb3cc4f24379b23692dd77673c8f1437cbf0a4955745d2100aac950ce794",
+  "base_exe_sha256": "e040dd892dbeb6c5835551dcf6f3ff7008830110dfafba824192818653133ce4",
   "registration": "Two independent profiles, distinct tokens, restart without duplicate or quota consumption",
   "checks": [
     "forged OPEN rejected 409",
