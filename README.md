@@ -6,7 +6,7 @@
 
 [Переносимый EXE 0.4.6](https://github.com/ovverage/hackaton-kru/releases/download/v0.4.6/Qorgau-Student.exe) · [Установщик 0.4.6](https://github.com/ovverage/hackaton-kru/releases/download/v0.4.6/Qorgau-Student-Setup-0.4.6-x64.exe) · [Файлы и контрольные суммы релиза](https://github.com/ovverage/hackaton-kru/releases/tag/v0.4.6)
 
-**Подготовка выпуска:** ссылки 0.4.6 предназначены для проверенных артефактов после публикации; сборка и обновление сервера ещё требуют подтверждения. [Текущий EXE с сервера](https://212.19.134.23/api/student/download) до развёртывания может относиться к предыдущему выпуску. Статус и изменения: [RELEASE_0_4_6.md](docs/RELEASE_0_4_6.md).
+**Выпуск опубликован, сервер обновлён.** [Portable EXE напрямую с нашего сервера](https://212.19.134.23/api/student/download) · [Подтверждённые проверки](docs/VERIFICATION.md) · [Изменения 0.4.6](docs/RELEASE_0_4_6.md).
 
 [Открыть кабинет](https://212.19.134.23/) · [Проверки и ограничения](docs/VERIFICATION.md) · [Самостоятельная проверка](docs/RELEASE_CHECKLIST.md) · [Презентация на 5 минут](deliverables/Qorgau-pitch-5min-0.4.5-r2.pptx)
 
