@@ -7,6 +7,45 @@ import sys
 import traceback
 
 
+def check_browser():
+    """Exercise the packaged Chromium helper/resources, without any network I/O."""
+    from PySide6.QtCore import QCoreApplication, QEvent, QEventLoop, QTimer
+    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWebEngineWidgets import QWebEngineView
+
+    app = QApplication.instance() or QApplication([])
+    loop = QEventLoop()
+    view = QWebEngineView()
+    observed = []
+
+    def received(value):
+        observed.append(value)
+        loop.quit()
+
+    def loaded(ok):
+        if ok:
+            view.page().runJavaScript(
+                "document.getElementById('qorgau-check').textContent", received
+            )
+        else:
+            loop.quit()
+
+    timer = QTimer()
+    timer.setSingleShot(True)
+    timer.timeout.connect(loop.quit)
+    view.loadFinished.connect(loaded)
+    view.setHtml('<!doctype html><p id="qorgau-check">Qorgau browser ready</p>')
+    timer.start(20000)
+    loop.exec()
+    timer.stop()
+    view.close()
+    view.deleteLater()
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    app.processEvents()
+    if observed != ["Qorgau browser ready"]:
+        raise RuntimeError("Packaged browser renderer did not load the offline test page")
+
+
 def selftest(output):
     result = {
         "version": "0.3.0",
@@ -20,11 +59,11 @@ def selftest(output):
         import numpy as np
         import torch
         from ultralytics import YOLO
-        from PySide6.QtWebEngineWidgets import QWebEngineView  # noqa: F401
         from .resources import model_path
         from mediapipe.tasks import python
         from mediapipe.tasks.python import vision
 
+        check_browser()
         frame = np.zeros((320, 320, 3), dtype=np.uint8)
         phone = YOLO(str(model_path("yolo11n.pt")))
         prediction = phone.predict(frame, imgsz=320, verbose=False)
@@ -68,7 +107,7 @@ def selftest(output):
             mediapipe=mp.__version__,
             torch=torch.__version__,
             checks=[
-                "QtWebEngine import",
+                "QtWebEngine offline page rendering and JavaScript",
                 "YOLO CPU inference",
                 "MediaPipe inference",
                 "H264 encoder",

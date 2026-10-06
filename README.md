@@ -156,9 +156,9 @@ python -m agent.client --self-test runtime-check.json
 python scripts/build_student.py --with-cv
 ```
 
-`--self-test` проверяет QtWebEngine, YOLO CPU, MediaPipe и H.264 **без включения камеры и перехвата клавиш**. На Windows проверяется перечисление окон Win32. Сборка выполняется на целевой ОС; `.exe` создаётся Windows-runner GitHub Actions. Тег `v*` запускает проверку и создаёт prerelease только после успешных Linux- и Windows-проверок.
+`--self-test` проверяет загрузку локальной страницы и JavaScript в QtWebEngine, YOLO CPU, MediaPipe и H.264 **без включения камеры и перехвата клавиш**. На Windows проверяется перечисление окон Win32. Сборка выполняется на целевой ОС; `.exe` создаётся Windows-runner GitHub Actions. Тег `v*` запускает проверку и создаёт prerelease только после успешных Linux- и Windows-проверок.
 
-Автотесты проверяют правила, пароль, stale/replay-команды, поддельное снятие блокировки через heartbeat, сохранение событий, origin-политику, импорт ZIP и клипы. CI и синтетический кадр не заменяют испытания камерой в аудитории. Ручная Windows-приёмка — в [SECURITY.md](docs/SECURITY.md).
+Автотесты проверяют правила, пароль, stale/replay-команды, поддельное снятие блокировки через heartbeat, сохранение событий, origin-политику, импорт ZIP и клипы. CI и синтетический кадр не заменяют испытания камерой в аудитории. [Чек-лист ручной Windows-приёмки](docs/WINDOWS_ACCEPTANCE.md).
 
 ## Соответствие критериям жюри
 
