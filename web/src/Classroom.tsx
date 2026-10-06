@@ -502,7 +502,7 @@ function InlineReview({
           <Video size={30} />
           <strong>Фрагмент не прикреплён</strong>
           <span>
-            {e.simulated
+            {e.media_expired_at ? "Срок хранения записи истёк" : e.simulated
               ? "Тренировочное событие"
               : "Ожидаем передачу от агента"}
           </span>
@@ -512,6 +512,7 @@ function InlineReview({
         </div>
       )}
       <div className="review-caption">
+        {media?.complete === false && <span>Запись неполная · проверьте пропуски в подробностях</span>}
         <span>Срабатывание: {e.at.toFixed(1)} с</span>
         <button onClick={onDetails}>
           Подробнее <ArrowUpRight size={13} />

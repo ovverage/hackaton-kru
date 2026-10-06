@@ -9,6 +9,7 @@ from PySide6.QtWebEngineCore import (
     QWebEngineSettings,
 )
 from PySide6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtWidgets import QPushButton
 
 
 def origin(url):
@@ -70,6 +71,17 @@ class ExamBrowser(QWebEngineView):
             settings.setAttribute(attribute, False)
         self.setUrl(QUrl(url))
         self.released = False
+        self.teacher_button = QPushButton("Преподаватель · Ctrl+Alt+Q", self)
+        self.teacher_button.setStyleSheet("background:#183052;color:white;padding:8px;border-radius:5px;")
+        self.teacher_button.clicked.connect(lambda: on_attempt("TEACHER_REQUEST"))
+        self.teacher_button.adjustSize()
+        self.teacher_button.show()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "teacher_button"):
+            self.teacher_button.move(max(0, self.width() - self.teacher_button.width() - 12), 8)
+            self.teacher_button.raise_()
 
     def closeEvent(self, event):
         if self.released:

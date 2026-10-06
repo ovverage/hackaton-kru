@@ -1,0 +1,30 @@
+{
+  "kind": "synthetic HTTP load; one physical computer; no CV accuracy or 50-camera claim",
+  "clients": 50,
+  "target_seconds": 7200,
+  "elapsed_seconds": 7202.35,
+  "requests": 181293,
+  "errors": [
+    "RemoteProtocolError",
+    "RemoteProtocolError",
+    "ReadError",
+    "RemoteProtocolError",
+    "RemoteProtocolError",
+    "ReadError",
+    "RemoteProtocolError",
+    "RemoteProtocolError",
+    "RemoteProtocolError",
+    "RemoteProtocolError",
+    "RemoteProtocolError",
+    "RemoteProtocolError",
+    "RemoteProtocolError"
+  ],
+  "error_count": 13,
+  "latency_sample_count": 100000,
+  "latency_window": "last 100000 requests",
+  "p95_ms": 195.6,
+  "error_rate": 7.17071260335479e-05,
+  "heartbeat_seconds": 2,
+  "video_load": false,
+  "status": "PASS"
+}

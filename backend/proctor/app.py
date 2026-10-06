@@ -3,12 +3,15 @@ from __future__ import annotations
 import asyncio
 import csv
 import hashlib
+import json
 import io
 import math
 import os
 import secrets
+import shutil
 import time
 from pathlib import Path
+from typing import Literal
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -27,8 +30,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from shared.rules import RuleEngine, State
+from shared.version import APP_VERSION, RULE_VERSION
 
 from .db import Database, decode, encode
+from .packages import register_package_routes
 
 ROOT = Path(__file__).resolve().parents[2]
 PH = PasswordHasher()
@@ -60,6 +65,7 @@ class ExamInput(BaseModel):
     student_names: dict[str, str] = Field(default_factory=dict, max_length=100)
     environment: dict
     mode: str = "OBSERVE"
+    require_camera: bool = True
 
 
 class ActionInput(BaseModel):
@@ -78,8 +84,17 @@ class ReviewInput(BaseModel):
 class TeacherUnlock(BaseModel):
     password: str = Field(min_length=1, max_length=128)
     exam_id: str
-    lock_id: str
+    lock_id: str | None = None
     expected_version: int = Field(ge=0)
+    action: Literal["UNLOCK", "END_AND_RELEASE"] = "UNLOCK"
+
+class RetentionInput(BaseModel):
+    days: int = Field(default=7, ge=1, le=30)
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class RevocationInput(BaseModel):
+    reason: str = Field(min_length=1, max_length=500)
 
 
 class SimulationInput(BaseModel):
@@ -100,8 +115,11 @@ def create_app(data_dir=None):
     base.mkdir(parents=True, exist_ok=True)
     media_dir = base / "media"
     media_dir.mkdir(exist_ok=True)
+    media_reserve_bytes = max(
+        0, int(os.getenv("PROCTOR_MEDIA_RESERVE_BYTES", str(512 * 1024 * 1024)))
+    )
     db = Database(base / "proctor.sqlite3")
-    app = FastAPI(title="Qorgau / локальный прокторинг", version="0.3.1")
+    app = FastAPI(title="Qorgau / локальный прокторинг", version=APP_VERSION)
     app.state.db = db
     simulations = {}
     failures = {}
@@ -175,9 +193,13 @@ def create_app(data_dir=None):
             ).fetchone()
             if r:
                 e = decode(r)
-                e["participants"][d["id"]] = {
+                participant = {
                     k: d[k] for k in ("id", "name", "student", "state", "simulated")
                 }
+                previous = e["participants"].get(d["id"], {})
+                if all(previous.get(k) == value for k, value in participant.items()):
+                    return
+                e["participants"][d["id"]] = participant
                 e["participants"][d["id"]]["last_seen"] = d.get("last_seen", 0)
                 states = [x["state"]["lifecycle"] for x in e["participants"].values()]
                 e["status"] = (
@@ -260,6 +282,10 @@ def create_app(data_dir=None):
                 "CAMERA_FROZEN",
                 "AGENT_RESTARTED",
                 "AGENT_FAILURE",
+                "TEACHER_REQUEST",
+
+                "FACE_ABSENCE_TECHNICAL",
+                "PHONE_AIM_REVIEW",
             }
             if event.get("type") not in allowed:
                 raise HTTPException(422, "Неизвестный тип события")
@@ -319,7 +345,7 @@ def create_app(data_dir=None):
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "version": "0.1.0"}
+        return {"status": "ok", "version": APP_VERSION}
 
     @app.get("/api/auth/status")
     def status(request: Request):
@@ -531,6 +557,10 @@ def create_app(data_dir=None):
         with db.connect(True) as c:
             devices = [owned(c, "devices", id, u["id"]) for id in body.device_ids]
             for d in devices:
+                if d.get("revoked_at"):
+                    raise HTTPException(409, f"{d['name']}: доступ отозван")
+                if d.get("capabilities", {}).get("recording_tail"):
+                    raise HTTPException(409, f"{d['name']}: завершается запись предыдущего сеанса")
                 if d.get("exam_id") and d["state"]["lifecycle"] != "COMPLETED":
                     raise HTTPException(409, f"{d['name']}: завершите текущий сеанс")
                 if not d["simulated"] and time.time() - d.get("last_seen", 0) >= 6:
@@ -574,10 +604,11 @@ def create_app(data_dir=None):
                 "room": body.room,
                 "environment": env,
                 "mode": body.mode,
+                "require_camera": body.require_camera,
                 "created_at": time.time(),
                 "status": "READY",
                 "participants": {},
-                "rule_version": "2.0",
+                "rule_version": RULE_VERSION,
                 "simulated": all(d["simulated"] for d in devices),
             }
             for d in devices:
@@ -597,6 +628,21 @@ def create_app(data_dir=None):
             c.execute("INSERT INTO exams VALUES(?,?,?)", (e["id"], u["id"], encode(e)))
             audit(c, u["id"], "EXAM_CREATED", {"id": e["id"]})
         return e
+
+    @app.post("/api/devices/{device_id}/revoke")
+    def revoke_device(device_id: str, body: RevocationInput, request: Request):
+        u = user(request)
+        with db.connect(True) as c:
+            d = owned(c, "devices", device_id, u["id"])
+            if d["state"]["lifecycle"] == "RUNNING":
+                raise HTTPException(409, "Сначала завершите активный контроль устройства")
+            if d.get("simulated"):
+                raise HTTPException(409, "Тренировочное устройство не имеет токена")
+            d["revoked_at"] = time.time()
+            d["last_seen"] = 0
+            c.execute("UPDATE devices SET token=NULL,body=? WHERE id=?", (encode(d), device_id))
+            audit(c, u["id"], "DEVICE_REVOKED", {"id": device_id, "reason": body.reason})
+        return {"ok": True}
 
     @app.post("/api/devices/{device_id}/commands")
     def command(device_id: str, body: ActionInput, request: Request):
@@ -618,6 +664,14 @@ def create_app(data_dir=None):
                 raise HTTPException(409, "Контроль ещё не начат")
             if body.expected_version != d["state"]["version"]:
                 raise HTTPException(409, "Состояние изменилось. Обновите карточку.")
+            exam = owned(c, "exams", d["exam_id"], u["id"])
+            require_camera = exam.get("require_camera", True)
+            if body.type == "START" and not d["simulated"] and require_camera:
+                caps = d.get("capabilities", {})
+                if time.time() - d.get("last_seen", 0) >= 6:
+                    raise HTTPException(409, "Нет связи с компьютером")
+                if not caps.get("camera") or not caps.get("recording") or caps.get("camera_fault"):
+                    raise HTTPException(409, "Камера и запись не готовы. Выполните калибровку в приложении студента.")
             cmd = {
                 "id": uid(),
                 "device_id": device_id,
@@ -627,6 +681,7 @@ def create_app(data_dir=None):
                 "created_at": time.time(),
                 "expires_at": time.time() + 30,
                 "status": "PENDING",
+                "require_camera": require_camera,
             }
             if d["simulated"]:
                 engine = engine_for(d)
@@ -683,7 +738,7 @@ def create_app(data_dir=None):
                     state = d["state"]
                     if (
                         d.get("exam_id") != body.exam_id
-                        or state["access"] != "LOCKED"
+                        or (body.action == "UNLOCK" and state["access"] != "LOCKED")
                         or state["lifecycle"] != "RUNNING"
                         or state["lock_id"] != body.lock_id
                         or state["version"] != body.expected_version
@@ -695,7 +750,8 @@ def create_app(data_dir=None):
                             "id": uid(),
                             "device_id": d["id"],
                             "exam_id": body.exam_id,
-                            "type": "UNLOCK",
+                            "type": body.action,
+                            "require_camera": owned(c, "exams", body.exam_id, owner).get("require_camera", True),
                             "expected_version": body.expected_version,
                             "lock_id": body.lock_id,
                             "reason": "Пароль преподавателя на рабочем месте",
@@ -708,11 +764,25 @@ def create_app(data_dir=None):
                             "INSERT INTO commands VALUES(?,?,?)",
                             (result["id"], d["id"], encode(result)),
                         )
-                        audit(c, owner, "LOCAL_TEACHER_UNLOCK", result)
+                        audit(c, owner, "LOCAL_TEACHER_" + body.action, result)
         # Commit failed attempts before returning an HTTP error.
         if error:
             raise HTTPException(*error)
         return result
+
+    @app.post("/api/events/{event_id}/retain")
+    def retain_event(event_id: str, body: RetentionInput, request: Request):
+        u = user(request)
+        with db.connect(True) as c:
+            row = c.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()
+            if not row:
+                raise HTTPException(404, "Событие не найдено")
+            owned(c, "exams", row["exam_id"], u["id"])
+            event = decode(row)
+            event["retain_until"] = max(event.get("retain_until", 0), event["created_at"] + 7 * 86400, time.time() + body.days * 86400)
+            c.execute("UPDATE events SET body=? WHERE id=?", (encode(event), event_id))
+            audit(c, u["id"], "RETENTION_EXTENDED", {"event_id": event_id, "until": event["retain_until"], "reason": body.reason})
+        return {"retain_until": event["retain_until"]}
 
     @app.post("/api/devices/{device_id}/simulate")
     def simulate(device_id: str, body: SimulationInput, request: Request):
@@ -949,6 +1019,11 @@ def create_app(data_dir=None):
                     size += len(chunk)
                     if size > 50 * 1024 * 1024:
                         raise HTTPException(413, "Максимум 50 МБ на фрагмент")
+                    if shutil.disk_usage(media_dir).free < media_reserve_bytes + len(chunk):
+                        raise HTTPException(
+                            507,
+                            "Недостаточно места на сервере для видео. Повторите отправку после освобождения диска.",
+                        )
                     f.write(chunk)
                     sha.update(chunk)
             if size < 12:
@@ -964,7 +1039,21 @@ def create_app(data_dir=None):
                 clip_end = float(request.headers.get("x-clip-end", "0"))
                 if not 0 <= clip_start <= clip_end < 1e8:
                     raise ValueError()
-            except ValueError:
+                quality_text = request.headers.get("x-clip-quality", "{}")
+                if len(quality_text) > 6000:
+                    raise ValueError()
+                quality = json.loads(quality_text)
+                if not isinstance(quality, dict):
+                    raise ValueError()
+                gaps = quality.get("gaps", [])
+                if (not isinstance(gaps, list) or len(gaps) > 200
+                    or any(not isinstance(g, list) or len(g) != 2 or
+                           not clip_start <= float(g[0]) < float(g[1]) <= clip_end for g in gaps)):
+                    raise ValueError()
+                complete = quality.get("complete")
+                if complete is not None and type(complete) is not bool:
+                    raise ValueError()
+            except (ValueError, TypeError):
                 raise HTTPException(422, "Некорректные границы фрагмента")
             with db.connect(True) as c:
                 ev = decode(
@@ -973,7 +1062,8 @@ def create_app(data_dir=None):
                     ).fetchone()
                 )
                 duplicate = next(
-                    (m for m in ev["media"] if m["sha256"] == sha.hexdigest()), None
+                    (m for m in ev["media"] if m["sha256"] == sha.hexdigest()
+                     and m["clip_start"] == clip_start and m["clip_end"] == clip_end), None
                 )
                 if duplicate:
                     file.unlink(missing_ok=True)
@@ -991,6 +1081,8 @@ def create_app(data_dir=None):
                         "sha256": sha.hexdigest(),
                         "clip_start": clip_start,
                         "clip_end": clip_end,
+                        "gaps": gaps,
+                        "complete": False if gaps else complete,
                     }
                 )
                 c.execute("UPDATE events SET body=? WHERE id=?", (encode(ev), event_id))
@@ -1084,6 +1176,7 @@ def create_app(data_dir=None):
             },
         )
 
+    register_package_routes(app, db, user, audit, ROOT)
     dist = ROOT / "web" / "dist"
     if dist.exists():
         app.mount("/", StaticFiles(directory=dist, html=True), name="web")

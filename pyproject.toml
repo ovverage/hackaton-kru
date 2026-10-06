@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "qostanai-proctor"
-version = "0.3.1"
+version = "0.4.0"
 description = "Local proctoring agent and teacher control room"
 requires-python = ">=3.11"
 dependencies = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.30,<1", "httpx>=0.27,<1", "python-multipart>=0.0.20", "argon2-cffi>=23"]
@@ -16,8 +16,9 @@ qorgau-student = "agent.client:main"
 desktop = ["PySide6>=6.8,<7"]
 package = ["pyinstaller>=6.15,<7"]
 test = ["pytest>=8,<10"]
-cv = ["opencv-python>=4.10,<5", "ultralytics>=8.3,<9", "mediapipe>=0.10.30,<1", "imageio-ffmpeg>=0.6,<1"]
-training = ["scikit-learn>=1.5,<2"]
+cv = ["opencv-contrib-python==4.13.0.92", "onnxruntime==1.24.3", "mediapipe==0.10.32", "imageio-ffmpeg==0.6.0"]
+
+training = ["scikit-learn>=1.5,<2", "ultralytics>=8.3,<9", "onnx>=1.17,<2"]
 
 [tool.setuptools.packages.find]
 include = ["backend*", "shared*", "agent*", "training*"]
@@ -28,3 +29,9 @@ pythonpath = ["."]
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# CLI tools insert their checkout root before importing the application.
+"scripts/prepare_licenses.py" = ["E402"]
+"scripts/smoke_student_exe.py" = ["E402"]
+"scripts/stress_scenarios.py" = ["E402"]

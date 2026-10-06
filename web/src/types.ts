@@ -21,6 +21,7 @@ export type Device = {
   exam_id: string | null;
   targets: Target[];
   capabilities: Record<string, unknown>;
+  revoked_at?: number;
 };
 export type Exam = {
   id: string;
@@ -51,12 +52,16 @@ export type Incident = {
   simulated: boolean;
   decision: "PENDING" | "CONFIRMED" | "REJECTED";
   revision: number;
+  retain_until?: number;
+  media_expired_at?: number;
   media: {
     id: string;
     url: string;
     mime: string;
     clip_start?: number;
     clip_end?: number;
+    complete?: boolean | null;
+    gaps?: [number, number][];
   }[];
   reviews: { author: string; reason: string; decision: string; at: number }[];
 };
@@ -92,6 +97,7 @@ export async function api<T = any>(path: string, body?: unknown): Promise<T> {
   return response.json();
 }
 export const eventNames: Record<string, string> = {
+  TEACHER_REQUEST: "Вызов преподавателя",
   GAZE_DOWN: "Взгляд вниз",
   GAZE_LEFT: "Взгляд влево",
   GAZE_RIGHT: "Взгляд вправо",
@@ -112,6 +118,9 @@ export const eventNames: Record<string, string> = {
   CAMERA_FROZEN: "Зависшее изображение камеры",
   AGENT_RESTARTED: "Перезапуск агента",
   AGENT_FAILURE: "Ошибка агента",
+
+  FACE_ABSENCE_TECHNICAL: "Лицо отсутствует 10 секунд · техническая блокировка",
+  PHONE_AIM_REVIEW: "Возможная попытка съёмки",
 };
 export const decisionNames = {
   PENDING: "На проверке",

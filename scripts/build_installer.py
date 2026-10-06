@@ -22,7 +22,7 @@ def installer_command(root, compiler):
     source = root / "dist/Qorgau-Student"
     for relative in (
         "Qorgau-Student.exe",
-        "_internal/models/yolo11n.pt",
+        "_internal/models/yolo11n.onnx",
         "_internal/models/face_landmarker.task",
     ):
         if not (source / relative).is_file():

@@ -1,10 +1,9 @@
-"""Packaged diagnostic: no camera, keyboard hooks, credentials or network."""
-
+"""Hardware-free check executed by the same frozen EXE distributed to students."""
 import json
-import os
-import platform
-import sys
-import traceback
+from pathlib import Path
+import statistics
+import tempfile
+import time
 
 
 def check_browser():
@@ -46,77 +45,50 @@ def check_browser():
         raise RuntimeError("Packaged browser renderer did not load the offline test page")
 
 
-def selftest(output):
-    result = {
-        "version": "0.3.1",
-        "platform": platform.platform(),
-        "frozen": bool(getattr(sys, "frozen", False)),
-    }
-    try:
-        import cv2
-        import imageio_ffmpeg
-        import mediapipe as mp
-        import numpy as np
-        import torch
-        from ultralytics import YOLO
-        from .resources import model_path
-        from mediapipe.tasks import python
-        from mediapipe.tasks.python import vision
 
-        check_browser()
-        frame = np.zeros((320, 320, 3), dtype=np.uint8)
-        phone = YOLO(str(model_path("yolo11n.pt")))
-        prediction = phone.predict(frame, imgsz=320, verbose=False)
-        assert "cell phone" in phone.names.values() and prediction
-        with vision.FaceLandmarker.create_from_options(
-            vision.FaceLandmarkerOptions(
-                base_options=python.BaseOptions(
-                    model_asset_path=str(model_path("face_landmarker.task"))
-                )
-            )
-        ) as face:
-            face.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=frame))
-        import subprocess
-
-        subprocess.run(
-            [
-                imageio_ffmpeg.get_ffmpeg_exe(),
-                "-v",
-                "error",
-                "-f",
-                "lavfi",
-                "-i",
-                "color=black:s=64x64:d=0.1",
-                "-c:v",
-                "libx264",
-                "-f",
-                "null",
-                "-",
-            ],
-            check=True,
-            capture_output=True,
-        )
-        if os.name == "nt":
-            from .install_guard import hold_installation_mutex
-            from .windows_guard import WindowsGuard
-
-            result["installer_mutex"] = bool(hold_installation_mutex())
-            guard = WindowsGuard()
-            result["win32_enumeration"] = len(guard.windows())
-        result.update(
-            status="passed",
-            cv2=cv2.__version__,
-            mediapipe=mp.__version__,
-            torch=torch.__version__,
-            checks=[
-                "QtWebEngine offline page rendering and JavaScript",
-                "YOLO CPU inference",
-                "MediaPipe inference",
-                "H264 encoder",
-            ],
-        )
-    except Exception:
-        result.update(status="failed", error=traceback.format_exc())
-    output.write_text(json.dumps(result, indent=2), encoding="utf-8")
-    if result["status"] != "passed":
-        raise SystemExit(1)
+def run(output):
+    check_browser()
+    import cv2
+    import numpy as np
+    import mediapipe as mp
+    from mediapipe.tasks import python
+    from mediapipe.tasks.python import vision
+    from .resources import verified_models
+    from .detector import PhoneDetector
+    from .recording import ClipRecorder
+    phone_path, face_path = verified_models()
+    detector = PhoneDetector(phone_path)
+    frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    times = []
+    for _ in range(12):
+        start = time.perf_counter()
+        assert detector.detect(frame) == []
+        times.append(time.perf_counter() - start)
+    with vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(
+        base_options=python.BaseOptions(model_asset_path=str(face_path)), num_faces=2,
+    )) as face:
+        result = face.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=frame))
+        assert not result.face_landmarks
+    with tempfile.TemporaryDirectory(prefix="qorgau-selftest-") as folder:
+        recorder = ClipRecorder(Path(folder))
+        try:
+            for i in range(21):
+                recorder.push(i / 10, frame)
+                if i == 10:
+                    recorder.mark({"id": "selftest", "at": 1})
+            clip = recorder.completed(float("inf"))[0]
+            capture = cv2.VideoCapture(clip["path"])
+            ok, decoded = capture.read()
+            capture.release()
+            assert ok and decoded.shape == frame.shape
+        finally:
+            recorder.close()
+    from shared.version import APP_VERSION
+    import platform
+    import sys
+    report = {"result": "PASS", "status": "passed", "version": APP_VERSION, "platform": platform.platform(), "frozen": bool(getattr(sys, "frozen", False)), "browser_renderer": True, "kind": "synthetic packaging test; no webcam or accuracy claim",
+              "models_verified": True, "onnx_inference": True, "face_landmarker": True,
+              "h264_encode_decode": True, "phone_cpu_median_ms": round(statistics.median(times[2:]) * 1000, 2)}
+    Path(output).parent.mkdir(parents=True, exist_ok=True)
+    Path(output).write_text(json.dumps(report, indent=2), encoding="utf-8")
+    return report

@@ -1,37 +1,100 @@
 """Shared first-run registration for desktop and command-line clients."""
 
+import hashlib
+import json
+import secrets
+import socket
 from pathlib import Path
-from urllib.parse import urlparse
+
 import httpx
 
+from shared.bootstrap import server_address, validate_bootstrap
 
-def server_address(value: str, *, testing=False):
-    address = value.strip().rstrip("/")
-    parsed = urlparse(address)
+
+class EnrollmentUnavailable(ValueError):
+    """A transient failure that the desktop client may retry automatically."""
+
+
+def bootstrap_data_dir(bootstrap, home=None):
+    identity = bootstrap["server"] + "\n" + bootstrap["account_id"]
+    scope = hashlib.sha256(identity.encode()).hexdigest()[:24]
+    return (home or Path.home()) / ".qorgau" / "accounts" / scope
+
+
+def auto_enroll(folder: Path, bootstrap, *, transport=None):
+    from .client import atomic_json
+
+    bootstrap = validate_bootstrap(bootstrap)
+    config_path = folder / "config.json"
+    if config_path.exists():
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        if (
+            config.get("server") != bootstrap["server"]
+            or config.get("account_id") != bootstrap["account_id"]
+        ):
+            raise ValueError(
+                "В этой папке сохранено подключение к другому кабинету. Обратитесь к преподавателю."
+            )
+        return config
+    identity_path = folder / "installation.json"
+    if identity_path.exists():
+        identity = json.loads(identity_path.read_text(encoding="utf-8"))
+    else:
+        identity = {"secret": secrets.token_urlsafe(32)}
+        atomic_json(identity_path, identity)
+    name = socket.gethostname()[:80] or "Компьютер"
     try:
-        port = parsed.port
-    except ValueError as error:
-        raise ValueError("Проверьте порт в адресе сервера") from error
-    if (
-        parsed.scheme not in ("http", "https")
-        or not parsed.hostname
-        or parsed.username
-        or parsed.password
-        or parsed.query
-        or parsed.fragment
-        or parsed.path
-    ):
+        with httpx.Client(
+            base_url=bootstrap["server"], timeout=8, transport=transport
+        ) as client:
+            response = client.post(
+                "/api/agent/auto-enroll",
+                json={
+                    "token": bootstrap["token"],
+                    "installation_secret": identity["secret"],
+                    "name": name,
+                },
+            )
+        if response.status_code >= 500 or response.status_code == 429:
+            raise EnrollmentUnavailable(
+                "Сервер временно недоступен. Подключение повторится автоматически."
+            )
+        if response.status_code == 403:
+            detail = response.json().get("detail")
+            raise ValueError(
+                detail
+                if isinstance(detail, str)
+                else "Получите новый EXE у преподавателя."
+            )
+        if response.status_code >= 400:
+            raise ValueError(
+                "Сервер не поддерживает автоматическое подключение. Обратитесь к преподавателю."
+            )
+        result = response.json()
+        if not isinstance(result, dict) or not all(
+            isinstance(result.get(k), str) and result[k] for k in ("device_id", "token")
+        ):
+            raise ValueError(
+                "Сервер вернул некорректный ответ подключения. Обратитесь к преподавателю."
+            )
+    except httpx.HTTPError as error:
+        raise EnrollmentUnavailable(
+            "Нет связи с сервером. Проверьте сеть; подключение повторится автоматически."
+        ) from error
+    except (json.JSONDecodeError, UnicodeError) as error:
         raise ValueError(
-            "Укажите адрес сервера, например https://proctor.university.kz, без пути и параметров"
-        )
-    local = ("localhost", "127.0.0.1", "::1") + (("testserver",) if testing else ())
-    if parsed.scheme != "https" and parsed.hostname not in local:
-        raise ValueError(
-            "Для подключения к компьютеру преподавателя по сети нужен адрес HTTPS"
-        )
-    if port is not None and port == 0:
-        raise ValueError("Проверьте порт в адресе сервера")
-    return address
+            "Адрес в EXE не ведёт к серверу Qorgau. Получите новый файл у преподавателя."
+        ) from error
+    config = {
+        **result,
+        "server": bootstrap["server"],
+        "account_id": bootstrap["account_id"],
+        "name": f"{bootstrap['room']} · {name}"[:80],
+        "room": bootstrap["room"],
+        "targets": [],
+    }
+    atomic_json(config_path, config)
+    return config
 
 
 def enroll(folder: Path, server: str, code: str, name: str, *, transport=None):

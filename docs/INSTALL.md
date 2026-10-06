@@ -1,8 +1,14 @@
-# Установка Qorgau Student 0.3.1
+# Установка Qorgau Student 0.4.0
 
-## Какой файл скачать
+## Подключение без кода — основной путь
 
-[Qorgau-Student-Setup-0.3.1-x64.exe](https://github.com/ovverage/hackaton-kru/releases/download/v0.3.1/Qorgau-Student-Setup-0.3.1-x64.exe) — обычный установщик для Windows x64 (Intel/AMD). Сборки ARM64 и установщика для Linux/macOS нет. В приложении уже есть Python, Qt, CV-библиотеки, модели и H.264-кодировщик. Сервер преподавателя запускается отдельно по README.
+Преподаватель открывает «Компьютеры → EXE для аудитории» на собственном сервере, подготавливает пакет и передаёт один файл. Студент скачивает Qorgau-Classroom.exe и открывает: адрес, аудитория и регистрация уже заданы, Python не нужен. Камеру нужно разрешить и откалибровать отдельно. Этот single-file EXE содержит все ресурсы; папка `_internal` нужна только варианту ZIP/Setup ниже.
+
+Подготовленный EXE хранит отзывное право регистрации, а не пароль кабинета или общий постоянный токен. Новые запуски того же профиля не создают повторное устройство. Пакеты ограничены сроком и количеством подключений.
+
+## Универсальный установщик для администратора
+
+[Установщик и portable-пакет в релизах GitHub](https://github.com/ovverage/hackaton-kru/releases) — обычный установщик для Windows x64 (Intel/AMD). Сборки ARM64 и установщика для Linux/macOS нет. В приложении уже есть Python, Qt, CV-библиотеки, модели и H.264-кодировщик. Сервер преподавателя запускается отдельно по README.
 
 1. Закройте Qorgau, предварительно завершив активный экзамен из кабинета преподавателя.
 2. Запустите Setup.exe и выберите русский или английский язык.
@@ -24,7 +30,7 @@ Portable ZIP использует тот же профиль. Не запуск�
 Установщик пока не подписан сертификатом издателя. Windows может показать предупреждение о неизвестном издателе. Скачивайте только из релиза данного репозитория и сверяйте SHA-256 с `SHA256SUMS.txt`:
 
 ```powershell
-Get-FileHash .\Qorgau-Student-Setup-0.3.1-x64.exe -Algorithm SHA256
+Get-FileHash .\Qorgau-Student-Setup-0.4.0-x64.exe -Algorithm SHA256
 ```
 
 Не отключайте антивирус, SmartScreen или системные политики. Для управляемой аудитории согласуйте установку с администратором. Проверка хеша подтверждает целостность относительно релиза, но не заменяет цифровую подпись издателя.
@@ -34,10 +40,10 @@ Get-FileHash .\Qorgau-Student-Setup-0.3.1-x64.exe -Algorithm SHA256
 Тихая установка в профиль текущего пользователя, без автоматического запуска приложения:
 
 ```powershell
-.\Qorgau-Student-Setup-0.3.1-x64.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
+.\Qorgau-Student-Setup-0.4.0-x64.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
 ```
 
-Исходник установщика — `packaging/windows/qorgau.iss`. После сборки полного клиента выполните `python scripts/build_installer.py` на Windows с Inno Setup 6. Сборка проверяет наличие `.exe` и обеих моделей. `scripts/test_installer.py` разрешён только на одноразовом Windows-runner GitHub Actions: он устанавливает, повторно устанавливает, запускает самопроверку и удаляет тестовую копию. Не запускайте такой жизненный цикл на рабочем экзаменационном ПК.
+Исходник установщика — `packaging/windows/qorgau.iss`. После `python scripts/build_student.py --with-cv --onedir` выполните `python scripts/build_installer.py` на Windows с Inno Setup 6. Сборка проверяет наличие `.exe` и обеих моделей. `scripts/test_installer.py` разрешён только на одноразовом Windows-runner GitHub Actions: он устанавливает, повторно устанавливает, запускает самопроверку и удаляет тестовую копию. Не запускайте такой жизненный цикл на рабочем экзаменационном ПК.
 
 Основание настроек: [Inno Setup — установка без повышения прав](https://jrsoftware.org/ishelp/topic_setup_privilegesrequired.htm), [AppMutex — запрет изменения работающего приложения](https://jrsoftware.org/ishelp/topic_setup_appmutex.htm). В [образе Windows CI](https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-Readme.md) уже предусмотрен Inno Setup.
 

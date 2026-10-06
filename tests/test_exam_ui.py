@@ -11,8 +11,12 @@ def app():
     os.environ["QT_QPA_PLATFORM"] = "offscreen"
     pytest.importorskip("PySide6")
     from PySide6.QtWidgets import QApplication
+    from PySide6.QtGui import QFontDatabase
 
     app = QApplication.instance() or QApplication([])
+    font = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts/segoeui.ttf"
+    if font.is_file():
+        QFontDatabase.addApplicationFont(str(font))
     yield app
 
 

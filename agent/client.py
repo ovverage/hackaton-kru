@@ -5,8 +5,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import secrets
 import shutil
 import subprocess
+import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -16,20 +18,8 @@ from urllib.parse import urlparse
 import httpx
 
 from shared.rules import RuleEngine, State
-
-
-def atomic_json(path: Path, data):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if os.name != "nt":
-        path.parent.chmod(0o700)
-    temp = path.with_suffix(".tmp")
-    with temp.open("w", encoding="utf-8") as stream:
-        if os.name != "nt":
-            os.fchmod(stream.fileno(), 0o600)
-        json.dump(data, stream, ensure_ascii=False)
-        stream.flush()
-        os.fsync(stream.fileno())
-    temp.replace(path)
+from shared.storage import atomic_json
+from shared.version import APP_VERSION, MODEL_VERSION
 
 
 def inventory(config):
@@ -123,21 +113,45 @@ class Agent:
         self.camera_preparing = False
         self.session = self.journal.get("session")
         self.capabilities = {
+            "agent_version": APP_VERSION,
+            "model_version": MODEL_VERSION,
             "strict": False,
             "camera": False,
             "recording": False,
             "platform": os.name,
         }
         self.camera = None
+        self.capture_pump = None
+        self.record_until = None
         self.recorder = None
         self.camera_fault = False
+        self.last_observation = None
+        self.last_observation_at = None
         self.browser_seen = None
+        self.bridge_binding = secrets.token_urlsafe(32)
         self.last_browser_event = {}
         self.mutex = threading.RLock()
         self.sync_mutex = threading.RLock()
         self.guard_target = None
         self.guard_started_at = None
         self.last_security_event = {}
+
+        # Recover encoded clips and unfinished segments even before reopening the
+        # camera. Acknowledgements must update this single recorder instance.
+        if (folder / "clips/recording.json").is_file():
+            try:
+                from .recording import ClipRecorder
+                self.recorder = ClipRecorder(folder / "clips")
+                if self.engine.state.lifecycle == "COMPLETED":
+                    expired = self.recorder.expire_completed()
+                    expired_paths = {item.get("path") for item in expired}
+                    self.journal["media"] = [item for item in self.journal.get("media", []) if item["path"] not in expired_paths]
+                    self.journal.setdefault("media_expiry", []).extend(expired)
+                self.collect_media(float("inf"))
+                self.save()
+            except (OSError, ValueError, ImportError) as error:
+                self.status = "Не удалось восстановить очередь видео: " + str(error)
+                self.camera_fault = True
         # A crashed/restarted active agent must not silently resume an unobserved exam.
         if self.engine.state.lifecycle == "RUNNING":
             self.engine.lock("AGENT_RESTARTED")
@@ -176,13 +190,25 @@ class Agent:
                         raise ValueError("WINDOW_GUARD_UNAVAILABLE")
                     if not self.camera or not self.recorder:
                         raise ValueError("CAMERA_REQUIRED")
+
+                if command.get("require_camera", True) and (not self.camera or not self.recorder or self.camera_fault):
+                    raise ValueError("CAMERA_NOT_READY")
+                if command.get("require_camera", True):
+                    if self.last_observation_at is None or time.monotonic() - self.last_observation_at > 2:
+                        raise ValueError("CAMERA_FRAME_STALE")
+                    if self.last_observation["faces"] != 1:
+                        raise ValueError("NEED_EXACTLY_ONE_FACE")
+                    if self.last_observation["phone_confidence"] >= .65:
+                        raise ValueError("REMOVE_PHONE_BEFORE_START")
+                    if shutil.disk_usage(self.folder).free < 1024**3:
+                        raise ValueError("NEED_1GB_RECORDING_SPACE")
                 self.launch_environment()
                 self.engine.start()
                 self.guard_started_at = time.monotonic()
             elif kind == "LOCK":
                 self.engine.lock("TEACHER_LOCK")
             elif kind == "UNLOCK":
-                if self.camera_fault:
+                if self.camera_fault or (command.get("require_camera", True) and not self.camera):
                     raise ValueError("CAMERA_UNAVAILABLE")
                 if self.guarded and not self.capabilities.get("guard_active"):
                     raise ValueError("WINDOW_GUARD_UNAVAILABLE")
@@ -190,9 +216,15 @@ class Agent:
                     raise ValueError(self.capabilities["guard_fault"])
                 self.engine.unlock(command.get("lock_id"), command["expected_version"])
             elif kind == "END_AND_RELEASE":
+                t = time.monotonic() - self.origin
+                for event_id in [self.engine.active_event, *self.engine.duration_events.values()]:
+                    if event_id:
+                        update = {"id": event_id, "update": True, "end": t}
+                        self.journal["events"].append(update)
+                        if self.recorder:
+                            self.recorder.mark(update)
                 self.engine.end()
-                if self.recorder:
-                    self.journal["media"].extend(self.recorder.completed(float("inf")))
+                self.record_until = time.monotonic() + 5 if self.camera else None
             elif kind == "REVIEW":
                 event_id = command["event_id"]
                 revision = command["review_revision"]
@@ -279,7 +311,7 @@ class Agent:
                     {k: t[k] for k in ("id", "name", "kind", "guardable") if k in t}
                     for t in self.targets
                 ],
-                "capabilities": self.capabilities.copy(),
+                "capabilities": {**self.capabilities, "camera_fault": self.camera_fault, "recording_tail": self.record_until is not None},
             }
         response = self.http.post("/api/agent/sync", json=payload)
         response.raise_for_status()
@@ -291,13 +323,18 @@ class Agent:
             if config["exam_id"] != self.journal["exam_id"]:
                 if self.journal["events"]:
                     raise ValueError("Нельзя сменить сеанс до синхронизации событий")
+                # Preserve a calibration prepared before assignment, including
+                # a second exam. END already closes the previous capture tail.
+                self.last_observation = None
+                self.last_observation_at = None
                 self.engine = RuleEngine()
                 self.journal.update(exam_id=config["exam_id"], reviews={}, processed={})
                 self.journal["recent_events"] = []
                 self.guard_target = None
                 self.origin = time.monotonic()
                 if self.recorder:
-                    self.recorder.frames.clear()
+                    self.collect_media(float("inf"))
+                    self.recorder.reset_session(config["exam_id"])
             self.environment = config["environment"]
             for command in config["commands"]:
                 self.apply(command)
@@ -336,7 +373,7 @@ class Agent:
                 self.engine.lock(reason)
             self.save()
 
-    def teacher_unlock(self, password):
+    def teacher_unlock(self, password, action="UNLOCK"):
         # Serialize sync + unlock to prevent concurrent queue deletion/command delivery.
         with self.sync_mutex:
             self.sync()
@@ -347,6 +384,7 @@ class Agent:
                     "exam_id": self.journal["exam_id"],
                     "lock_id": state.lock_id,
                     "expected_version": state.version,
+                    "action": action,
                 }
             response = self.http.post("/api/agent/teacher-unlock", json=body)
             if response.status_code != 200:
@@ -356,6 +394,11 @@ class Agent:
                     detail = "Не удалось проверить пароль преподавателя"
                 raise ValueError(str(detail))
             self.sync()
+            # Confirm application immediately, even if the background worker
+            # stopped because of a camera/runtime failure.
+            self.sync()
+            if action == "END_AND_RELEASE" and self.engine.state.lifecycle != "COMPLETED":
+                raise ValueError("Не удалось завершить сеанс. Обновите состояние и повторите.")
             if self.engine.state.access == "LOCKED":
                 raise ValueError(
                     "Причина блокировки сохраняется. Проверьте камеру, телефон и окно теста."
@@ -374,6 +417,7 @@ class Agent:
                         "Content-Type": "video/mp4",
                         "X-Clip-Start": str(item["start"]),
                         "X-Clip-End": str(item["end"]),
+                        "X-Clip-Quality": json.dumps({"complete": item.get("complete"), "gaps": item.get("gaps", [])[:200]}),
                     },
                     timeout=20,
                 )
@@ -381,16 +425,44 @@ class Agent:
             with self.mutex:
                 self.journal["media"].remove(item)
                 self.save()
+                if self.recorder:
+                    self.recorder.acknowledge(item["event_id"], item["path"])
             file.unlink(missing_ok=True)
 
-    def observe(self, direction="UNKNOWN", phone_confidence=0.0, faces=1, frame=None):
+    def collect_media(self, t):
+        existing = {x["path"] for x in self.journal["media"]}
+        fresh = [x for x in self.recorder.completed(t) if x["path"] not in existing]
+        if fresh:
+            self.journal["media"].extend(fresh)
+            self.save()
+
+    def expire_local_media(self):
+        with self.mutex:
+            if self.engine.state.lifecycle != "COMPLETED" or self.record_until is not None:
+                return
+            for thumbnail in (self.folder / "evidence").glob("*.jpg"):
+                if thumbnail.stat().st_mtime + 7 * 86400 <= time.time():
+                    thumbnail.unlink()
+            if not self.recorder:
+                return
+            expired = self.recorder.expire_completed()
+            if expired:
+                paths = {item.get("path") for item in expired}
+                self.journal["media"] = [item for item in self.journal["media"] if item["path"] not in paths]
+                self.journal.setdefault("media_expiry", []).extend(expired)
+                self.save()
+
+    def observe(self, direction="UNKNOWN", phone_confidence=0.0, faces=1, frame=None, phone_aiming=False):
         with self.mutex:
             t = time.monotonic() - self.origin
+            self.last_observation = {"faces": faces, "phone_confidence": phone_confidence}
+            self.last_observation_at = time.monotonic()
             before = self.engine.state.version
-            events = self.engine.observe(t, direction, phone_confidence, faces)
+            events = self.engine.observe(t, direction, phone_confidence, faces, phone_aiming)
             for event in events:
                 if not event.get("update"):
                     event["created_at"] = time.time()
+                    event["model_version"] = MODEL_VERSION
             self.journal["events"].extend(events)
             self.remember(events)
             if frame is not None and events:
@@ -410,9 +482,8 @@ class Agent:
             if self.recorder and frame is not None:
                 self.recorder.push(t, frame)
                 for event in events:
-                    if not event.get("update"):
-                        self.recorder.mark(event)
-                self.journal["media"].extend(self.recorder.completed(t))
+                    self.recorder.mark(event)
+                self.collect_media(t)
             if events or before != self.engine.state.version:
                 self.save()
 
@@ -430,6 +501,9 @@ class Agent:
             return
         self.browser_seen = observation.get("at")
         if time.time() - observation.get("at", 0) > 5:
+            return
+        if (observation.get("exam_id") != self.journal.get("exam_id")
+                or observation.get("binding") != self.bridge_binding):
             return
         env = self.environment or {}
         if self.engine.state.lifecycle != "RUNNING" or env.get("kind") != "BROWSER":
@@ -501,7 +575,15 @@ class Agent:
             future = None
             media_future = None
             last_upload = 0
+            last_bridge = 0
+            last_expiry = 0
             while not stop.is_set():
+                if time.monotonic() - last_bridge >= 1:
+                    atomic_json(self.folder / "bridge.json", {
+                        "at": time.time(), "exam_id": self.journal.get("exam_id"),
+                        "binding": self.bridge_binding,
+                    })
+                    last_bridge = time.monotonic()
                 if future and future.done():
                     try:
                         future.result()
@@ -517,6 +599,12 @@ class Agent:
                     except (httpx.HTTPError, OSError):
                         pass  # durable queue retries after reconnect
                     media_future = None
+                if (
+                    media_future is None
+                    and time.monotonic() - last_expiry >= 60
+                ):
+                    self.expire_local_media()
+                    last_expiry = time.monotonic()
                 if (
                     media_future is None
                     and self.journal.get("media")
@@ -543,15 +631,23 @@ class Agent:
                         ):
                             self.security_event("GUARD_UNAVAILABLE")
                     self.read_browser()
-                    if self.camera and self.engine.state.lifecycle == "RUNNING":
-                        frame, observation = self.camera.read()
-                        self.camera_fault = False
-                        self.observe(frame=frame, **observation)
+                    should_capture = self.camera and (self.engine.state.lifecycle != "COMPLETED" or self.record_until is not None)
+                    if should_capture:
+                        if self.capture_pump is None:
+                            from .capture import CapturePump
+                            self.capture_pump = CapturePump(self.camera)
+                        captured = self.capture_pump.poll()
+                        if captured:
+                            frame, observation = captured
+                            self.camera_fault = False
+                            self.observe(frame=frame, **observation)
+                        else:
+                            stop.wait(.02)
                     else:
                         stop.wait(0.1)
                 except (OSError, RuntimeError) as err:
                     with self.mutex:
-                        if not self.camera_fault:
+                        if not self.camera_fault and self.engine.state.lifecycle == "RUNNING":
                             t = time.monotonic() - self.origin
                             self.journal["events"].append(
                                 self.engine.event(
@@ -565,16 +661,35 @@ class Agent:
                             self.remember(self.journal["events"][-1:])
                             self.camera_fault = True
                             self.save()
+                        elif self.engine.state.lifecycle != "RUNNING":
+                            self.camera_fault = True
                     stop.wait(1)
+                if self.record_until is not None and time.monotonic() >= self.record_until:
+                    with self.mutex:
+                        if self.recorder:
+                            self.collect_media(float("inf"))
+                            self.recorder.discard_buffer()
+                        self.record_until = None
+                        if self.capture_pump:
+                            self.capture_pump.close()
+                            self.capture_pump = None
+                        if self.camera:
+                            self.camera.close()
+                            self.camera = None
+                        self.capabilities.update(camera=False, recording=False)
             with self.mutex:
                 if self.recorder:
-                    self.journal["media"].extend(self.recorder.completed(float("inf")))
+                    self.collect_media(float("inf"))
+                    self.recorder.discard_buffer()
                 self.save()
+        if self.capture_pump:
+            self.capture_pump.close()
         if self.camera:
             self.camera.close()
         if self.recorder:
             self.recorder.close()
         self.http.close()
+        (self.folder / "bridge.json").unlink(missing_ok=True)
 
 
 def main():
@@ -582,7 +697,7 @@ def main():
 
     hold_installation_mutex()
     parser = argparse.ArgumentParser(description="Qorgau — локальный агент наблюдения")
-    parser.add_argument("--data", type=Path, default=Path.home() / ".qorgau")
+    parser.add_argument("--data", type=Path, default=None)
     parser.add_argument("--server", default=None)
     parser.add_argument("--enroll", metavar="CODE")
     parser.add_argument("--name", default="Компьютер аудитории")
@@ -597,16 +712,43 @@ def main():
     )
     parser.add_argument("--phone-model", type=Path)
     parser.add_argument("--face-model", type=Path)
-    parser.add_argument(
-        "--self-test",
-        type=Path,
-        help="Write a packaged runtime diagnostic and exit without camera or input hooks",
-    )
+    parser.add_argument("--self-test", type=Path, help="Write a hardware-free model/video diagnostic report")
+    parser.add_argument("--install-extension", metavar="EXTENSION_ID")
+    parser.add_argument("--browser-instance")
+    parser.add_argument("--browser", choices=["edge", "chrome"], default="edge")
+    parser.add_argument("--replace-binding", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        from .selftest import selftest
+        from .selftest import run
+        run(args.self_test)
+        return
+    from .provision import auto_enroll, bootstrap_data_dir
+    from shared.bootstrap import read_bootstrap
 
-        selftest(args.self_test)
+    try:
+        bootstrap = (
+            read_bootstrap(Path(sys.executable))
+            if getattr(sys, "frozen", False)
+            else None
+        )
+    except ValueError as error:
+        if args.headless:
+            parser.error(str(error))
+        from PySide6.QtWidgets import QApplication, QMessageBox
+
+        app = QApplication.instance() or QApplication(sys.argv[:1])  # noqa: F841 - retain Qt lifetime
+        QMessageBox.critical(None, "Не удалось открыть Qorgau", str(error))
+        return
+    args.data = args.data or (
+        bootstrap_data_dir(bootstrap) if bootstrap else Path.home() / ".qorgau"
+    )
+    if bootstrap and args.server and args.server != bootstrap["server"]:
+        parser.error("Адрес сервера задан в EXE. Скачайте пакет для нужного сервера.")
+    if args.install_extension:
+        from .native_install import install
+        if not args.browser_instance:
+            parser.error("Нужен --browser-instance из страницы настройки расширения")
+        install(args.data, args.install_extension, args.browser_instance, args.browser, args.replace_binding)
         return
     if args.enroll:
         from .provision import enroll
@@ -625,8 +767,13 @@ def main():
     if not args.headless and args.camera is None:
         from .desktop import launch
 
-        launch(args.data, args.server, show_window=args.show)
+        launch(args.data, args.server, show_window=args.show, bootstrap=bootstrap)
         return
+    if bootstrap and not (args.data / "config.json").exists():
+        try:
+            auto_enroll(args.data, bootstrap)
+        except ValueError as error:
+            parser.error(str(error))
     if not (args.data / "config.json").exists():
         parser.error(
             "Сначала зарегистрируйте компьютер через приложение ученика или --enroll"
@@ -634,9 +781,8 @@ def main():
     agent = Agent(args.data, args.server)
     if args.camera is not None:
         if not args.phone_model or not args.face_model:
-            parser.error(
-                "Для камеры требуются --phone-model и --face-model с локальными файлами"
-            )
+            from .resources import verified_models
+            args.phone_model, args.face_model = verified_models()
         from .vision import Camera, ClipRecorder
 
         agent.camera = Camera(args.camera, args.phone_model, args.face_model)

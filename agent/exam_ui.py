@@ -34,13 +34,14 @@ def text(value, size=14):
 class UnlockWorker(QThread):
     done = Signal(str)
 
-    def __init__(self, agent, password, parent):
+    def __init__(self, agent, password, parent, action="UNLOCK"):
         super().__init__(parent)
         self.agent, self.password = agent, password
+        self.action = action
 
     def run(self):
         try:
-            self.agent.teacher_unlock(self.password)
+            self.agent.teacher_unlock(self.password, self.action)
             self.done.emit("")
         except Exception as error:  # noqa: BLE001 - never let network failures dismiss the lock screen
             # Never expose the credential or HTTP request body.
@@ -58,6 +59,7 @@ class LockScreen(QWidget):
         super().__init__()
         self.agent = agent
         self.worker = None
+        self.calibration = None
         self.marker = None
         self.setWindowTitle("Qorgau — Позовите преподавателя")
         self.setWindowFlags(
@@ -94,6 +96,12 @@ class LockScreen(QWidget):
         self.unlock.clicked.connect(self.request_unlock)
         self.password.returnPressed.connect(self.request_unlock)
         form.addWidget(self.unlock)
+        self.finish = QPushButton("Завершить контроль · пароль преподавателя")
+        self.finish.clicked.connect(lambda: self.request_unlock("END_AND_RELEASE"))
+        form.addWidget(self.finish)
+        self.recover = QPushButton("Восстановить камеру")
+        self.recover.clicked.connect(self.recover_camera)
+        form.addWidget(self.recover)
         self.feedback = text("")
         form.addWidget(self.feedback)
         main.addWidget(self.form)
@@ -123,6 +131,9 @@ class LockScreen(QWidget):
             )
         )
         self.form.setVisible(locked)
+        self.recover.setVisible(locked and snap["state"].get("reason") in (
+            "AGENT_RESTARTED", "CAMERA_UNAVAILABLE", "CAMERA_FROZEN"
+        ))
         marker = (
             snap["state"]["lock_id"],
             snap["state"]["epoch"],
@@ -176,7 +187,18 @@ class LockScreen(QWidget):
             )
         self.evidence_layout.addStretch()
 
-    def request_unlock(self):
+    def recover_camera(self):
+        from .camera_setup import CameraSetup
+        if self.calibration and self.calibration.isVisible():
+            self.calibration.raise_()
+            return
+        self.calibration = CameraSetup(self.agent, self)
+        self.calibration.show()
+
+    def request_unlock(self, action="UNLOCK"):
+        # QPushButton.clicked supplies a boolean when connected directly.
+        if not isinstance(action, str):
+            action = "UNLOCK"
         if self.worker and self.worker.isRunning():
             return
         password = self.password.text()
@@ -185,13 +207,15 @@ class LockScreen(QWidget):
             self.feedback.setText("Введите пароль преподавателя")
             return
         self.unlock.setEnabled(False)
+        self.finish.setEnabled(False)
         self.feedback.setText("Проверяем пароль и актуальную блокировку…")
-        self.worker = UnlockWorker(self.agent, password, self)
+        self.worker = UnlockWorker(self.agent, password, self, action)
         self.worker.done.connect(self.unlock_done)
         self.worker.start()
 
     def unlock_done(self, error):
         self.unlock.setEnabled(True)
+        self.finish.setEnabled(True)
         self.feedback.setText(error or "Преподаватель разрешил продолжить")
 
     def closeEvent(self, event):
@@ -318,6 +342,14 @@ class ExamController(QObject):
 
             self.guard = WindowsGuard()
             agent.capabilities["window_guard"] = True
+        if agent.engine.state.lifecycle == "RUNNING" and agent.guarded:
+            # Recover the selected environment after an agent restart while
+            # keeping AGENT_RESTARTED locked until the teacher authorizes it.
+            try:
+                agent.launch_environment()
+                agent.guard_started_at = time.monotonic()
+            except (OSError, ValueError):
+                agent.capabilities["guard_fault"] = "TARGET_CLOSED"
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.tick)
         self.timer.start(100)
@@ -417,7 +449,10 @@ class ExamController(QObject):
             previous = self.guard.locked
             result = self.guard.tick(
                 locked=locked,
-                overlays=[int(s.winId()) for s in self.surfaces[: len(screens)]],
+                overlays=[int(s.winId()) for s in self.surfaces[: len(screens)]] + [
+                    int(s.calibration.winId()) for s in self.surfaces
+                    if s.calibration and s.calibration.isVisible()
+                ],
             )
             self.agent.capabilities["guard_active"] = result != "TARGET_CLOSED"
             self.agent.capabilities["guard_fault"] = (

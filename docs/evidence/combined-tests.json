@@ -1,0 +1,10 @@
+{
+  "version": "0.4.0",
+  "date": "2026-10-06",
+  "tests": 116,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 1,
+  "seconds": 16.658,
+  "scope": "API, Qt offscreen, rules, native identity, recording, recovery, one-person splits; no webcam or active input hooks"
+}

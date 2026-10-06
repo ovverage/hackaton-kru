@@ -142,6 +142,7 @@ class WindowsGuard:
             raise OSError("Выбранное окно закрыто. Выберите его заново.")
         self.stop()
         self.target = target
+        self.teacher_requested = False
         self.original_rect = W.RECT()
         self.u.GetWindowRect(target.hwnd, C.byref(self.original_rect))
 
@@ -171,6 +172,9 @@ class WindowsGuard:
                 def down(key):
                     return bool(self.u.GetAsyncKeyState(key) & 0x8000)
 
+                if vk == 0x51 and down(0x11) and down(0x12):  # Ctrl+Alt+Q
+                    self.teacher_requested = True
+                    return 1
                 if not self.allowed(self.u.GetForegroundWindow()) or blocked_key(
                     vk,
                     ctrl=down(0x11),
@@ -210,6 +214,9 @@ class WindowsGuard:
     def tick(self, *, locked=False, overlays=()):
         self.locked = locked
         self.overlay_handles = set(overlays)
+        if getattr(self, "teacher_requested", False):
+            self.teacher_requested = False
+            return "TEACHER_REQUEST"
         if not self.target or not self.valid(self.target):
             return "TARGET_CLOSED"
         if self.u.GetSystemMetrics(0x1000):  # SM_REMOTESESSION

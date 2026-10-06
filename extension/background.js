@@ -1,11 +1,34 @@
 let connection = null;
 let active = false;
 let latest = null;
+let binding = null;
+let browserInstance = null;
+let identityPromise = null;
+function identify() {
+  if (!identityPromise) identityPromise = loadIdentity();
+  return identityPromise;
+}
+async function loadIdentity() {
+  const saved = await chrome.storage.local.get("qorgauBrowserInstance");
+  browserInstance = saved.qorgauBrowserInstance || crypto.randomUUID();
+  if (!saved.qorgauBrowserInstance) await chrome.storage.local.set({qorgauBrowserInstance: browserInstance});
+}
+chrome.runtime.onMessage.addListener((message, _sender, respond) => {
+  if (message.type !== "qorgau-identity") return;
+  identify().then(() => respond({instance: browserInstance}));
+  return true;
+});
+function send(message) {
+  if (connection && browserInstance) connection.postMessage({...message, browser_instance: browserInstance});
+}
 function connect() {
+  if (!browserInstance) { identify().then(connect); return; }
   if (connection) return;
   connection = chrome.runtime.connectNative("kz.qorgau.agent");
   connection.onMessage.addListener((message) => {
     const wasActive = active;
+    if (binding !== message.binding) latest = null;
+    binding = message.binding || null;
     active = !!message.active;
     if (!active) latest = null;
     if (active && !wasActive) observe().catch(() => {});
@@ -18,7 +41,9 @@ function connect() {
     chrome.action.setTitle({
       title: active
         ? "Qorgau: наблюдение идёт, системная блокировка недоступна"
-        : "Qorgau: сеанс не идёт",
+        : message.error === "BROWSER_PROFILE_MISMATCH"
+          ? "Qorgau: этот профиль браузера не привязан к агенту"
+          : "Qorgau: сеанс не идёт",
     });
   });
   connection.onDisconnect.addListener(() => {
@@ -28,13 +53,13 @@ function connect() {
     chrome.action.setBadgeText({ text: "?" });
     chrome.action.setTitle({ title: "Qorgau: нет связи с локальным агентом" });
   });
-  connection.postMessage({ type: "status" });
+  send({ type: "status" });
 }
 async function observe() {
   if (!connection) connect();
   if (!connection) return;
   if (!active) {
-    connection.postMessage({ type: "status" });
+    send({ type: "status" });
     return;
   }
   const window = await chrome.windows.getLastFocused();
@@ -45,8 +70,8 @@ async function observe() {
   const key = JSON.stringify(observation);
   if (key !== latest) {
     latest = key;
-    connection.postMessage({ type: "observation", observation });
-  } else connection.postMessage({ type: "status" });
+    send({ type: "observation", observation, binding });
+  } else send({ type: "status" });
 }
 chrome.tabs.onActivated.addListener(() => observe().catch(() => {}));
 chrome.tabs.onUpdated.addListener((_id, change, tab) => {

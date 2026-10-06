@@ -84,6 +84,7 @@ def live_agent(tmp_path):
             "title": "Exam",
             "group": "1",
             "room": "1",
+            "require_camera": False,
             "device_ids": [registered["device_id"]],
             "environment": {"kind": "APP", "target_id": "exam-app"},
         },
@@ -96,6 +97,7 @@ def live_agent(tmp_path):
     )
     with patch.object(agent, "launch_environment"):
         agent.sync()
+    assert agent.engine.state.lifecycle == "RUNNING"
     agent.security_event("ENVIRONMENT_ATTEMPT")
     agent.sync()
     yield agent, server
@@ -233,8 +235,8 @@ def test_windows_api_window_identity_smoke():
 def test_windows_hooks_can_start_and_release_on_a_test_window():
     import os
 
-    if os.name != "nt":
-        pytest.skip("Win32 hook lifecycle runs only in Windows CI")
+    if os.name != "nt" or os.getenv("QORGAU_TEST_INPUT_HOOKS") != "1":
+        pytest.skip("Set QORGAU_TEST_INPUT_HOOKS=1 only on a disposable Windows test desktop")
     import ctypes as c
     from ctypes import wintypes as w
     from agent.windows_guard import WindowsGuard
@@ -283,3 +285,56 @@ def test_windows_hooks_can_start_and_release_on_a_test_window():
     finally:
         guard.stop()
         guard.u.DestroyWindow(hwnd)
+
+
+def test_teacher_can_end_on_the_student_computer_even_with_camera_fault(live_agent):
+    agent, server = live_agent
+    agent.camera_fault = True
+    with pytest.raises(ValueError, match="Неверный пароль"):
+        agent.teacher_unlock("wrong-password", "END_AND_RELEASE")
+    assert agent.engine.state.lifecycle == "RUNNING"
+    agent.teacher_unlock("teacher-password", "END_AND_RELEASE")
+    assert agent.engine.state.lifecycle == "COMPLETED"
+    assert agent.engine.state.access == "OPEN"
+    device = server.get("/api/snapshot").json()["devices"][0]
+    assert device["state"]["lifecycle"] == "COMPLETED"
+    assert any(e["type"] == "ENVIRONMENT_ATTEMPT" for e in agent.snapshot()["recent_events"])
+
+
+def test_forged_completion_and_stale_release_cannot_clear_lock(live_agent):
+    agent, server = live_agent
+    forged = agent.engine.state.public()
+    forged.update(access="OPEN", lifecycle="COMPLETED", lock_id=None, reason=None, version=forged["version"] + 1)
+    response = agent.http.post("/api/agent/sync", json={"exam_id": agent.journal["exam_id"], "state": forged})
+    assert response.status_code == 409
+    assert server.get("/api/snapshot").json()["devices"][0]["state"]["access"] == "LOCKED"
+
+
+def test_retry_after_lost_release_ack_is_idempotent(live_agent):
+    agent, _ = live_agent
+    agent.teacher_unlock("teacher-password")
+    payload = {"exam_id": agent.journal["exam_id"], "state": agent.engine.state.public(), "acknowledgements": list(agent.journal["acks"])}
+    assert agent.http.post("/api/agent/sync", json=payload).status_code == 200
+    assert agent.http.post("/api/agent/sync", json=payload).status_code == 200
+    agent.sync()
+    assert agent.engine.state.epoch == 2
+
+
+def test_prepared_camera_survives_first_and_next_assignment(tmp_path):
+    from unittest.mock import Mock
+    atomic_json(tmp_path / "config.json", {"server": "http://testserver", "token": "fixture"})
+    assignments = iter(["one", "two"])
+    transport = httpx.MockTransport(lambda _: httpx.Response(200, json={"exam_id": next(assignments), "environment": {}, "commands": []}))
+    agent = Agent(tmp_path, transport=transport)
+    for _ in range(2):
+        camera, recorder = Mock(), Mock()
+        recorder.completed.return_value = []
+        agent.camera, agent.recorder = camera, recorder
+        agent.capabilities.update(camera=True, recording=True)
+        agent.sync()
+        assert agent.camera is camera and agent.capabilities["camera"]
+        camera.close.assert_not_called()
+        recorder.reset_session.assert_called_once_with(agent.journal["exam_id"])
+        agent.engine.start()
+        agent.engine.end()
+    agent.http.close()

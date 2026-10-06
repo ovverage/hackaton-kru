@@ -249,3 +249,73 @@ def test_no_tray_fallback_and_first_setup_stay_accessible(application, tmp_path)
     assert window.isMinimized() and not window.stop.is_set()
     window.request_exit()
     agent.http.close()
+
+
+def test_preconfigured_desktop_enrolls_without_fields_and_reuses_credentials(
+    application, tmp_path
+):
+    from PySide6.QtTest import QTest
+    from agent.desktop import StudentWindow
+
+    bootstrap = {
+        "server": "http://localhost:8000",
+        "room": "301",
+        "account_id": "teacher",
+    }
+    config = {
+        "server": bootstrap["server"],
+        "token": "test",
+        "name": "301 · PC",
+        "targets": [],
+    }
+
+    def register(folder, _bootstrap):
+        atomic_json(folder / "config.json", config)
+        return config
+
+    with patch("agent.desktop.auto_enroll", side_effect=register) as enroll_mock:
+        window = StudentWindow(tmp_path, bootstrap=bootstrap, run_worker=False)
+        assert not hasattr(window, "code_input") and not hasattr(window, "server_input")
+        for _ in range(100):
+            QTest.qWait(10)
+            if window.agent:
+                break
+        assert window.agent is not None and window.pages.currentIndex() == 1
+        assert enroll_mock.call_count == 1
+        window.enrollment.wait(1000)
+        window.request_exit()
+        window.agent.http.close()
+        reopened = StudentWindow(tmp_path, bootstrap=bootstrap, run_worker=False)
+        assert reopened.agent is not None and not reopened.retry_timer.isActive()
+        assert enroll_mock.call_count == 1
+        reopened.request_exit()
+        reopened.agent.http.close()
+
+
+def test_automatic_enrollment_retries_network_errors_only(application, tmp_path):
+    from PySide6.QtTest import QTest
+    from agent.desktop import StudentWindow
+    from agent.provision import EnrollmentUnavailable
+
+    bootstrap = {
+        "server": "http://localhost:8000",
+        "room": "301",
+        "account_id": "teacher",
+    }
+    with patch(
+        "agent.desktop.auto_enroll", side_effect=EnrollmentUnavailable("Нет связи")
+    ):
+        window = StudentWindow(tmp_path, bootstrap=bootstrap, run_worker=False)
+        QTest.qWait(100)
+        window.enrollment.wait(1000)
+        QTest.qWait(20)
+        assert window.retry_timer.isActive()
+        window.retry_timer.stop()
+    with patch("agent.desktop.auto_enroll", side_effect=ValueError("Пакет отключён")):
+        window.register()
+        window.enrollment.wait(1000)
+        QTest.qWait(20)
+        assert not window.retry_timer.isActive()
+        assert window.connect_button.isEnabled()
+        assert "отключён" in window.setup_error.text()
+    window.request_exit()

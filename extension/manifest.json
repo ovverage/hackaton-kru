@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Qorgau · наблюдение за браузером",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Передаёт локальному агенту активный сайт и факт выхода из браузера во время сеанса контроля.",
-  "permissions": ["nativeMessaging", "tabs", "alarms"],
+  "permissions": ["nativeMessaging", "tabs", "alarms", "storage"],
+  "options_page": "setup.html",
   "background": { "service_worker": "background.js" },
   "action": { "default_title": "Qorgau · наблюдение" }
 }

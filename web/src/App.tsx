@@ -1,4 +1,5 @@
 import Classroom from "./Classroom";
+import StudentPackages from "./StudentPackages";
 import { useEffect, useState, type ReactNode, type FormEvent } from "react";
 import {
   ShieldCheck,
@@ -229,6 +230,7 @@ export default function App() {
     [toast, setToast] = useState(""),
     [busy, setBusy] = useState(false);
   const [examId, setExamId] = useState(""),
+    [studentPackagesOpen, setStudentPackagesOpen] = useState(false),
     [newExam, setNewExam] = useState(false),
     [deviceId, setDeviceId] = useState<string | null>(null),
     [eventId, setEventId] = useState<string | null>(null),
@@ -363,6 +365,8 @@ export default function App() {
           {nav.map((n) => (
             <button
               key={n.id}
+              aria-label={n.name}
+              title={n.name}
               onClick={() => setPage(n.id)}
               className={page === n.id ? "active" : ""}
             >
@@ -452,13 +456,9 @@ export default function App() {
               <button
                 className="btn primary"
                 disabled={busy}
-                onClick={() =>
-                  run(async () =>
-                    setPairCode((await api("/pairings", {})).code),
-                  )
-                }
+                onClick={() => setStudentPackagesOpen(true)}
               >
-                <Link2 size={18} /> Подключить компьютер
+                <Download size={18} /> EXE для аудитории
               </button>
             )}
           </div>
@@ -724,8 +724,8 @@ export default function App() {
               <div className="notice">
                 <Monitor size={18} />
                 <span>
-                  Агент устанавливается на каждый компьютер. Подключение по
-                  одноразовому коду, действующему 5 минут.
+                  Подготовьте EXE для аудитории и передайте его студентам. После
+                  запуска компьютер подключится автоматически, без ввода кода.
                 </span>
               </div>
               {data.devices.length === 0 ? (
@@ -739,6 +739,7 @@ export default function App() {
                         <th>Связь</th>
                         <th>Доступная среда</th>
                         <th>Возможности</th>
+                        <th>Доступ</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -768,12 +769,28 @@ export default function App() {
                                 ? "Камера · наблюдение"
                                 : "Наблюдение без камеры"}
                           </td>
+                          <td>
+                            {d.revoked_at ? "Отозван" : !d.simulated && (
+                              <button className="btn" disabled={busy || d.state.lifecycle === "RUNNING"} onClick={() => ask(d, "REVOKE")}>Отозвать доступ</button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               )}
+              <button
+                className="btn demo-add"
+                disabled={busy}
+                onClick={() =>
+                  run(async () =>
+                    setPairCode((await api("/pairings", {})).code),
+                  )
+                }
+              >
+                <Link2 size={16} /> Подключить вручную по коду
+              </button>
               <button
                 className="btn demo-add"
                 disabled={busy}
@@ -793,7 +810,7 @@ export default function App() {
               <div className="notice">
                 <ShieldCheck size={18} />
                 <span>
-                  Правила версии 2.0 зафиксированы для прототипа. Пороговые
+                  Правила версии 3.0 зафиксированы для прототипа. Пороговые
                   значения видны ученику и преподавателю.
                 </span>
               </div>
@@ -819,6 +836,16 @@ export default function App() {
                   text="Три коротких эпизода за минуту общей длительностью от 6 секунд отправляются преподавателю. Не добавляют баллы за взгляд."
                 />
                 <Rule
+                  icon={<Users />}
+                  title="Лицо не видно"
+                  text="Отсутствие лица от 3 секунд направляется на проверку; после 10 секунд возникает техническая причина приостановки. Это не автоматическое обвинение в нарушении."
+                />
+                <Rule
+                  icon={<Smartphone />}
+                  title="Вероятное наведение телефона"
+                  text="Подъём и удержание телефона отмечаются отдельной эвристикой для ручной проверки. Направление объектива и факт снимка не определяются."
+                />
+                <Rule
                   icon={<UnlockKeyhole />}
                   title="Продолжение только по решению"
                   text="Возврат взгляда и отклонение события не снимают блокировку. Преподаватель разрешает продолжить с указанием причины. Начинается новый цикл счётчиков, история остаётся."
@@ -826,7 +853,7 @@ export default function App() {
                 <Rule
                   icon={<Monitor />}
                   title="Внешний тест, отдельный контроль"
-                  text="Перед стартом выбираются доступный браузер и адрес сайта либо приложение. В текущей сборке доступно наблюдение; строгая защита Windows ещё не реализована."
+                  text="Перед стартом выберите сайт или приложение. На Windows доступно ограничение одного окна и горячих клавиш; для сайта выберите Qorgau Browser."
                 />
               </div>
             </>
@@ -836,7 +863,7 @@ export default function App() {
               <ShieldCheck size={14} /> Qorgau · Локальный контроль, осознанные
               решения
             </span>
-            <span>Qorgau 0.3.1 · Локальный контроль экзамена</span>
+            <span>Qorgau 0.4.0 · Локальный контроль экзамена</span>
           </footer>
         </main>
       </div>
@@ -1025,6 +1052,15 @@ export default function App() {
           notify={setToast}
         />
       )}
+      {studentPackagesOpen && (
+        <Modal
+          title="EXE для аудитории"
+          subtitle="Скачать, открыть — компьютер подключён"
+          onClose={() => setStudentPackagesOpen(false)}
+        >
+          <StudentPackages />
+        </Modal>
+      )}
       {pairCode && (
         <Modal
           title="Подключение компьютера"
@@ -1064,7 +1100,7 @@ export default function App() {
       {action && (
         <Modal
           title={
-            action.type === "UNLOCK"
+            action.type === "REVOKE" ? "Отозвать доступ компьютера?" : action.type === "UNLOCK"
               ? "Разрешить продолжить?"
               : action.type === "LOCK"
                 ? "Заблокировать ученика?"
@@ -1078,13 +1114,14 @@ export default function App() {
             onSubmit={(e) => {
               e.preventDefault();
               run(async () => {
-                await command(action.device, action.type, reason);
+                if (action.type === "REVOKE") await api(`/devices/${action.device.id}/revoke`, { reason });
+                else await command(action.device, action.type, reason);
                 setAction(null);
               }, "Решение отправлено и записано в журнал");
             }}
           >
             <p>
-              {action.type === "UNLOCK"
+              {action.type === "REVOKE" ? "Сохранённый токен компьютера перестанет работать. История сеансов сохранится; для нового подключения понадобится новая регистрация." : action.type === "UNLOCK"
                 ? "Начнётся новый цикл трёх счётчиков. Все события и решения сохранятся в истории."
                 : action.type === "END_AND_RELEASE"
                   ? "Контроль этого ученика завершится, блокировка будет снята. Внешний тест автоматически не отправляется."
@@ -1585,13 +1622,16 @@ function EventReview({
                 ))}
               </select>
             )}
+            {e.media[index]?.complete === false && (
+              <p role="status">Запись неполная: отсутствует часть нужного интервала. Разрывы: {e.media[index]?.gaps?.map(([a, b]) => `${a.toFixed(1)}–${b.toFixed(1)} с`).join(", ") || "начало или конец фрагмента"}.</p>
+            )}
           </>
         ) : (
           <div className="video-empty">
             <Video size={34} />
             <h3>Запись не прикреплена</h3>
             <p>
-              {e.simulated
+              {e.media_expired_at ? "Срок хранения записи истёк. Событие и решения сохранены." : e.simulated
                 ? "Это искусственный сценарий. Для проверки проигрывателя можно прикрепить тестовый фрагмент."
                 : "Агент ещё не передал фрагмент. Решение доступно, но визуального подтверждения пока нет."}
             </p>
@@ -1625,6 +1665,16 @@ function EventReview({
           Время указано от начала контроля. Автоматическое событие — основание
           для проверки; оно не является доказательством нарушения само по себе.
         </p>
+        <p className="fine">Записи завершённых сеансов хранятся 7 дней.{e.retain_until ? ` Срок продлён до ${new Date(e.retain_until * 1000).toLocaleDateString("ru")}.` : ""}</p>
+        <button className="btn" disabled={busy || !reason.trim()} onClick={async () => {
+          setBusy(true);
+          try {
+            await api(`/events/${e.id}/retain`, { days: 7, reason: reason.trim() });
+            await onUpdate();
+            notify("Запись сохранится ещё минимум 7 дней");
+          } catch (error) { notify((error as Error).message); }
+          finally { setBusy(false); }
+        }}>Продлить хранение на 7 дней</button>
         <label>
           Комментарий к решению
           <textarea

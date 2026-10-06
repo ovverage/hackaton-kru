@@ -1,0 +1,39 @@
+{
+  "kind": "isolated synthetic mixed traffic; one physical host; no webcam or real-clip bitrate claim",
+  "seconds": 122.01,
+  "clients": 50,
+  "heartbeat_seconds": 2,
+  "ordinary_requests": 3074,
+  "ordinary_p95_ms": 214.69,
+  "failures": [],
+  "failure_count": 0,
+  "event_burst": 50,
+  "uploaded_clips": 50,
+  "clip_bytes": 6378325,
+  "uploaded_bytes": 318916250,
+  "max_parallel_uploads": 2,
+  "websocket_reconnections": 12,
+  "redelivered_commands": 50,
+  "status": "PASS",
+  "server_process_tree": [
+    {
+      "Id": 12908,
+      "CPU": 13.09375,
+      "WorkingSet64": 61308928,
+      "PeakWorkingSet64": 123949056
+    },
+    {
+      "Id": 15732,
+      "CPU": 0,
+      "WorkingSet64": 4210688,
+      "PeakWorkingSet64": 4243456
+    }
+  ],
+  "resource_note": "Includes venv launcher and descendants; CPU cumulative seconds; working set at finish and per-process peak, not 30-minute agent metrics",
+  "host": {
+    "system": "Windows-11-10.0.28000-SP0",
+    "cpu": "AMD64 Family 23 Model 113 Stepping 0, AuthenticAMD",
+    "logical_cpus": 16
+  },
+  "data_bytes": 319207066
+}

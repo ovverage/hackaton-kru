@@ -1,0 +1,14 @@
+[Unit]
+Description=Expire Qorgau video after its retention period
+
+[Service]
+Type=oneshot
+User=qorgau
+Group=qorgau
+WorkingDirectory=/opt/qorgau/current
+ExecStart=/opt/qorgau/venv/bin/python -m backend.proctor.retention --data /var/lib/qorgau --days 7 --apply
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/qorgau

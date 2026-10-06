@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass, field, asdict
 from uuid import uuid4
+from .version import RULE_VERSION
 
 DIRECTIONS = ("DOWN", "LEFT", "RIGHT")
 
@@ -84,6 +85,8 @@ class RuleEngine:
         self.short_episodes = deque()
         self.last_frequent = -1e10
         self.active_event = None
+        self.duration_events = {}
+        self.absence_blocked = False
 
     def event(self, kind, t, **extra):
         return {
@@ -94,7 +97,7 @@ class RuleEngine:
             "epoch": self.state.epoch,
             "direction": None,
             "category": "REVIEW",
-            "rule_version": "2.0",
+            "rule_version": RULE_VERSION,
             **extra,
         }
 
@@ -128,6 +131,8 @@ class RuleEngine:
             raise ValueError("STATE_CONFLICT")
         if self.phone_present:
             raise ValueError("PHONE_STILL_PRESENT")
+        if self.absent_start is not None:
+            raise ValueError("FACE_STILL_ABSENT")
         self.state.access = "OPEN"
         self.state.reason = None
         self.state.lock_id = None
@@ -151,14 +156,18 @@ class RuleEngine:
                 if n >= 3:
                     self.lock("GAZE_" + d)
 
-    def observe(self, t: float, direction="SCREEN", phone_confidence=0.0, faces=1):
+    def observe(self, t: float, direction="SCREEN", phone_confidence=0.0, faces=1, phone_aiming=False):
         if self.state.lifecycle != "RUNNING":
             return []
         if self.last_t is not None and t < self.last_t:
             raise ValueError("NON_MONOTONIC_TIME")
         dt = 0.0 if self.last_t is None else t - self.last_t
+        gap_event = None
         # No extrapolation across a missing capture interval.
         if dt > 0.5:
+            if self.active_event:
+                gap_event = {"id": self.active_event, "update": True, "end": self.last_t}
+                self.active_event = None
             self.seconds = 0.0
             self.candidate = None
             self.screen_start = None
@@ -169,21 +178,27 @@ class RuleEngine:
             self.phone_samples.clear()
             dt = 0.0
         self.last_t = t
-        events = []
+        events = [gap_event] if gap_event else []
+        if phone_aiming and phone_confidence >= .65:
+            events.append(self.event("PHONE_AIM_REVIEW", t, start=max(0, t - 2.5),
+                                     confidence=phone_confidence, detail="Подъём и удержание телефона: возможная попытка съёмки; факт фотографии не установлен"))
+        def close_interval(key, end):
+            event_id = self.duration_events.pop(key, None)
+            if event_id:
+                events.append({"id": event_id, "update": True, "end": end})
+
+        def interval(key, kind, **fields):
+            event = self.event(kind, t, ongoing=True, **fields)
+            self.duration_events[key] = event["id"]
+            events.append(event)
+
         self.phone_samples.append((t, phone_confidence >= 0.65))
         present = sum(yes and t - ts <= 0.6 for ts, yes in self.phone_samples) >= 2
         if present:
             self.phone_clear_at = None
             if not self.phone_present:
-                events.append(
-                    self.event(
-                        "PHONE_DETECTED",
-                        t,
-                        start=t,
-                        category="CRITICAL",
-                        confidence=phone_confidence,
-                    )
-                )
+                interval("phone", "PHONE_DETECTED", start=t,
+                         category="CRITICAL", confidence=phone_confidence)
                 self.lock("PHONE_DETECTED")
                 self.phone_present = True
         elif phone_confidence < 0.65:
@@ -191,28 +206,38 @@ class RuleEngine:
                 self.phone_clear_at = t
             if t - self.phone_clear_at >= 1:
                 self.phone_present = False
+                close_interval("phone", self.phone_clear_at)
         if faces == 0:
             if self.absent_start is None:
                 self.absent_start = t
-            if t - self.absent_start >= 5 and not self.absent_active:
-                events.append(
-                    self.event("FACE_ABSENCE_REVIEW", t, start=self.absent_start)
-                )
+            if t - self.absent_start >= 3 - 1e-9 and not self.absent_active:
+                interval("absence", "FACE_ABSENCE_REVIEW", start=self.absent_start)
                 self.absent_active = True
+            if t - self.absent_start >= 10 - 1e-9 and not self.absence_blocked:
+                events.append(self.event("FACE_ABSENCE_TECHNICAL", t,
+                                         start=self.absent_start, category="TECHNICAL"))
+                self.lock("FACE_ABSENCE_TECHNICAL")
+                self.absence_blocked = True
         else:
+            close_interval("absence", t)
             self.absent_start = None
             self.absent_active = False
+            self.absence_blocked = False
         if faces >= 2:
             if self.second_start is None:
                 self.second_start = t
             if t - self.second_start >= 1 and not self.second_active:
-                events.append(
-                    self.event("SECOND_FACE_REVIEW", t, start=self.second_start)
-                )
+                interval("second", "SECOND_FACE_REVIEW", start=self.second_start)
                 self.second_active = True
         else:
+            close_interval("second", t)
             self.second_start = None
             self.second_active = False
+        if faces != 1:
+            direction = "UNKNOWN"
+        if self.active_event and direction not in (self.previous, "SCREEN"):
+            events.append({"id": self.active_event, "update": True, "end": t})
+            self.active_event = None
         if direction == "SCREEN":
             self.candidate = None
             self.seconds = 0.0
@@ -280,6 +305,7 @@ class RuleEngine:
                     direction=direction,
                     start=self.candidate_start,
                     category="GAZE_STRIKE",
+                    ongoing=True,
                     duration=round(self.seconds, 3),
                 )
                 self.state.strikes.append(
@@ -298,6 +324,9 @@ class RuleEngine:
                     self.lock("GAZE_" + direction)
         else:
             self.screen_start = None
+            # UNKNOWN is never evidence of a continuous, confident departure.
+            self.candidate = None
+            self.seconds = 0
             if self.unknown_start is None:
                 self.unknown_start = t
             if t - self.unknown_start > 0.5:

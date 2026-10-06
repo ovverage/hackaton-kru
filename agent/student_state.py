@@ -1,12 +1,14 @@
 """Student-facing interpretation of agent state; never changes exam access."""
 
 REASONS = {
+    "TEACHER_REQUEST": "Открыта панель преподавателя. Для продолжения или завершения нужен его пароль.",
     "GAZE_DOWN": "Три длительных отвлечения вниз.",
     "GAZE_LEFT": "Три длительных отвлечения влево.",
     "GAZE_RIGHT": "Три длительных отвлечения вправо.",
     "PHONE_DETECTED": "Камера обнаружила телефон.",
     "TEACHER_LOCK": "Преподаватель приостановил контроль.",
     "CAMERA_UNAVAILABLE": "Не удалось получить или сохранить видео камеры.",
+    "FACE_ABSENCE_TECHNICAL": "Лицо не было видно 10 секунд. Вернитесь в кадр и дождитесь преподавателя.",
     "AGENT_RESTARTED": "Приложение было перезапущено во время контроля.",
     "AGENT_FAILURE": "Агент остановился из-за технической ошибки.",
     "TARGET_CLOSED": "Главное окно теста закрыто или заменено.",
@@ -62,7 +64,7 @@ def present(snapshot):
         "tone": tone,
         "badge": badge,
         "can_open": lifecycle == "RUNNING" and not locked,
-        "can_calibrate": lifecycle != "RUNNING"
+        "can_calibrate": (lifecycle != "RUNNING" or (locked and state.get("reason") in ("AGENT_RESTARTED", "CAMERA_UNAVAILABLE")))
         and not snapshot.get("camera_preparing", False),
         "locked": locked,
         "complete": lifecycle == "COMPLETED",

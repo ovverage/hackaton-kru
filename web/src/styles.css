@@ -1306,6 +1306,60 @@ td small {
   color: #536a95;
   font-variant-numeric: tabular-nums;
 }
+.student-packages form {
+  display: grid;
+  gap: 16px;
+}
+.student-packages label {
+  margin: 0;
+}
+.student-packages > p {
+  margin-bottom: 18px;
+}
+.package-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.package-download {
+  margin: 22px 0;
+  padding: 20px;
+  background: #edf3fe;
+  border: 1px solid #d4e0f5;
+  border-radius: 12px;
+  display: grid;
+  gap: 14px;
+}
+.package-download h3,
+.package-list h3 {
+  font-size: 15px;
+}
+.package-list {
+  display: grid;
+  gap: 12px;
+}
+.package-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-top: 1px solid #e1e6f0;
+}
+.package-row p {
+  margin: 5px 0 0;
+  color: #75839c;
+  font-size: 12px;
+}
+@media (max-width: 600px) {
+  .package-fields {
+    grid-template-columns: 1fr;
+  }
+  .package-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
 .toast {
   position: fixed;
   bottom: 26px;

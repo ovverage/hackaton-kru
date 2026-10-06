@@ -1,13 +1,4 @@
-# Direct binary/runtime versions used for the Windows hackathon build.
-# Torch CPU wheels are installed from the official PyTorch CPU index first.
+# Windows x64 / Python 3.12. Training uses a separate environment.
 -r requirements-core.lock
-PySide6==6.11.2
-PyInstaller==6.22.3
-pyinstaller-hooks-contrib==2026.8
-opencv-python==4.14.0.94
-opencv-contrib-python==4.14.0.94
-mediapipe==0.10.35
-ultralytics==8.4.173
-imageio-ffmpeg==0.6.0
-numpy==2.5.3
+-r requirements-student.lock
 pytest==9.1.1

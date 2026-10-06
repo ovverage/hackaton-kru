@@ -16,18 +16,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
 )
 from .client import atomic_json
-
-POSITIONS = [
-    ("SCREEN", "Смотрите в центр экрана"),
-    ("SCREEN_LEFT", "Смотрите на левый край экрана"),
-    ("SCREEN_RIGHT", "Смотрите на правый край экрана"),
-    ("SCREEN_TOP", "Смотрите на верхний край экрана"),
-    ("SCREEN_BOTTOM", "Смотрите на нижний край экрана"),
-    ("DOWN", "Посмотрите вниз, под экран"),
-    ("LEFT", "Посмотрите влево от себя"),
-    ("RIGHT", "Посмотрите вправо от себя"),
-]
-
+from .behavior import POSITIONS
 
 class CalibrationWorker(QThread):
     frame = Signal(QImage)
@@ -46,12 +35,11 @@ class CalibrationWorker(QThread):
         self.error = ""
 
     def run(self):
-        camera = recorder = None
+        camera = None
         try:
-            from .vision import Camera, ClipRecorder
+            from .vision import Camera
 
             self.message.emit("Загружаем локальные модели и открываем камеру…")
-            recorder = ClipRecorder(self.folder / "clips")
             camera = Camera(self.index, self.phone, self.face, calibrate=False)
             for index, (key, prompt) in enumerate(POSITIONS):
                 self.collect.clear()
@@ -86,8 +74,8 @@ class CalibrationWorker(QThread):
             camera.validate_calibration()
             if self.stop.is_set():
                 return
-            self.result = (camera, recorder)
-            camera = recorder = None
+            self.result = camera
+            camera = None
         except ImportError:
             self.error = "Модули распознавания не установлены в этой сборке. Сотруднику нужно установить зависимости CV и локальные модели. Камера не подготовлена."
         except Exception as error:
@@ -95,8 +83,6 @@ class CalibrationWorker(QThread):
         finally:
             if camera:
                 camera.close()
-            if recorder:
-                recorder.close()
 
 
 class CameraSetup(QDialog):
@@ -119,13 +105,11 @@ class CameraSetup(QDialog):
         layout.addWidget(label("Подготовка камеры", "title"))
         layout.addWidget(
             label(
-                "Камера включится после нажатия кнопки. Восемь позиций отделяют чтение краёв экрана от отвлечения за его пределы. Калибровка не отправляется на сервер.",
+                "Камера включится после нажатия кнопки. Сначала посмотрим в центр и на края экрана, затем за его пределы. Анализ выполняется на этом ПК, без записи звука. Преподаватель получает события и видеофрагменты для проверки экзамена. Видео хранится 7 дней; преподаватель может продлить разбор инцидента. Локальная копия удаляется после отправки. Резервные копии сервера хранятся ещё до 7 дней.",
                 "body",
             )
         )
         settings = agent.config.get("camera_settings", {})
-        from .resources import model_path
-
         row = QHBoxLayout()
         row.addWidget(label("Номер камеры", "field"))
         self.index = QSpinBox()
@@ -134,21 +118,20 @@ class CameraSetup(QDialog):
         row.addWidget(self.index)
         row.addStretch()
         layout.addLayout(row)
-        self.phone = self.path_field(
-            layout,
-            "Модель телефона (.pt)",
-            settings.get("phone_model", str(model_path("yolo11n.pt"))),
-            "YOLO model (*.pt)",
-        )
-        self.face = self.path_field(
-            layout,
-            "Модель лиц (.task)",
-            settings.get("face_model", str(model_path("face_landmarker.task"))),
-            "MediaPipe model (*.task)",
-        )
+        from .resources import verified_models
+        self.model_error = ""
+        try:
+            phone, face = verified_models()
+        except ValueError as error:
+            phone = face = ""
+            self.model_error = str(error)
+        self.phone = QLineEdit(str(phone))
+        self.face = QLineEdit(str(face))
+        self.phone.hide()
+        self.face.hide()
         layout.addWidget(
             label(
-                "Файлы моделей один раз выбирает сотрудник аудитории. Используйте только подготовленные локальные модели.",
+                self.model_error or "Модели проверены. Анализ выполняется на этом компьютере без внешнего сервиса распознавания.",
                 "small",
             )
         )
@@ -214,23 +197,25 @@ class CameraSetup(QDialog):
         face = Path(self.face.text().strip())
         if not phone.is_file() or not face.is_file():
             self.feedback.setText(
-                "Выберите существующие файлы обеих моделей. Камера пока не включена."
+                self.model_error or "Не найден комплект моделей. Повторно скачайте полную сборку."
             )
             return
         with self.agent.mutex:
-            if self.agent.engine.state.lifecycle == "RUNNING":
+            state = self.agent.engine.state
+            recoverable = state.access == "LOCKED" and state.reason in ("AGENT_RESTARTED", "CAMERA_UNAVAILABLE")
+            if state.lifecycle == "RUNNING" and not recoverable:
                 self.feedback.setText(
                     "Сеанс уже начался. Подготовку камеры нужно выполнить до старта."
                 )
                 return
             self.agent.camera_preparing = True
             self.preparing = True
+            if self.agent.capture_pump:
+                self.agent.capture_pump.close()
+                self.agent.capture_pump = None
             if self.agent.camera:
                 self.agent.camera.close()
                 self.agent.camera = None
-            if self.agent.recorder:
-                self.agent.recorder.close()
-                self.agent.recorder = None
             self.agent.capabilities.update(camera=False, recording=False)
         self.start_button.setEnabled(False)
         self.phone.setEnabled(False)
@@ -255,9 +240,7 @@ class CameraSetup(QDialog):
         )
 
     def phase(self, index, n, valid):
-        self.instruction.setText(
-            f"Шаг {index + 1} из {len(POSITIONS)}. {POSITIONS[index][1]}"
-        )
+        self.instruction.setText(f"Шаг {index + 1} из {len(POSITIONS)}. {POSITIONS[index][1]}")
         self.progress.setValue(round((index * 25 + n) / (len(POSITIONS) * 25) * 100))
         self.capture.show()
         self.capture.setEnabled(valid and not self.worker.collect.is_set())
@@ -279,18 +262,31 @@ class CameraSetup(QDialog):
             self.agent.camera_preparing = False
             self.preparing = False
             if self.worker.result:
-                camera, recorder = self.worker.result
-                if self.cancelled or self.agent.engine.state.lifecycle == "RUNNING":
+                camera = self.worker.result
+                if self.cancelled or (self.agent.engine.state.lifecycle == "RUNNING" and self.agent.engine.state.access != "LOCKED"):
                     camera.close()
-                    recorder.close()
                 else:
+                    from .recording import ClipRecorder
+                    try:
+                        recorder = self.agent.recorder or ClipRecorder(self.agent.folder / "clips")
+                    except (OSError, ValueError) as error:
+                        camera.close()
+                        self.worker.error = str(error)
+                        self.feedback.setText(str(error))
+                        self.start_button.setEnabled(True)
+                        return
                     self.agent.camera = camera
                     self.agent.recorder = recorder
+                    self.agent.collect_media(float("inf"))
+                    recorder.reset_session(self.agent.journal.get("exam_id"))
+                    if recorder.last_t is not None:
+                        import time
+                        self.agent.origin = min(self.agent.origin, time.monotonic() - recorder.last_t - .1)
                     self.agent.camera_fault = False
                     self.agent.capabilities.update(
                         camera=True,
                         recording=True,
-                        vision="experimental-calibrated-iris",
+                        vision="yolo11n-onnx/mediapipe-personal-calibration",
                     )
                     self.agent.config["camera_settings"] = {
                         "index": self.index.value(),
