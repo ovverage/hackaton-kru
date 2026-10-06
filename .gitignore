@@ -16,3 +16,10 @@ models/
 
 build/
 dist/
+.venv-*/
+data/
+training/runs/
+artifacts/
+*.pt
+*.task
+*.onnx

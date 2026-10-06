@@ -37,6 +37,29 @@ command = [
 if not args.with_cv:
     for module in ("cv2", "numpy", "ultralytics", "mediapipe", "torch", "torchvision"):
         command.extend(["--exclude-module", module])
+else:
+    for model in ("yolo11n.pt", "face_landmarker.task"):
+        if not (root / "models" / model).is_file():
+            parser.error("Сначала выполните python scripts/fetch_models.py")
+    command.extend(["--add-data", str(root / "models") + ":models"])
+    for module in ("mediapipe", "ultralytics"):
+        command.extend(["--collect-data", module])
+    command.extend(
+        ["--collect-binaries", "mediapipe", "--collect-all", "imageio_ffmpeg"]
+    )
+    # Do not import every training/tracking module while building the inference client.
+    for module in (
+        "pytest",
+        "sklearn",
+        "IPython",
+        "notebook",
+        "tensorflow",
+        "jax",
+        "tkinter",
+    ):
+        command.extend(["--exclude-module", module])
+# QWebEngine resources and helpers are collected by PyInstaller's Qt hook.
+command.extend(["--hidden-import", "PySide6.QtWebEngineWidgets"])
 command.append(str(root / "agent" / "student_entry.py"))
 subprocess.run(command, cwd=root, check=True)
 print("Приложение собрано:", root / "dist" / "Qorgau-Student")

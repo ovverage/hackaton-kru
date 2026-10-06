@@ -1,4 +1,4 @@
-"""Local observation agent. No claim of operating-system enforcement."""
+"""Local proctoring agent; optional Windows guard is owned by the GUI thread."""
 
 from __future__ import annotations
 
@@ -134,6 +134,10 @@ class Agent:
         self.browser_seen = None
         self.last_browser_event = {}
         self.mutex = threading.RLock()
+        self.sync_mutex = threading.RLock()
+        self.guard_target = None
+        self.guard_started_at = None
+        self.last_security_event = {}
         # A crashed/restarted active agent must not silently resume an unobserved exam.
         if self.engine.state.lifecycle == "RUNNING":
             self.engine.lock("AGENT_RESTARTED")
@@ -167,13 +171,23 @@ class Agent:
             if kind == "START":
                 if self.camera_preparing:
                     raise ValueError("CAMERA_PREPARING")
+                if self.guarded:
+                    if not self.capabilities.get("window_guard"):
+                        raise ValueError("WINDOW_GUARD_UNAVAILABLE")
+                    if not self.camera or not self.recorder:
+                        raise ValueError("CAMERA_REQUIRED")
                 self.launch_environment()
                 self.engine.start()
+                self.guard_started_at = time.monotonic()
             elif kind == "LOCK":
                 self.engine.lock("TEACHER_LOCK")
             elif kind == "UNLOCK":
                 if self.camera_fault:
                     raise ValueError("CAMERA_UNAVAILABLE")
+                if self.guarded and not self.capabilities.get("guard_active"):
+                    raise ValueError("WINDOW_GUARD_UNAVAILABLE")
+                if self.guarded and self.capabilities.get("guard_fault"):
+                    raise ValueError(self.capabilities["guard_fault"])
                 self.engine.unlock(command.get("lock_id"), command["expected_version"])
             elif kind == "END_AND_RELEASE":
                 self.engine.end()
@@ -206,17 +220,53 @@ class Agent:
         )
         if not target:
             raise ValueError("TARGET_UNAVAILABLE")
+        if target.get("window"):
+            from .windows_guard import WindowsGuard, WindowTarget
+
+            selected = WindowTarget(**target["window"])
+            if not WindowsGuard().valid(selected):
+                raise ValueError("TARGET_UNAVAILABLE")
+            self.guard_target = selected.public()
+            return
+        if target["id"] == "qorgau-browser":
+            from .exam_browser import origin
+
+            if not origin(env.get("url", "")):
+                raise ValueError("INVALID_URL")
+            self.guard_target = {"builtin_url": env["url"]}
+            return
         args = [target["executable"]]
         if target["kind"] == "BROWSER":
             url = env.get("url", "")
             if urlparse(url).scheme not in ("http", "https"):
                 raise ValueError("INVALID_URL")
+            if self.guarded:
+                args.extend(
+                    [
+                        "--new-window",
+                        "--kiosk",
+                        "--no-first-run",
+                        "--user-data-dir=" + str(self.folder / "exam-browser"),
+                    ]
+                )
             args.append(url)
-        subprocess.Popen(
+        process = subprocess.Popen(
             args, shell=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
+        self.guard_target = {
+            "launched_pid": process.pid,
+            "executable": target["executable"],
+        }
 
     def sync(self):
+        with self.sync_mutex:
+            self._sync()
+
+    @property
+    def guarded(self):
+        return (self.environment or {}).get("guarded", False)
+
+    def _sync(self):
         with self.mutex:
             sent_events = list(self.journal["events"])
             sent_acks = list(self.journal["acks"])
@@ -226,7 +276,8 @@ class Agent:
                 "events": sent_events[:100],
                 "acknowledgements": sent_acks[:100],
                 "targets": [
-                    {k: t[k] for k in ("id", "name", "kind")} for t in self.targets
+                    {k: t[k] for k in ("id", "name", "kind", "guardable") if k in t}
+                    for t in self.targets
                 ],
                 "capabilities": self.capabilities.copy(),
             }
@@ -242,6 +293,8 @@ class Agent:
                     raise ValueError("Нельзя сменить сеанс до синхронизации событий")
                 self.engine = RuleEngine()
                 self.journal.update(exam_id=config["exam_id"], reviews={}, processed={})
+                self.journal["recent_events"] = []
+                self.guard_target = None
                 self.origin = time.monotonic()
                 if self.recorder:
                     self.recorder.frames.clear()
@@ -252,6 +305,61 @@ class Agent:
             self.last_synced_at = time.monotonic()
             self.session = config.get("session")
             self.save()
+
+    def remember(self, events):
+        """Keep lock evidence after the delivery queue has been acknowledged."""
+        recent = self.journal.setdefault("recent_events", [])
+        for event in events:
+            old = next((e for e in recent if e["id"] == event["id"]), None)
+            if old:
+                old.update(event)
+            elif not event.get("update"):
+                recent.append(dict(event))
+        del recent[:-50]
+
+    def security_event(self, reason, *, lock=True):
+        with self.mutex:
+            if self.engine.state.lifecycle != "RUNNING":
+                return
+            t = time.monotonic() - self.origin
+            if t - self.last_security_event.get(reason, -1e9) < 10:
+                return
+            self.last_security_event[reason] = t
+            event = self.engine.event(
+                reason, t, start=t, created_at=time.time(), category="TECHNICAL"
+            )
+            self.journal["events"].append(event)
+            self.remember([event])
+            if self.recorder:
+                self.recorder.mark(event)
+            if lock and self.engine.state.access != "LOCKED":
+                self.engine.lock(reason)
+            self.save()
+
+    def teacher_unlock(self, password):
+        # Serialize sync + unlock to prevent concurrent queue deletion/command delivery.
+        with self.sync_mutex:
+            self.sync()
+            with self.mutex:
+                state = self.engine.state
+                body = {
+                    "password": password,
+                    "exam_id": self.journal["exam_id"],
+                    "lock_id": state.lock_id,
+                    "expected_version": state.version,
+                }
+            response = self.http.post("/api/agent/teacher-unlock", json=body)
+            if response.status_code != 200:
+                try:
+                    detail = response.json()["detail"]
+                except (ValueError, KeyError):
+                    detail = "Не удалось проверить пароль преподавателя"
+                raise ValueError(str(detail))
+            self.sync()
+            if self.engine.state.access == "LOCKED":
+                raise ValueError(
+                    "Причина блокировки сохраняется. Проверьте камеру, телефон и окно теста."
+                )
 
     def upload_media(self):
         with self.mutex:
@@ -284,6 +392,21 @@ class Agent:
                 if not event.get("update"):
                     event["created_at"] = time.time()
             self.journal["events"].extend(events)
+            self.remember(events)
+            if frame is not None and events:
+                import cv2
+
+                for event in events:
+                    if not event.get("update"):
+                        ok, encoded = cv2.imencode(
+                            ".jpg", cv2.resize(frame, (320, 240))
+                        )
+                        if ok:
+                            folder = self.folder / "evidence"
+                            folder.mkdir(exist_ok=True)
+                            path = folder / (event["id"] + ".jpg")
+                            path.write_bytes(encoded.tobytes())
+                            self.remember([{**event, "thumbnail_path": str(path)}])
             if self.recorder and frame is not None:
                 self.recorder.push(t, frame)
                 for event in events:
@@ -294,6 +417,8 @@ class Agent:
                 self.save()
 
     def read_browser(self):
+        if (self.environment or {}).get("target_id") == "qorgau-browser":
+            return
         path = self.folder / "browser.json"
         if not path.exists():
             return
@@ -333,6 +458,9 @@ class Agent:
                 origin=f"{parsed.scheme}://{parsed.netloc}",
             )
             self.journal["events"].append(event)
+            self.remember([event])
+            if self.guarded and wrong_origin and self.engine.state.access != "LOCKED":
+                self.engine.lock("BROWSER_ATTEMPT")
             if self.recorder:
                 self.recorder.mark(event)
             self.last_browser_event[reason] = t
@@ -354,6 +482,9 @@ class Agent:
                 "exam_id": self.journal.get("exam_id"),
                 "device_name": self.config.get("name", "Компьютер аудитории"),
                 "pending_media": len(self.journal.get("media", [])),
+                "recent_events": list(self.journal.get("recent_events", [])),
+                "guarded": self.guarded,
+                "guard_active": self.capabilities.get("guard_active", False),
                 "environment_name": next(
                     (
                         t["name"]
@@ -397,6 +528,20 @@ class Agent:
                     last_sync = time.monotonic()
                     future = pool.submit(self.sync)
                 try:
+                    if self.guarded and self.engine.state.lifecycle == "RUNNING":
+                        last_ok = (
+                            self.last_synced_at
+                            or self.guard_started_at
+                            or time.monotonic()
+                        )
+                        if time.monotonic() - last_ok > 10:
+                            self.security_event("SERVER_UNAVAILABLE")
+                        if (
+                            self.guard_started_at
+                            and time.monotonic() - self.guard_started_at > 10
+                            and not self.capabilities.get("guard_active")
+                        ):
+                            self.security_event("GUARD_UNAVAILABLE")
                     self.read_browser()
                     if self.camera and self.engine.state.lifecycle == "RUNNING":
                         frame, observation = self.camera.read()
@@ -417,6 +562,7 @@ class Agent:
                                 )
                             )
                             self.engine.lock("CAMERA_UNAVAILABLE")
+                            self.remember(self.journal["events"][-1:])
                             self.camera_fault = True
                             self.save()
                     stop.wait(1)
@@ -448,7 +594,17 @@ def main():
     )
     parser.add_argument("--phone-model", type=Path)
     parser.add_argument("--face-model", type=Path)
+    parser.add_argument(
+        "--self-test",
+        type=Path,
+        help="Write a packaged runtime diagnostic and exit without camera or input hooks",
+    )
     args = parser.parse_args()
+    if args.self_test:
+        from .selftest import selftest
+
+        selftest(args.self_test)
+        return
     if args.enroll:
         from .provision import enroll
 

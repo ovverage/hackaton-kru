@@ -1,0 +1,29 @@
+{
+  "run_type": "experimental_fine_tuning",
+  "epochs": 3,
+  "train_fraction": 0.1,
+  "seed": 20261006,
+  "imgsz": 320,
+  "ultralytics": "8.4.173",
+  "classes": [
+    "eye_movement",
+    "hand_move",
+    "mobile_use",
+    "side_watching",
+    "mouth_open"
+  ],
+  "source": "https://zenodo.org/records/14606173",
+  "test_images": 718,
+  "metrics": {
+    "metrics/precision(B)": 0.0033090395461492068,
+    "metrics/recall(B)": 0.6797837798290401,
+    "metrics/mAP50(B)": 0.046435049491793605,
+    "metrics/mAP50-95(B)": 0.020555999413273275,
+    "fitness": 0.020555999413273275
+  },
+  "limitations": [
+    "Native behavior boxes are NOT phone/face boxes",
+    "Short CPU experiment, not production validation",
+    "Recording-group split inferred from filenames, not confirmed identities"
+  ]
+}

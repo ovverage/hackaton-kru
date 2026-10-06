@@ -284,12 +284,21 @@ def test_workstation_identity_and_pupils_are_separate_between_exams(client):
     ).json()
     assert response["session"]["student"] == "Алина"
     assert first["participants"][identity]["name"] == "ПК-01"
+    end = client.post(
+        f"/api/devices/{identity}/commands",
+        json={
+            "type": "END_AND_RELEASE",
+            "expected_version": 0,
+            "reason": "Группа завершила тест",
+        },
+    ).json()
     client.post(
         "/api/agent/sync",
         headers=headers,
         json={
             "exam_id": first["id"],
             "state": {"lifecycle": "COMPLETED", "version": 1},
+            "acknowledgements": [{"id": end["id"], "ok": True}],
             "targets": [{"id": "app", "kind": "APP", "name": "Test"}],
         },
     )
@@ -298,12 +307,21 @@ def test_workstation_identity_and_pupils_are_separate_between_exams(client):
     assert second["participants"][identity]["student"] == "Данияр"
     assert "Алина" in client.get(f"/api/exams/{first['id']}/report.csv").text
     assert "Данияр" not in client.get(f"/api/exams/{first['id']}/report.csv").text
+    end_second = client.post(
+        f"/api/devices/{identity}/commands",
+        json={
+            "type": "END_AND_RELEASE",
+            "expected_version": 0,
+            "reason": "Следующая группа завершила тест",
+        },
+    ).json()
     client.post(
         "/api/agent/sync",
         headers=headers,
         json={
             "exam_id": second["id"],
             "state": {"lifecycle": "COMPLETED", "version": 1},
+            "acknowledgements": [{"id": end_second["id"], "ok": True}],
             "targets": [{"id": "app", "kind": "APP", "name": "Test"}],
         },
     )

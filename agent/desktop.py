@@ -143,6 +143,7 @@ class StudentWindow(QWidget):
         self.worker = None
         self.enrollment = None
         self.calibration = None
+        self.exam_controller = None
         self.run_worker = run_worker
         self.shutting_down = False
         self.failure = ""
@@ -347,6 +348,13 @@ class StudentWindow(QWidget):
         )
         checks, body = card()
         layout.addWidget(checks)
+        self.target_button = QPushButton("Выбрать главное окно / приложение")
+        self.target_button.clicked.connect(self.select_target)
+        body.addWidget(self.target_button)
+        self.target_status = label(
+            "Выберите окно теста перед назначением сеанса.", "small"
+        )
+        body.addWidget(self.target_status)
         row = QHBoxLayout()
         row.addWidget(label("Готовность компьютера", "heading"))
         row.addStretch()
@@ -365,7 +373,7 @@ class StudentWindow(QWidget):
         layout.addWidget(self.runtime_error)
         layout.addWidget(
             label(
-                "Режим наблюдения: эта версия не блокирует Windows, горячие клавиши и внешние окна. Блокировка по правилам требует решения преподавателя, но не является системной защитой.",
+                "На Windows доступно ограничение выбранного окна и горячих клавиш. Подготовьте камеру и выберите режим «Ограничение Windows» в кабинете преподавателя.",
                 "notice",
             )
         )
@@ -415,6 +423,9 @@ class StudentWindow(QWidget):
 
     def attach(self, agent):
         self.agent = agent
+        from .exam_ui import ExamController
+
+        self.exam_controller = ExamController(agent, self)
         self.pages.setCurrentIndex(1)
         self.device_name.setText(agent.config.get("name", "Компьютер аудитории"))
         self.endpoint_label.setText("Сервер: " + agent.server)
@@ -519,6 +530,11 @@ class StudentWindow(QWidget):
             + (" · " + env["url"] if env.get("url") else "")
         )
         self.camera_button.setEnabled(model["can_calibrate"] and not self.failure)
+        self.target_button.setEnabled(
+            state["lifecycle"] != "RUNNING"
+            and not snap.get("exam_id")
+            or state["lifecycle"] == "COMPLETED"
+        )
         self.camera_button.setText(
             "Повторить калибровку" if snap.get("camera") else "Подготовить камеру"
         )
@@ -565,6 +581,27 @@ class StudentWindow(QWidget):
         self.calibration.exec()
         self.calibration = None
         self.refresh()
+
+    def select_target(self):
+        if not self.agent or (
+            self.agent.journal.get("exam_id")
+            and self.agent.engine.state.lifecycle != "COMPLETED"
+        ):
+            return
+        from .exam_ui import TargetPicker
+
+        picker = TargetPicker(self.agent, self)
+        if picker.exec() and picker.selected:
+            with self.agent.mutex:
+                self.agent.targets = [
+                    t
+                    for t in self.agent.targets
+                    if t["id"] not in ("primary-window", "primary-app")
+                ]
+                self.agent.targets.append(picker.selected)
+            self.target_status.setText(
+                picker.selected["name"] + " · доступно преподавателю"
+            )
 
     def create_tray(self):
         if not QSystemTrayIcon.isSystemTrayAvailable():

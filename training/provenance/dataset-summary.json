@@ -1,0 +1,206 @@
+{
+  "schema_version": 2,
+  "updated_date": "2026-10-06",
+  "scope": "source_media_only; generated gaze-review images are annotation artifacts",
+  "media_file_count": 6203,
+  "photo_count": 6071,
+  "video_count": 132,
+  "media_bytes": 3250841455,
+  "personal": {
+    "schema_version": 1,
+    "updated_date": "2026-10-06",
+    "participant_count": 2,
+    "person_detection_scope": "shared_root_collection_participant_unknown",
+    "media_files": 628,
+    "photos": 496,
+    "videos": 132,
+    "media_bytes": 2408217863,
+    "renamed_files": 555,
+    "sha256_verified_after_rename": 628,
+    "counts_by_folder": {
+      "person_01/photos/with_phone": 142,
+      "person_01/photos/without_phone": 40,
+      "person_01/videos/gaze_away/calibration": 1,
+      "person_01/videos/gaze_away/control": 9,
+      "person_01/videos/gaze_away/down": 10,
+      "person_01/videos/gaze_away/left": 9,
+      "person_01/videos/gaze_away/right": 10,
+      "person_01/videos/gaze_away/up": 8,
+      "person_01/videos/gaze_on_screen/calibration": 1,
+      "person_01/videos/gaze_on_screen/down": 7,
+      "person_01/videos/gaze_on_screen/left": 6,
+      "person_01/videos/gaze_on_screen/right": 6,
+      "person_01/videos/gaze_on_screen/up": 6,
+      "person_02/photos/with_phone": 87,
+      "person_02/photos/without_phone": 23,
+      "person_02/videos/gaze_away/calibration": 1,
+      "person_02/videos/gaze_away/down": 6,
+      "person_02/videos/gaze_away/left": 6,
+      "person_02/videos/gaze_away/right": 6,
+      "person_02/videos/gaze_away/up": 6,
+      "person_02/videos/gaze_on_screen/calibration": 1,
+      "person_02/videos/gaze_on_screen/down": 6,
+      "person_02/videos/gaze_on_screen/left": 6,
+      "person_02/videos/gaze_on_screen/right": 6,
+      "person_02/videos/gaze_on_screen/up": 6,
+      "person_detection/photos/person_absent": 33,
+      "person_detection/photos/person_present": 171,
+      "person_detection/videos/person_absent": 2,
+      "person_detection/videos/person_present": 7
+    },
+    "extensions": {
+      ".jpeg": 292,
+      ".mp4": 132,
+      ".jpg": 204
+    },
+    "exact_duplicate_groups": [],
+    "validation_failures": [],
+    "photo_decode_passed": 496,
+    "video_container_check_passed": 132,
+    "full_video_decode_performed": false,
+    "content_labels_reviewed": false
+  },
+  "public": {
+    "schema_version": 1,
+    "source": "students_behavior_online_exam_org",
+    "source_url": "https://zenodo.org/records/14606173",
+    "path_base": "dataset_root",
+    "class_names": [
+      "eye_movement",
+      "hand_move",
+      "mobile_use",
+      "side_watching",
+      "mouth_open"
+    ],
+    "original_image_count": 5575,
+    "ready_image_count": 5493,
+    "unlabeled_image_count": 81,
+    "quarantine_image_count": 1,
+    "splits": {
+      "train": {
+        "images": 3888,
+        "groups": 22,
+        "boxes_by_class": {
+          "eye_movement": 912,
+          "hand_move": 692,
+          "mobile_use": 744,
+          "side_watching": 814,
+          "mouth_open": 726
+        }
+      },
+      "val": {
+        "images": 887,
+        "groups": 9,
+        "boxes_by_class": {
+          "eye_movement": 153,
+          "hand_move": 354,
+          "mobile_use": 77,
+          "side_watching": 229,
+          "mouth_open": 74
+        }
+      },
+      "test": {
+        "images": 718,
+        "groups": 6,
+        "boxes_by_class": {
+          "eye_movement": 94,
+          "hand_move": 183,
+          "mobile_use": 221,
+          "side_watching": 136,
+          "mouth_open": 101
+        }
+      }
+    },
+    "duplicate_groups": [
+      [
+        "public_behavior_000001",
+        "public_behavior_000417"
+      ],
+      [
+        "public_behavior_000003",
+        "public_behavior_004582"
+      ],
+      [
+        "public_behavior_000008",
+        "public_behavior_000675"
+      ],
+      [
+        "public_behavior_000042",
+        "public_behavior_000943"
+      ],
+      [
+        "public_behavior_000068",
+        "public_behavior_003100"
+      ]
+    ],
+    "split_seed": 20261006,
+    "group_rule": "Lowercase basename, remove augmentation prefix and final frame number, normalize senario typo; group keys are inferred recording series, not participant IDs."
+  },
+  "gaze_annotation": {
+    "videos": 123,
+    "participants": {
+      "person_01": 73,
+      "person_02": 50
+    },
+    "total_duration_s": 1887.123992,
+    "reviewed_frames": 1392,
+    "reviewed_frame_states": {
+      "on_screen": 1011,
+      "transition": 14,
+      "uncertain": 73,
+      "off_screen": 294
+    },
+    "training_frames": 1063,
+    "training_frame_states": {
+      "on_screen": 847,
+      "off_screen": 216
+    },
+    "training_video_count": 110,
+    "excluded_calibration_video_count": 4,
+    "excluded_control_video_count": 9,
+    "segments": 580,
+    "review_queue_segments": 344,
+    "duration_by_label_s": {
+      "on_screen": 1119.744,
+      "transition": 240.672,
+      "uncertain": 180.654,
+      "off_screen": 346.054
+    },
+    "experimental_training_duration_by_label_s": {
+      "on_screen": 1023.808,
+      "off_screen": 293.998
+    },
+    "decoded_frames": 50818,
+    "checks": {
+      "all_source_hashes_match": true,
+      "all_reported_frame_counts_match": true,
+      "all_requested_samples_recovered": true,
+      "all_videos_annotated": true,
+      "full_temporal_coverage": true,
+      "no_overlapping_segments": true,
+      "all_review_images_exist": true,
+      "no_calibration_or_control_in_training": true
+    },
+    "high_priority_video_ids": [
+      "person_02_gaze_on_screen_calibration_001",
+      "person_01_gaze_away_control_001",
+      "person_01_gaze_away_control_002",
+      "person_01_gaze_away_control_003",
+      "person_01_gaze_away_control_004",
+      "person_01_gaze_away_control_005",
+      "person_01_gaze_away_control_006",
+      "person_01_gaze_away_control_007",
+      "person_01_gaze_away_control_008",
+      "person_01_gaze_away_control_009"
+    ]
+  },
+  "cross_source_exact_duplicate_ids": [],
+  "verification": {
+    "source_sha256": "all_passed",
+    "photo_decode_count": 6071,
+    "gaze_video_decode_report": "prepared/gaze_annotation/decode_checks.json",
+    "shared_video_decode_report": "outputs/reports/shared_video_decode.json",
+    "object_boxes_reviewed": false,
+    "ml_training_executed": false
+  }
+}

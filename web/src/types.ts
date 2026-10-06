@@ -103,6 +103,14 @@ export const eventNames: Record<string, string> = {
   BROWSER_ATTEMPT: "Смена вкладки или сайта",
   HEAD_TURN_REVIEW: "Поворот головы",
   FACE_ABSENCE_REVIEW: "Нет лица в кадре",
+  TARGET_CLOSED: "Окно теста закрыто",
+  REMOTE_SESSION: "Удалённый рабочий стол",
+  ENVIRONMENT_ATTEMPT: "Попытка выйти из теста",
+  SERVER_UNAVAILABLE: "Нет связи с сервером",
+  GUARD_UNAVAILABLE: "Защита окна недоступна",
+  DISPLAY_CHANGED: "Изменилось число экранов",
+  CAMERA_FROZEN: "Зависшее изображение камеры",
+  AGENT_RESTARTED: "Перезапуск агента",
 };
 export const decisionNames = {
   PENDING: "На проверке",

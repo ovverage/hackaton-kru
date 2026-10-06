@@ -19,6 +19,10 @@ from .client import atomic_json
 
 POSITIONS = [
     ("SCREEN", "Смотрите в центр экрана"),
+    ("SCREEN_LEFT", "Смотрите на левый край экрана"),
+    ("SCREEN_RIGHT", "Смотрите на правый край экрана"),
+    ("SCREEN_TOP", "Смотрите на верхний край экрана"),
+    ("SCREEN_BOTTOM", "Смотрите на нижний край экрана"),
     ("DOWN", "Посмотрите вниз, под экран"),
     ("LEFT", "Посмотрите влево от себя"),
     ("RIGHT", "Посмотрите вправо от себя"),
@@ -115,11 +119,13 @@ class CameraSetup(QDialog):
         layout.addWidget(label("Подготовка камеры", "title"))
         layout.addWidget(
             label(
-                "Камера включится только после нажатия кнопки. Четыре коротких шага помогут настроить определение взгляда. Калибровка не отправляется на сервер.",
+                "Камера включится после нажатия кнопки. Восемь позиций отделяют чтение краёв экрана от отвлечения за его пределы. Калибровка не отправляется на сервер.",
                 "body",
             )
         )
         settings = agent.config.get("camera_settings", {})
+        from .resources import model_path
+
         row = QHBoxLayout()
         row.addWidget(label("Номер камеры", "field"))
         self.index = QSpinBox()
@@ -131,13 +137,13 @@ class CameraSetup(QDialog):
         self.phone = self.path_field(
             layout,
             "Модель телефона (.pt)",
-            settings.get("phone_model", ""),
+            settings.get("phone_model", str(model_path("yolo11n.pt"))),
             "YOLO model (*.pt)",
         )
         self.face = self.path_field(
             layout,
             "Модель лиц (.task)",
-            settings.get("face_model", ""),
+            settings.get("face_model", str(model_path("face_landmarker.task"))),
             "MediaPipe model (*.task)",
         )
         layout.addWidget(
@@ -249,8 +255,10 @@ class CameraSetup(QDialog):
         )
 
     def phase(self, index, n, valid):
-        self.instruction.setText(f"Шаг {index + 1} из 4. {POSITIONS[index][1]}")
-        self.progress.setValue(index * 25 + n)
+        self.instruction.setText(
+            f"Шаг {index + 1} из {len(POSITIONS)}. {POSITIONS[index][1]}"
+        )
+        self.progress.setValue(round((index * 25 + n) / (len(POSITIONS) * 25) * 100))
         self.capture.show()
         self.capture.setEnabled(valid and not self.worker.collect.is_set())
         self.feedback.setText(

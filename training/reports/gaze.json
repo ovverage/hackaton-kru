@@ -1,0 +1,134 @@
+{
+  "run_type": "experimental_supervised_training",
+  "seed": 20261006,
+  "source": "personal",
+  "input_keyframes": 1063,
+  "usable_keyframes": 1000,
+  "skipped_keyframes": 63,
+  "skipped_by_label": {
+    "on_screen": 2,
+    "off_screen": 61
+  },
+  "class_counts": {
+    "on_screen": 845,
+    "off_screen": 155
+  },
+  "participants": [
+    "person_01",
+    "person_02"
+  ],
+  "recordings": 110,
+  "evaluation": "leave_one_participant_out; no frame-level random split",
+  "folds": [
+    {
+      "held_out_participant": "person_01",
+      "train_n": 446,
+      "test_n": 554,
+      "balanced_accuracy": 0.5062880415324025,
+      "confusion_matrix": [
+        [
+          29,
+          427
+        ],
+        [
+          5,
+          93
+        ]
+      ],
+      "classification_report": {
+        "on_screen": {
+          "precision": 0.8529411764705882,
+          "recall": 0.06359649122807018,
+          "f1-score": 0.11836734693877551,
+          "support": 456.0
+        },
+        "off_screen": {
+          "precision": 0.17884615384615385,
+          "recall": 0.9489795918367347,
+          "f1-score": 0.30097087378640774,
+          "support": 98.0
+        },
+        "accuracy": 0.22021660649819494,
+        "macro avg": {
+          "precision": 0.515893665158371,
+          "recall": 0.5062880415324025,
+          "f1-score": 0.20966911036259162,
+          "support": 554.0
+        },
+        "weighted avg": {
+          "precision": 0.7336969305911757,
+          "recall": 0.22021660649819494,
+          "f1-score": 0.15066905385406065,
+          "support": 554.0
+        }
+      }
+    },
+    {
+      "held_out_participant": "person_02",
+      "train_n": 554,
+      "test_n": 446,
+      "balanced_accuracy": 0.41038650611103594,
+      "confusion_matrix": [
+        [
+          19,
+          370
+        ],
+        [
+          13,
+          44
+        ]
+      ],
+      "classification_report": {
+        "on_screen": {
+          "precision": 0.59375,
+          "recall": 0.04884318766066838,
+          "f1-score": 0.09026128266033254,
+          "support": 389.0
+        },
+        "off_screen": {
+          "precision": 0.10628019323671498,
+          "recall": 0.7719298245614035,
+          "f1-score": 0.18683651804670912,
+          "support": 57.0
+        },
+        "accuracy": 0.1412556053811659,
+        "macro avg": {
+          "precision": 0.3500150966183575,
+          "recall": 0.41038650611103594,
+          "f1-score": 0.13854890035352083,
+          "support": 446.0
+        },
+        "weighted avg": {
+          "precision": 0.5314500471176967,
+          "recall": 0.1412556053811659,
+          "f1-score": 0.10260385758639412,
+          "support": 446.0
+        }
+      }
+    }
+  ],
+  "parameters": {
+    "n_estimators": 100,
+    "max_depth": 5,
+    "min_samples_leaf": 6,
+    "class_weight": "balanced",
+    "random_state": 20261006,
+    "n_jobs": 2
+  },
+  "annotation_sha256": "834cdbf85a67de65f82ed5082da681affe5ef5f114edd111eee1120e86d29a58",
+  "face_model_sha256": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+  "model_sha256": "82dc52daf4ad99e5f3250ecc8c1a2bd225ce45246b24347f3fc60db10896d2f8",
+  "versions": {
+    "python": "3.12.15",
+    "mediapipe": "0.10.35",
+    "sklearn": "1.9.1"
+  },
+  "limitations": [
+    "Only two participants",
+    "Preliminary script-assisted visual labels, no eye tracker",
+    "Metrics exclude missing/ambiguous face features; see skipped_by_label",
+    "Final model refit on all usable samples, not a held-out test score",
+    "Does not determine DOWN/LEFT/RIGHT or prove cheating",
+    "Not enabled for automatic sanctions"
+  ]
+}

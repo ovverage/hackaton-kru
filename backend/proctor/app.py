@@ -75,6 +75,13 @@ class ReviewInput(BaseModel):
     reason: str = Field(min_length=1, max_length=500)
 
 
+class TeacherUnlock(BaseModel):
+    password: str = Field(min_length=1, max_length=128)
+    exam_id: str
+    lock_id: str
+    expected_version: int = Field(ge=0)
+
+
 class SimulationInput(BaseModel):
     scenario: str
 
@@ -94,7 +101,7 @@ def create_app(data_dir=None):
     media_dir = base / "media"
     media_dir.mkdir(exist_ok=True)
     db = Database(base / "proctor.sqlite3")
-    app = FastAPI(title="Qorgau / локальный прокторинг", version="0.1.0")
+    app = FastAPI(title="Qorgau / локальный прокторинг", version="0.3.0")
     app.state.db = db
     simulations = {}
     failures = {}
@@ -244,6 +251,14 @@ def create_app(data_dir=None):
                 "BROWSER_ATTEMPT",
                 "HEAD_TURN_REVIEW",
                 "FACE_ABSENCE_REVIEW",
+                "TARGET_CLOSED",
+                "REMOTE_SESSION",
+                "ENVIRONMENT_ATTEMPT",
+                "SERVER_UNAVAILABLE",
+                "GUARD_UNAVAILABLE",
+                "DISPLAY_CHANGED",
+                "CAMERA_FROZEN",
+                "AGENT_RESTARTED",
             }
             if event.get("type") not in allowed:
                 raise HTTPException(422, "Неизвестный тип события")
@@ -496,9 +511,11 @@ def create_app(data_dir=None):
             raise HTTPException(422, "Назначьте учеников только выбранным компьютерам")
         if any(len(name.strip()) > 80 for name in body.student_names.values()):
             raise HTTPException(422, "Имя ученика должно быть не длиннее 80 символов")
-        if body.mode not in ("OBSERVE", "STRICT"):
+        if body.mode not in ("OBSERVE", "GUARDED", "STRICT"):
             raise HTTPException(422, "Неизвестный режим")
         env = body.environment
+        # Policy comes from the teacher's mode, never an unchecked environment field.
+        env = {**env, "guarded": body.mode == "GUARDED"}
         if env.get("kind") not in ("BROWSER", "APP"):
             raise HTTPException(422, "Выберите среду")
         if env["kind"] == "BROWSER":
@@ -527,6 +544,28 @@ def create_app(data_dir=None):
                         409,
                         "Системная защита не подтверждена. Доступен только режим наблюдения.",
                     )
+                if body.mode == "GUARDED" and (
+                    d["simulated"]
+                    or not all(
+                        d["capabilities"].get(k)
+                        for k in ("window_guard", "camera", "recording")
+                    )
+                ):
+                    raise HTTPException(
+                        409,
+                        f"{d['name']}: нужны Windows-агент, подготовленная камера и запись",
+                    )
+                if body.mode == "GUARDED":
+                    target = next(
+                        t for t in d["targets"] if t["id"] == env["target_id"]
+                    )
+                    if (
+                        env["kind"] == "BROWSER" and target["id"] != "qorgau-browser"
+                    ) or target.get("guardable") is False:
+                        raise HTTPException(
+                            409,
+                            "Для сайта выберите Qorgau Browser: он ограничивает адрес и не содержит вкладок",
+                        )
             e = {
                 "id": uid(),
                 "title": body.title,
@@ -610,6 +649,69 @@ def create_app(data_dir=None):
             )
             audit(c, u["id"], body.type, cmd)
         return cmd
+
+    @app.post("/api/agent/teacher-unlock")
+    def teacher_unlock(body: TeacherUnlock, request: Request):
+        error = None
+        result = None
+        with db.connect(True) as c:
+            row, d = device_auth(request, c)
+            owner = row["owner"]
+            now = time.time()
+            attempts = c.execute(
+                "SELECT * FROM unlock_attempts WHERE owner=?", (owner,)
+            ).fetchone()
+            count = attempts["count"] if attempts and attempts["until"] > now else 0
+            until = attempts["until"] if count else now + 60
+            if count >= 5:
+                error = (429, "Слишком много попыток. Подождите одну минуту.")
+            else:
+                teacher = c.execute(
+                    "SELECT * FROM users WHERE id=?", (owner,)
+                ).fetchone()
+                try:
+                    PH.verify(teacher["password"], body.password)
+                except VerificationError:
+                    c.execute(
+                        "INSERT OR REPLACE INTO unlock_attempts VALUES(?,?,?)",
+                        (owner, count + 1, until),
+                    )
+                    audit(c, owner, "LOCAL_UNLOCK_DENIED", {"device_id": d["id"]})
+                    error = (403, "Неверный пароль преподавателя")
+                else:
+                    state = d["state"]
+                    if (
+                        d.get("exam_id") != body.exam_id
+                        or state["access"] != "LOCKED"
+                        or state["lifecycle"] != "RUNNING"
+                        or state["lock_id"] != body.lock_id
+                        or state["version"] != body.expected_version
+                    ):
+                        error = (409, "Состояние изменилось. Повторите проверку.")
+                    else:
+                        c.execute("DELETE FROM unlock_attempts WHERE owner=?", (owner,))
+                        result = {
+                            "id": uid(),
+                            "device_id": d["id"],
+                            "exam_id": body.exam_id,
+                            "type": "UNLOCK",
+                            "expected_version": body.expected_version,
+                            "lock_id": body.lock_id,
+                            "reason": "Пароль преподавателя на рабочем месте",
+                            "actor": teacher["name"],
+                            "created_at": now,
+                            "expires_at": now + 30,
+                            "status": "PENDING",
+                        }
+                        c.execute(
+                            "INSERT INTO commands VALUES(?,?,?)",
+                            (result["id"], d["id"], encode(result)),
+                        )
+                        audit(c, owner, "LOCAL_TEACHER_UNLOCK", result)
+        # Commit failed attempts before returning an HTTP error.
+        if error:
+            raise HTTPException(*error)
+        return result
 
     @app.post("/api/devices/{device_id}/simulate")
     def simulate(device_id: str, body: SimulationInput, request: Request):
@@ -732,6 +834,43 @@ def create_app(data_dir=None):
                     )
                 except (TypeError, ValueError):
                     raise HTTPException(422, "Некорректное состояние")
+                old = d["state"]
+                needs_release = old["access"] == "LOCKED" and (
+                    st.access == "OPEN" or st.epoch > old["epoch"]
+                )
+                needs_end = (
+                    old["lifecycle"] != "COMPLETED" and st.lifecycle == "COMPLETED"
+                )
+                if needs_release or needs_end:
+                    authorized = False
+                    for ack in body.acknowledgements:
+                        command_row = c.execute(
+                            "SELECT body FROM commands WHERE id=? AND device_id=?",
+                            (ack.get("id"), d["id"]),
+                        ).fetchone()
+                        if not ack.get("ok") or not command_row:
+                            continue
+                        cmd = decode(command_row)
+                        valid = (
+                            cmd["exam_id"] == d["exam_id"]
+                            and cmd["status"] == "PENDING"
+                            and cmd["expected_version"] == old["version"]
+                        )
+                        if valid and (
+                            cmd["type"] == "END_AND_RELEASE"
+                            or (
+                                not needs_end
+                                and cmd["type"] == "UNLOCK"
+                                and cmd.get("lock_id") == old["lock_id"]
+                            )
+                        ):
+                            authorized = True
+                    if not authorized:
+                        raise HTTPException(
+                            409, "Снятие блокировки требует команды преподавателя"
+                        )
+                if old["lifecycle"] == "RUNNING" and st.lifecycle == "READY":
+                    raise HTTPException(409, "Нельзя сбросить активный сеанс")
                 if st.version >= d["state"]["version"]:
                     d["state"] = st.public()
                 save_events(c, d, body.events)
@@ -917,9 +1056,8 @@ def create_app(data_dir=None):
         for d in e["participants"].values():
             mine = [x for x in events if x["device_id"] == d["id"]]
             valid = [x for x in mine if x["decision"] != "REJECTED"]
-            safe = lambda s: (
-                "'" + s if s.lstrip().startswith(("=", "+", "-", "@")) else s
-            )
+            def safe(s):
+                return "'" + s if s.lstrip().startswith(("=", "+", "-", "@")) else s
             w.writerow(
                 [
                     safe(d["student"]),

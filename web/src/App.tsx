@@ -836,7 +836,7 @@ export default function App() {
               <ShieldCheck size={14} /> Qorgau · Локальный контроль, осознанные
               решения
             </span>
-            <span>Прототип 0.1 · Режим наблюдения</span>
+            <span>Qorgau 0.3 · Локальный контроль экзамена</span>
           </footer>
         </main>
       </div>
@@ -1278,6 +1278,7 @@ function NewExam({
     [group, setGroup] = useState("ИС-23"),
     [room, setRoom] = useState("Аудитория 301"),
     [url, setUrl] = useState("https://example.com"),
+    [mode, setMode] = useState("OBSERVE"),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const chosen = available.filter((d) => selected.includes(d.id));
@@ -1304,7 +1305,7 @@ function NewExam({
         student_names: Object.fromEntries(
           selected.map((id) => [id, studentNames[id]?.trim() || ""]),
         ),
-        mode: "OBSERVE",
+        mode,
         environment: {
           kind,
           target_id: resolved,
@@ -1449,10 +1450,17 @@ function NewExam({
         <div className="notice">
           <Eye size={17} />
           <span>
-            Режим наблюдения. Строгая защита ОС в этой версии недоступна. Среда
-            должна быть установлена на всех выбранных компьютерах.
+            Для режима ограничения подготовьте камеру в Windows-агенте. Для сайта
+            выберите Qorgau Browser, для приложения — главное окно в агенте.
           </span>
         </div>
+        <label>
+          Режим контроля
+          <select value={mode} onChange={(e) => setMode(e.target.value)}>
+            <option value="OBSERVE">Наблюдение / демонстрационный стенд</option>
+            <option value="GUARDED">Ограничение Windows: одно окно и горячие клавиши</option>
+          </select>
+        </label>
         {error && <div className="error">{error}</div>}
         <div className="button-row end">
           <button className="btn" type="button" onClick={onClose}>

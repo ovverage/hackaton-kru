@@ -127,7 +127,7 @@ def test_desktop_first_run_and_locked_actions(application, tmp_path):
     with patch.object(agent, "launch_environment") as launch:
         window.open_exam()
         launch.assert_not_called()
-    assert "Дождитесь решения" in window.hero_title.text()
+    assert "Позовите преподавателя" in window.hero_title.text()
     agent.engine.phone_present = False
     agent.engine.unlock(agent.engine.state.lock_id, agent.engine.state.version)
     window.refresh()

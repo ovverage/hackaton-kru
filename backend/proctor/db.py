@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from pathlib import Path
-import sqlite3, json
+import sqlite3
+import json
 
 
 class Database:
@@ -21,6 +22,7 @@ class Database:
             CREATE TABLE IF NOT EXISTS media(id TEXT PRIMARY KEY,event_id TEXT NOT NULL,device_id TEXT NOT NULL,path TEXT NOT NULL,mime TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS events_exam ON events(exam_id);
             CREATE INDEX IF NOT EXISTS commands_device ON commands(device_id);
+            CREATE TABLE IF NOT EXISTS unlock_attempts(owner TEXT PRIMARY KEY,count INTEGER NOT NULL,until REAL NOT NULL);
             """)
 
     @contextmanager

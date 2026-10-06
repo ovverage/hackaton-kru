@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "counts": {
+    "personal": 628,
+    "public": 5575,
+    "unlabeled": 81,
+    "ready": 5493,
+    "train": 3888,
+    "val": 887,
+    "test": 718,
+    "quarantine": 1,
+    "gaze_training_keyframes": 1063,
+    "gaze_annotated_videos": 123
+  },
+  "media_sha256_checked": true,
+  "images_fully_decoded": false,
+  "package_manifest_checked": true,
+  "group_leakage": false,
+  "errors": []
+}

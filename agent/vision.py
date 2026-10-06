@@ -49,6 +49,8 @@ class Camera:
         self.timestamp = 0
         self.centres = {}
         self.last_frame = 0
+        self.frame_digest = None
+        self.frame_changed_at = time.monotonic()
         if calibrate:
             self.calibrate()
 
@@ -63,43 +65,19 @@ class Camera:
         if len(faces) != 1 or len(faces[0]) < 478:
             return len(faces), None
         p = faces[0]
+        from shared.gaze import features
 
-        # Eye coordinates are local to the eyelids; camera image is not mirrored.
-        def eye(corner_a, corner_b, top, bottom, iris):
-            a, b = p[corner_a], p[corner_b]
-            width = abs(b.x - a.x)
-            height = abs(p[bottom].y - p[top].y)
-            if width < 0.015 or height < 0.003 or height / width < 0.12:
-                return None
-            return [
-                (p[iris].x - min(a.x, b.x)) / width,
-                (p[iris].y - min(p[top].y, p[bottom].y)) / height,
-            ]
-
-        left = eye(33, 133, 159, 145, 468)
-        right = eye(362, 263, 386, 374, 473)
-        if left is None or right is None:
-            return len(faces), None
-        # Coarse normalized nose position gives head motion context; not a gaze angle.
-        width = abs(p[454].x - p[234].x)
-        height = abs(p[152].y - p[10].y)
-        if width < 0.1 or height < 0.1:
-            return len(faces), None
-        feature = self.np.array(
-            [
-                (left[0] + right[0]) / 2,
-                (left[1] + right[1]) / 2,
-                (p[1].x - p[234].x) / width,
-                (p[1].y - p[10].y) / height,
-            ],
-            dtype=float,
-        )
-        return len(faces), feature
+        vector = features(p)
+        return len(faces), self.np.asarray(vector) if vector is not None else None
 
     def calibrate(self):
         cv2 = self.cv2
         prompts = [
             ("SCREEN", "Look at screen centre"),
+            ("SCREEN_LEFT", "Look at LEFT edge of screen"),
+            ("SCREEN_RIGHT", "Look at RIGHT edge of screen"),
+            ("SCREEN_TOP", "Look at TOP edge of screen"),
+            ("SCREEN_BOTTOM", "Look at BOTTOM edge of screen"),
             ("DOWN", "Look down below screen"),
             ("LEFT", "Look to YOUR left"),
             ("RIGHT", "Look to YOUR right"),
@@ -151,7 +129,7 @@ class Camera:
         if any(
             self.np.linalg.norm((v - baseline) * [1, 0.45, 1, 1]) < 0.08
             for k, v in self.centres.items()
-            if k != "SCREEN"
+            if not k.startswith("SCREEN")
         ):
             raise ValueError(
                 "Позиции калибровки неразличимы. Измените положение камеры и повторите."
@@ -167,6 +145,14 @@ class Camera:
         if not ok:
             raise OSError("Не получен кадр камеры")
         frame = self.cv2.resize(frame, (640, 480))
+        import hashlib
+
+        digest = hashlib.blake2s(frame.tobytes()).digest()
+        if digest != self.frame_digest:
+            self.frame_digest = digest
+            self.frame_changed_at = time.monotonic()
+        elif time.monotonic() - self.frame_changed_at > 5:
+            raise OSError("Изображение камеры не меняется более 5 секунд")
         faces, feature = self.face_features(frame)
         direction = "UNKNOWN"
         if feature is not None:
@@ -177,7 +163,7 @@ class Camera:
             best = min(distances, key=distances.get)
             ordered = sorted(distances.values())
             if distances[best] < 0.25 and ordered[1] - ordered[0] > 0.035:
-                direction = best
+                direction = "SCREEN" if best.startswith("SCREEN") else best
         result = self.phone.predict(
             frame, classes=[self.phone_class], conf=0.4, imgsz=640, verbose=False
         )[0]
@@ -202,7 +188,12 @@ class ClipRecorder:
         self.cv2 = cv2
         self.folder = folder
         folder.mkdir(parents=True, exist_ok=True)
-        self.ffmpeg = shutil.which("ffmpeg")
+        try:
+            import imageio_ffmpeg
+
+            self.ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+        except ImportError:
+            self.ffmpeg = shutil.which("ffmpeg")
         if not self.ffmpeg:
             raise ValueError("Для записи фрагментов установите FFmpeg")
         self.frames = deque()
