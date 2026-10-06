@@ -101,7 +101,7 @@ def create_app(data_dir=None):
     media_dir = base / "media"
     media_dir.mkdir(exist_ok=True)
     db = Database(base / "proctor.sqlite3")
-    app = FastAPI(title="Qorgau / локальный прокторинг", version="0.3.0")
+    app = FastAPI(title="Qorgau / локальный прокторинг", version="0.3.1")
     app.state.db = db
     simulations = {}
     failures = {}

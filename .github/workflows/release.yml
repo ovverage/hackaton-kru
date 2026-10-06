@@ -41,6 +41,7 @@ jobs:
           path: web/dist
 
   windows:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
@@ -65,23 +66,30 @@ jobs:
           if ($process.ExitCode -ne 0) { throw 'Packaged runtime check failed' }
           $report = Get-Content packaged-selftest.json | ConvertFrom-Json
           if ($report.status -ne 'passed') { throw 'Packaged report did not pass' }
+      - name: Build Windows installer
+        run: |
+          Copy-Item packaged-selftest.json dist/Qorgau-Student/selftest.json
+          python scripts/build_installer.py
+      - name: Test installation, installed runtime, repair and removal
+        shell: pwsh
+        run: |
+          $version = python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])"
+          python scripts/test_installer.py --installer "artifacts/Qorgau-Student-Setup-$version-x64.exe"
       - name: Package and checksum
         shell: pwsh
         run: |
-          Copy-Item README.md dist/Qorgau-Student/README.md
-          Copy-Item docs/SECURITY.md dist/Qorgau-Student/SECURITY.md
-          Copy-Item THIRD_PARTY_NOTICES.md dist/Qorgau-Student/THIRD_PARTY_NOTICES.md
-          Copy-Item packaged-selftest.json dist/Qorgau-Student/selftest.json
           Compress-Archive -Path dist/Qorgau-Student -DestinationPath Qorgau-Student-Windows-x64.zip
-          $hash = (Get-FileHash Qorgau-Student-Windows-x64.zip -Algorithm SHA256).Hash.ToLower()
-          "$hash  Qorgau-Student-Windows-x64.zip" | Set-Content SHA256SUMS.txt
+          $files = @(Get-Item Qorgau-Student-Windows-x64.zip) + @(Get-ChildItem artifacts/Qorgau-Student-Setup-*-x64.exe)
+          $files | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($_.Name)"
+          } | Set-Content SHA256SUMS.txt
+          Copy-Item Qorgau-Student-Windows-x64.zip,SHA256SUMS.txt,packaged-selftest.json,installer-selftest.json artifacts/
       - uses: actions/upload-artifact@v4
         with:
           name: Qorgau-Student-Windows-x64
-          path: |
-            Qorgau-Student-Windows-x64.zip
-            SHA256SUMS.txt
-            packaged-selftest.json
+          path: artifacts/*
+          compression-level: 0
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -89,6 +97,7 @@ jobs:
           path: |
             source-selftest.json
             packaged-selftest.json
+            installer-selftest.json
             build/Qorgau-Student/warn-Qorgau-Student.txt
 
   release:
@@ -111,4 +120,7 @@ jobs:
       - name: Publish verified hackathon prerelease
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" artifacts/* --verify-tag --prerelease --title "Qorgau $GITHUB_REF_NAME · Hackathon" --notes-file docs/RELEASE_NOTES.md
+        run: |
+          version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          test "$GITHUB_REF_NAME" = "v$version"
+          gh release create "$GITHUB_REF_NAME" artifacts/* --verify-tag --prerelease --title "Qorgau $GITHUB_REF_NAME · Windows Installer" --notes-file docs/RELEASE_NOTES.md

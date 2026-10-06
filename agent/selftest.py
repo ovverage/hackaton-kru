@@ -48,7 +48,7 @@ def check_browser():
 
 def selftest(output):
     result = {
-        "version": "0.3.0",
+        "version": "0.3.1",
         "platform": platform.platform(),
         "frozen": bool(getattr(sys, "frozen", False)),
     }
@@ -97,8 +97,10 @@ def selftest(output):
             capture_output=True,
         )
         if os.name == "nt":
+            from .install_guard import hold_installation_mutex
             from .windows_guard import WindowsGuard
 
+            result["installer_mutex"] = bool(hold_installation_mutex())
             guard = WindowsGuard()
             result["win32_enumeration"] = len(guard.windows())
         result.update(

@@ -36,6 +36,8 @@ command = [
     "--collect-data",
     "certifi",
 ]
+if os.name == "nt":
+    command.extend(["--icon", str(root / "packaging/windows/qorgau.ico")])
 if not args.with_cv:
     for module in ("cv2", "numpy", "ultralytics", "mediapipe", "torch", "torchvision"):
         command.extend(["--exclude-module", module])

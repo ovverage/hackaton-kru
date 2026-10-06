@@ -836,7 +836,7 @@ export default function App() {
               <ShieldCheck size={14} /> Qorgau · Локальный контроль, осознанные
               решения
             </span>
-            <span>Qorgau 0.3 · Локальный контроль экзамена</span>
+            <span>Qorgau 0.3.1 · Локальный контроль экзамена</span>
           </footer>
         </main>
       </div>

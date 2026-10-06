@@ -578,6 +578,9 @@ class Agent:
 
 
 def main():
+    from .install_guard import hold_installation_mutex
+
+    hold_installation_mutex()
     parser = argparse.ArgumentParser(description="Qorgau — локальный агент наблюдения")
     parser.add_argument("--data", type=Path, default=Path.home() / ".qorgau")
     parser.add_argument("--server", default=None)
