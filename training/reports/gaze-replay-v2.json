@@ -1,0 +1,668 @@
+{
+  "model_sha256": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+  "yolo_face_sha256": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+  "face_policy": "max YOLO/MediaPipe, as in Camera.analyze",
+  "sample_fps": 5.0,
+  "duration_s": 370.36910600303884,
+  "counts": {
+    "frames": 1879,
+    "unknown": 118,
+    "missing_face": 19,
+    "on_screen": 1147,
+    "tn": 1018,
+    "off_screen": 350,
+    "tp": 329,
+    "fp": 50,
+    "fn": 4
+  },
+  "recordings": [
+    {
+      "video": "person_01_gaze_away_control_001",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "control",
+      "duration_s": 2.233879781420765,
+      "counts": {
+        "frames": 12,
+        "unknown": 1,
+        "missing_face": 0,
+        "on_screen": 7,
+        "tn": 7
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_away_control_002",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "control",
+      "duration_s": 1.8337414965986394,
+      "counts": {
+        "frames": 10,
+        "unknown": 1,
+        "missing_face": 0,
+        "on_screen": 5,
+        "tn": 5
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_away_control_003",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "control",
+      "duration_s": 2.6013131313131317,
+      "counts": {
+        "frames": 14,
+        "unknown": 0,
+        "missing_face": 0,
+        "on_screen": 9,
+        "tn": 9
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_away_control_004",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "control",
+      "duration_s": 2.201252777777778,
+      "counts": {
+        "frames": 12,
+        "unknown": 0,
+        "missing_face": 0,
+        "on_screen": 8,
+        "tn": 7,
+        "off_screen": 1,
+        "tp": 1,
+        "fp": 1
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_away_control_005",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "control",
+      "duration_s": 3.4335736263736267,
+      "counts": {
+        "frames": 18,
+        "unknown": 5,
+        "missing_face": 0,
+        "on_screen": 8,
+        "fp": 6,
+        "off_screen": 2,
+        "fn": 2
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_away_control_006",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "control",
+      "duration_s": 2.233849180327869,
+      "counts": {
+        "frames": 12,
+        "unknown": 0,
+        "missing_face": 0,
+        "on_screen": 4,
+        "tn": 4,
+        "off_screen": 3,
+        "tp": 3
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_away_control_007",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "control",
+      "duration_s": 2.401258064516129,
+      "counts": {
+        "frames": 13,
+        "unknown": 0,
+        "missing_face": 0,
+        "on_screen": 6,
+        "tn": 6,
+        "off_screen": 2,
+        "tp": 2
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_away_control_008",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "control",
+      "duration_s": 2.425635483870968,
+      "counts": {
+        "frames": 13,
+        "unknown": 0,
+        "missing_face": 0,
+        "on_screen": 7,
+        "tn": 7,
+        "off_screen": 3,
+        "tp": 3
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_away_control_009",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "control",
+      "duration_s": 3.233678823529412,
+      "counts": {
+        "frames": 17,
+        "unknown": 0,
+        "missing_face": 0,
+        "on_screen": 7,
+        "tn": 7,
+        "off_screen": 6,
+        "tp": 6
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_away_down_004",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "down",
+      "duration_s": 20.401328125000003,
+      "counts": {
+        "frames": 103,
+        "unknown": 0,
+        "missing_face": 0,
+        "on_screen": 33,
+        "tn": 32,
+        "off_screen": 34,
+        "tp": 34,
+        "fp": 1
+      },
+      "events": [
+        {
+          "id": "a566ea8c-b647-4e31-b3a6-55e2d6e4116c",
+          "type": "GAZE_DOWN",
+          "at": 11.200729166666667,
+          "start": 6.200403645833334,
+          "epoch": 1,
+          "direction": "DOWN",
+          "category": "GAZE_STRIKE",
+          "rule_version": "3.0",
+          "ongoing": true,
+          "duration": 5.0
+        }
+      ],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_away_down_005",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "down",
+      "duration_s": 23.617409780775716,
+      "counts": {
+        "frames": 119,
+        "unknown": 1,
+        "missing_face": 0,
+        "on_screen": 53,
+        "tn": 51,
+        "off_screen": 39,
+        "tp": 39,
+        "fp": 1
+      },
+      "events": [
+        {
+          "id": "fd082d99-6960-4a33-8866-357de5ac6c4d",
+          "type": "GAZE_DOWN",
+          "at": 11.229259134345137,
+          "start": 6.034228218100056,
+          "epoch": 1,
+          "direction": "DOWN",
+          "category": "GAZE_STRIKE",
+          "rule_version": "3.0",
+          "ongoing": true,
+          "duration": 5.195
+        }
+      ],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_away_left_007",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "left",
+      "duration_s": 16.633511322248612,
+      "counts": {
+        "frames": 84,
+        "unknown": 6,
+        "missing_face": 0,
+        "on_screen": 37,
+        "tn": 34,
+        "off_screen": 19,
+        "tp": 19
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_away_left_009",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "left",
+      "duration_s": 18.23341444201313,
+      "counts": {
+        "frames": 92,
+        "unknown": 0,
+        "missing_face": 0,
+        "on_screen": 51,
+        "tn": 51,
+        "off_screen": 10,
+        "tp": 10
+      },
+      "events": [
+        {
+          "id": "8a2cbf9a-d609-444f-bf13-6b0cd88a6eb1",
+          "type": "GAZE_LEFT",
+          "at": 11.036014004376367,
+          "start": 5.837891466083152,
+          "epoch": 1,
+          "direction": "LEFT",
+          "category": "GAZE_STRIKE",
+          "rule_version": "3.0",
+          "ongoing": true,
+          "duration": 5.198
+        }
+      ],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_away_right_001",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "right",
+      "duration_s": 17.033346853146853,
+      "counts": {
+        "frames": 86,
+        "unknown": 0,
+        "missing_face": 0,
+        "on_screen": 38,
+        "tn": 37,
+        "fp": 1,
+        "off_screen": 28,
+        "tp": 28
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_away_right_007",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "right",
+      "duration_s": 16.233449467649468,
+      "counts": {
+        "frames": 82,
+        "unknown": 1,
+        "missing_face": 0,
+        "on_screen": 45,
+        "tn": 45,
+        "off_screen": 18,
+        "tp": 18
+      },
+      "events": [
+        {
+          "id": "a45acd4b-2167-424d-9763-a9f9bd31c047",
+          "type": "GAZE_RIGHT",
+          "at": 9.636111629811628,
+          "start": 4.4382090909090905,
+          "epoch": 1,
+          "direction": "RIGHT",
+          "category": "GAZE_STRIKE",
+          "rule_version": "3.0",
+          "ongoing": true,
+          "duration": 5.198
+        }
+      ],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_away_right_010",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "right",
+      "duration_s": 16.633381066030232,
+      "counts": {
+        "frames": 84,
+        "unknown": 0,
+        "missing_face": 0,
+        "on_screen": 47,
+        "tn": 45,
+        "fp": 2,
+        "off_screen": 19,
+        "tp": 19
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_away_up_006",
+      "participant": "person_01",
+      "scenario": "gaze_away",
+      "category": "up",
+      "duration_s": 2.433774871794872,
+      "counts": {
+        "frames": 13,
+        "unknown": 2,
+        "missing_face": 0,
+        "on_screen": 3,
+        "tn": 3,
+        "off_screen": 6,
+        "tp": 6
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_on_screen_left_005",
+      "participant": "person_01",
+      "scenario": "gaze_on_screen",
+      "category": "left",
+      "duration_s": 6.233524528301887,
+      "counts": {
+        "frames": 32,
+        "unknown": 3,
+        "missing_face": 0,
+        "on_screen": 32,
+        "tn": 28,
+        "fp": 1
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_on_screen_right_001",
+      "participant": "person_01",
+      "scenario": "gaze_on_screen",
+      "category": "right",
+      "duration_s": 16.625473015873016,
+      "counts": {
+        "frames": 84,
+        "unknown": 22,
+        "missing_face": 0,
+        "on_screen": 84,
+        "tn": 42,
+        "fp": 20
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_on_screen_right_002",
+      "participant": "person_01",
+      "scenario": "gaze_on_screen",
+      "category": "right",
+      "duration_s": 18.025399041297934,
+      "counts": {
+        "frames": 91,
+        "unknown": 22,
+        "missing_face": 0,
+        "on_screen": 90,
+        "tn": 56,
+        "fp": 12
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_01_gaze_on_screen_right_004",
+      "participant": "person_01",
+      "scenario": "gaze_on_screen",
+      "category": "right",
+      "duration_s": 9.433328270042194,
+      "counts": {
+        "frames": 48,
+        "unknown": 13,
+        "missing_face": 0,
+        "on_screen": 47,
+        "tn": 31,
+        "fp": 3
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_02_gaze_away_down_002",
+      "participant": "person_02",
+      "scenario": "gaze_away",
+      "category": "down",
+      "duration_s": 16.432341381623072,
+      "counts": {
+        "frames": 83,
+        "unknown": 21,
+        "missing_face": 17,
+        "on_screen": 46,
+        "tn": 43,
+        "off_screen": 18,
+        "tp": 4,
+        "fn": 1
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_02_gaze_away_down_003",
+      "participant": "person_02",
+      "scenario": "gaze_away",
+      "category": "down",
+      "duration_s": 16.200602172437204,
+      "counts": {
+        "frames": 82,
+        "unknown": 4,
+        "missing_face": 2,
+        "on_screen": 46,
+        "tn": 45,
+        "off_screen": 18,
+        "tp": 17
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_02_gaze_away_down_004",
+      "participant": "person_02",
+      "scenario": "gaze_away",
+      "category": "down",
+      "duration_s": 17.429059500959692,
+      "counts": {
+        "frames": 88,
+        "unknown": 0,
+        "missing_face": 0,
+        "on_screen": 40,
+        "tn": 40,
+        "off_screen": 30,
+        "tp": 30
+      },
+      "events": [
+        {
+          "id": "54c50a86-ae55-427f-b694-a0ad5eff3fec",
+          "type": "GAZE_DOWN",
+          "at": 10.632399232245682,
+          "start": 5.619021113243762,
+          "epoch": 1,
+          "direction": "DOWN",
+          "category": "GAZE_STRIKE",
+          "rule_version": "3.0",
+          "ongoing": true,
+          "duration": 5.013
+        }
+      ],
+      "locks": 0
+    },
+    {
+      "video": "person_02_gaze_away_down_005",
+      "participant": "person_02",
+      "scenario": "gaze_away",
+      "category": "down",
+      "duration_s": 17.42848368522073,
+      "counts": {
+        "frames": 88,
+        "unknown": 0,
+        "missing_face": 0,
+        "on_screen": 39,
+        "tn": 38,
+        "fp": 1,
+        "off_screen": 29,
+        "tp": 28,
+        "fn": 1
+      },
+      "events": [
+        {
+          "id": "40bafe57-c7d1-4ee3-9fab-ad19fa4c354a",
+          "type": "GAZE_DOWN",
+          "at": 10.825769673704414,
+          "start": 5.6307408829174665,
+          "epoch": 1,
+          "direction": "DOWN",
+          "category": "GAZE_STRIKE",
+          "rule_version": "3.0",
+          "ongoing": true,
+          "duration": 5.195
+        }
+      ],
+      "locks": 0
+    },
+    {
+      "video": "person_02_gaze_away_left_004",
+      "participant": "person_02",
+      "scenario": "gaze_away",
+      "category": "left",
+      "duration_s": 17.62861247637051,
+      "counts": {
+        "frames": 89,
+        "unknown": 1,
+        "missing_face": 0,
+        "on_screen": 39,
+        "tn": 39,
+        "off_screen": 29,
+        "tp": 29
+      },
+      "events": [
+        {
+          "id": "b823fb9c-8a23-426c-9844-ff97a68c51e2",
+          "type": "GAZE_LEFT",
+          "at": 10.817557655954632,
+          "start": 5.809429111531191,
+          "epoch": 1,
+          "direction": "LEFT",
+          "category": "GAZE_STRIKE",
+          "rule_version": "3.0",
+          "ongoing": true,
+          "duration": 5.008
+        }
+      ],
+      "locks": 0
+    },
+    {
+      "video": "person_02_gaze_away_right_006",
+      "participant": "person_02",
+      "scenario": "gaze_away",
+      "category": "right",
+      "duration_s": 17.826693032015065,
+      "counts": {
+        "frames": 90,
+        "unknown": 5,
+        "missing_face": 0,
+        "on_screen": 50,
+        "tn": 50,
+        "off_screen": 19,
+        "tp": 17
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_02_gaze_away_up_004",
+      "participant": "person_02",
+      "scenario": "gaze_away",
+      "category": "up",
+      "duration_s": 15.831370755370756,
+      "counts": {
+        "frames": 80,
+        "unknown": 1,
+        "missing_face": 0,
+        "on_screen": 45,
+        "tn": 45,
+        "off_screen": 17,
+        "tp": 16
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_02_gaze_on_screen_down_005",
+      "participant": "person_02",
+      "scenario": "gaze_on_screen",
+      "category": "down",
+      "duration_s": 16.229892735913104,
+      "counts": {
+        "frames": 82,
+        "unknown": 0,
+        "missing_face": 0,
+        "on_screen": 63,
+        "tn": 62,
+        "fp": 1
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_02_gaze_on_screen_up_003",
+      "participant": "person_02",
+      "scenario": "gaze_on_screen",
+      "category": "up",
+      "duration_s": 15.601656050955414,
+      "counts": {
+        "frames": 79,
+        "unknown": 0,
+        "missing_face": 0,
+        "on_screen": 79,
+        "tn": 79
+      },
+      "events": [],
+      "locks": 0
+    },
+    {
+      "video": "person_02_gaze_on_screen_up_005",
+      "participant": "person_02",
+      "scenario": "gaze_on_screen",
+      "category": "up",
+      "duration_s": 15.624871062271064,
+      "counts": {
+        "frames": 79,
+        "unknown": 9,
+        "missing_face": 0,
+        "on_screen": 79,
+        "tn": 70
+      },
+      "events": [],
+      "locks": 0
+    }
+  ],
+  "limitations": [
+    "Development holdout was reused during model development",
+    "Control clips are very short (under four seconds), so absence of five-second events there is not a long-session false-alarm test",
+    "Segment labels are inferred between reviewed anchors and are preliminary",
+    "Missing/unknown observations are reported, not counted as correct negatives"
+  ]
+}

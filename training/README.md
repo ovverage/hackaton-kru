@@ -1,5 +1,42 @@
 # Обучение Qorgau и происхождение данных
 
+## Рабочие модели 0.4.5: дообучение 6 октября 2026
+
+Новый комплект — YOLO11n `cell phone`, отдельный готовый YOLOv8n face, MediaPipe Face Mesh и ExtraTrees на 33 признаках глаз/головы. В EXE нет пользовательской калибровки: фиксированная исходная поза берётся автоматически при включении камеры. [Карточка моделей и ограничения](../docs/MODEL_CARD_2026_10_06.md), [манифест весов](../model-manifest.json).
+
+Телефон: визуально просмотрены 292 собственных фото, исправлены предложения рамок, 3 неоднозначных исключены. Это просмотр Codex, не независимая двойная человеческая разметка. Официальные COCO `cell phone` аннотации смешаны с проверенными фото. Разделение: 5 418 train / 344 val / 108 test; второй участник целиком оставлен для итогового сравнения с исходным YOLO11n COCO. Модель поведения с классом `mobile_use` не используется как разметка смартфона.
+
+Взгляд: 1 053 пригодных ключевых кадра, 10 пропусков; целые видео разделены 66/22/22. Экспорт JSON совпадает со scikit-learn на всех пригодных кадрах с погрешностью округления. Development holdout: balanced accuracy 94,66%; исключение целого участника — 91,93% / 77,33%. Эти результаты не являются финальным независимым тестом после всех итераций разработки. Полные записи отдельно воспроизведены через временные правила.
+
+Отчёты: [телефон](reports/phone-v2.json), [проверка ONNX](reports/phone-export-v2.json), [взгляд](reports/gaze-v2.json), [полные видео](reports/gaze-replay-v2.json), [все модели вместе](reports/full-runtime-v2.json), [проверка YOLO лиц](reports/face-runtime-v2.json), [второе лицо](reports/second-face-v2.json). Частные фотографии и признаки не публикуются.
+
+Папки `person_detection/person_absent` и `person_present` описывают отсутствие/присутствие **второго** человека: после просмотра 204 фото подтверждено, что основной студент есть во всех кадрах. Их нельзя автоматически использовать как разметку пустой аудитории. YOLOv8n обнаружил два лица в 150/171 кадров второго сценария, MediaPipe — в 101/171; на 33 одиночных фото лишних вторых лиц нет. 21 пропуск сохраняется, включая кадры с обрезанной второй головой. Модель лиц на этих фото не обучалась.
+
+### Воспроизведение
+
+Телефон обучается в отдельном окружении Python 3.11, PyTorch 2.6.0+cu124, Ultralytics 8.3.221, ONNX 1.17.0. NVIDIA L40S используется только для обучения, клиент исполняет модели на CPU. Классификатор взгляда: Python 3.12, scikit-learn 1.7.2, MediaPipe 0.10.32. Другие модели на GPU-сервере не останавливались.
+
+```powershell
+# После безопасного импорта архива и визуальной проверки рамок.
+# reviewed.json — частная проверенная разметка; она не входит в Git.
+python -m training.prepare_phone_v2 --dataset data/qorgau_dataset --review training/runs/phone-review/reviewed.json --output data/phone-v2
+python -m training.train_phone_v2 --data data/phone-v2/data.yaml --output training/runs/phone-v2-fast --epochs 60 --batch 64 --workers 12 --cache disk --device 0
+python -m training.check_phone_export --manifest data/phone-v2/manifest.json --onnx training/runs/phone-v2-fast/phone-yolo11n.onnx --checkpoint training/runs/phone-v2-fast/fit/weights/best.pt --output training/runs/phone-v2-fast/export-check.json
+
+python -m training.extract_gaze_v2 --dataset data/qorgau_dataset --face-model models/face_landmarker.task --output training/runs/gaze-v2-features-final
+python -m training.train_gaze_v2 --help
+# split.json создаётся один раз целыми видео; сохранённый split не меняется между итерациями.
+python -m training.train_gaze_direction --features training/runs/gaze-v2-features-final/features.json --split training/provenance/gaze-v2-split.json --output training/runs/gaze-direction-final
+python -m training.replay_gaze_v2 --dataset data/qorgau_dataset --face-model models/face_landmarker.task --yolo-face-model models/face_yolov8n.onnx --model training/runs/gaze-direction-final/gaze-direction.json --split training/provenance/gaze-v2-split.json --output training/runs/gaze-replay-release
+python -m training.check_face_presence --dataset data/qorgau_dataset --models models --output training/runs/second-face-v2
+```
+
+При сборке приложения применяется `scripts/prepare_models.py`: он скачивает закреплённые итоговые файлы и проверяет SHA-256; обучение и повторный экспорт при упаковке не выполняются. Для повторного обучения нужны исходный частный архив, проверенные рамки и COCO. В текущем коде защиты Python напрямую вызывает WinAPI; названия pyautogui/keyboard в кейсе не следует выдавать за фактически используемые зависимости.
+
+## Исторические эксперименты до 0.4.5
+
+Разделы ниже сохраняют прежние результаты и решения о неприменении старых моделей. Утверждения о выключенном по умолчанию взгляде и готовом COCO относятся к тем версиям, а не к комплекту 2026.10.06.2.
+
 Команда собрала собственные данные и выполнила отдельные эксперименты на собственной и открытой выборках. COCO YOLO11n и MediaPipe используются как готовые базовые модели, не выдаются за разработанные или обученные с нуля командой.
 
 ## Состав

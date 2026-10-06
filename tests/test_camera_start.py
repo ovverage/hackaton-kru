@@ -28,6 +28,7 @@ class FakeCamera:
         assert not calibrate, "Ordinary camera start must not collect calibration"
         self.cv2 = cv2
         self.centres = {}
+        self.gaze_enabled = True
         self.closed = False
 
     def read(self):
@@ -41,7 +42,7 @@ class FakeCamera:
         self.closed = True
 
 
-def test_uncalibrated_camera_still_detects_phone_without_gaze_penalties():
+def test_unknown_gaze_does_not_prevent_phone_detection_and_aspect_is_preserved():
     import cv2
 
     camera = Camera.__new__(Camera)
@@ -49,16 +50,23 @@ def test_uncalibrated_camera_still_detects_phone_without_gaze_penalties():
     camera.centres = {}
     camera.raising = PhoneRaising()
     camera.face_features = lambda *args: (1, np.array([0.1, 0.9, 0.2, 0.9]))
+    camera.gaze_vector = None
+    from unittest.mock import Mock
+    camera.gaze = Mock()
+    camera.gaze.observe.return_value = {'direction':'UNKNOWN'}
+    camera.face_detector = Mock()
+    camera.face_detector.detect.return_value = []
 
     class Detector:
         def detect(self, frame):
+            assert frame.shape[:2] == (720, 1280)
             return [{"confidence": 0.95, "box": [200, 100, 280, 260]}]
 
     camera.phone = Detector()
     engine = RuleEngine()
     engine.start()
     for t in (0.0, 0.2, 0.4):
-        observation = camera.analyze(np.zeros((48, 64, 3), dtype=np.uint8), at=t)
+        observation = camera.analyze(np.zeros((720, 1280, 3), dtype=np.uint8), at=t)
         assert observation["direction"] == "UNKNOWN" and observation["faces"] == 1
         engine.observe(t, **observation)
     assert engine.state.reason == "PHONE_DETECTED"
@@ -85,7 +93,7 @@ def test_camera_start_cleans_up_without_returning_unusable_camera(application, f
     assert bool(worker.error) == (failure == "capture")
 
 
-def test_one_click_camera_is_ready_without_gaze_and_recovery_keeps_lock(
+def test_one_click_camera_enables_auto_gaze_and_recovery_keeps_lock(
     application, tmp_path
 ):
     from agent.camera_setup import CameraSetup
@@ -125,7 +133,7 @@ def test_one_click_camera_is_ready_without_gaze_and_recovery_keeps_lock(
             time.sleep(0.01)
     assert not dialog.preparing and dialog.result() == dialog.DialogCode.Accepted
     assert agent.camera is not None and agent.recorder is not None
-    assert agent.capabilities["camera"] and not agent.snapshot()["gaze"]
+    assert agent.capabilities["camera"] and agent.snapshot()["gaze"]
     assert agent.camera.centres == {}
     agent.journal["exam_id"] = "exam"
     agent.last_observation = {
@@ -168,7 +176,7 @@ def test_one_click_camera_is_ready_without_gaze_and_recovery_keeps_lock(
     assert (
         agent.engine.state.access == "LOCKED" and agent.engine.state.lock_id == lock_id
     )
-    assert not agent.capabilities["gaze"]
+    assert agent.capabilities["gaze"]
     agent.engine.end()
     agent.camera.close()
     agent.recorder.close()

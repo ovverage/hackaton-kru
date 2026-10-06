@@ -1,4 +1,4 @@
-"""Experimental local CV pipeline. Calibrated eye/head features need classroom validation."""
+"""Local YOLO phone/face detection and automatically referenced Face Mesh gaze."""
 
 from __future__ import annotations
 from pathlib import Path
@@ -10,7 +10,8 @@ class Camera:
         import cv2
         import numpy as np
         import mediapipe as mp
-        from .detector import PhoneDetector
+        from .detector import PhoneDetector, FaceDetector
+        from shared.gaze_v2 import GazeClassifier
         from mediapipe.tasks import python
         from mediapipe.tasks.python import vision
 
@@ -19,14 +20,20 @@ class Camera:
                 raise ValueError(f"Локальная модель не найдена: {path}")
         self.cv2, self.np, self.mp = cv2, np, mp
         self.phone = PhoneDetector(phone_model)
+        self.face_detector = FaceDetector(phone_model.parent / 'face_yolov8n.onnx')
+        self.gaze = GazeClassifier(phone_model.parent / 'gaze-direction.json')
+        self.gaze_enabled = True
+        self.gaze_vector = None
         self.face = vision.FaceLandmarker.create_from_options(
             vision.FaceLandmarkerOptions(
                 base_options=python.BaseOptions(model_asset_path=str(face_model)),
                 running_mode=vision.RunningMode.VIDEO,
                 num_faces=2,
-                min_face_detection_confidence=0.6,
-                min_face_presence_confidence=0.6,
-                min_tracking_confidence=0.6,
+                min_face_detection_confidence=0.5,
+                min_face_presence_confidence=0.5,
+                min_tracking_confidence=0.5,
+                output_face_blendshapes=True,
+                output_facial_transformation_matrixes=True,
             )
         )
         self.capture = cv2.VideoCapture(index)
@@ -55,8 +62,15 @@ class Camera:
             self.timestamp,
         )
         faces = result.face_landmarks
+        self.gaze_vector = None
         if len(faces) != 1 or len(faces[0]) < 478:
             return len(faces), None
+        from shared.gaze_v2 import extract_features
+        self.gaze_vector = extract_features(
+            faces[0], result.facial_transformation_matrixes[0],
+            {b.category_name: b.score for b in result.face_blendshapes[0]},
+            frame.shape[1], frame.shape[0],
+        )
         from shared.gaze import features
         vector = features(faces[0])
         return len(faces), self.np.asarray(vector) if vector is not None else None
@@ -131,19 +145,24 @@ class Camera:
 
     def analyze(self, frame, at=None):
         """The same inference for live capture and timestamped offline evaluation."""
-        frame = self.cv2.resize(frame, (640, 480))
-        faces, feature = self.face_features(frame, None if at is None else int(at * 1000))
+        height, width = frame.shape[:2]
+        scale = min(1., 960 / max(width, height))
+        mesh_frame = self.cv2.resize(frame, (round(width * scale), round(height * scale)))
+        mesh_faces, feature = self.face_features(mesh_frame, None if at is None else int(at * 1000))
+        face_detections = self.face_detector.detect(frame)
+        faces = max(mesh_faces, len(face_detections))
         from .behavior import classify_gaze
-        direction = classify_gaze(feature, self.centres)
+        gaze = self.gaze.observe(self.gaze_vector if faces == 1 else None)
+        direction = classify_gaze(feature, self.centres) if self.centres else gaze['direction']
         detections = self.phone.detect(frame)
         confidence = max((x["confidence"] for x in detections), default=0.0)
         return {
             "direction": direction,
             "phone_confidence": confidence,
             "faces": faces,
-            "phone_aiming": self.raising.update(time.monotonic() if at is None else at, detections, 640, 480),
+            "phone_aiming": self.raising.update(time.monotonic() if at is None else at, detections, width, height),
             "detections": [{"label": "phone", "confidence": float(d["confidence"]),
-                            "box": [float(v) / (640 if i % 2 == 0 else 480)
+                            "box": [float(v) / (width if i % 2 == 0 else height)
                                     for i, v in enumerate(d["box"])]}
                            for d in detections if d["confidence"] >= .65],
         }

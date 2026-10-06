@@ -367,10 +367,10 @@ class CameraSetup(QDialog):
                     self.agent.capabilities.update(
                         camera=True,
                         recording=True,
-                        gaze=bool(camera.centres),
+                        gaze=bool(camera.centres) or bool(getattr(camera, 'gaze_enabled', False)),
                         vision="yolo11n-onnx/mediapipe-personal-calibration"
                         if camera.centres
-                        else "yolo11n-onnx/mediapipe-phone-face",
+                        else "yolo11n-phone/yolov8n-face/mediapipe-auto-gaze",
                     )
                     self.agent.config["camera_settings"] = {
                         "index": self.index.value(),

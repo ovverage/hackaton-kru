@@ -821,8 +821,8 @@ def main():
         agent.camera = Camera(args.camera, args.phone_model, args.face_model, calibrate=args.calibrate_gaze)
         agent.recorder = ClipRecorder(args.data / "clips")
         agent.capabilities.update(
-            camera=True, recording=True, gaze=bool(agent.camera.centres),
-            vision="experimental-calibrated-iris" if agent.camera.centres else "yolo11n-onnx/mediapipe-phone-face"
+            camera=True, recording=True, gaze=bool(agent.camera.centres) or bool(getattr(agent.camera, 'gaze_enabled', False)),
+            vision="experimental-calibrated-iris" if agent.camera.centres else "yolo11n-phone/yolov8n-face/mediapipe-auto-gaze"
         )
     stop = threading.Event()
     if args.headless:

@@ -59,17 +59,25 @@ def run(output):
     import mediapipe as mp
     from mediapipe.tasks import python
     from mediapipe.tasks.python import vision
-    from .resources import verified_models
-    from .detector import PhoneDetector
+    from .resources import verified_assets
+    from .detector import PhoneDetector, FaceDetector
+    from shared.gaze_v2 import GazeClassifier
     from .recording import ClipRecorder
-    phone_path, face_path = verified_models()
+    assets = verified_assets()
+    phone_path, face_path = assets[:2]
     detector = PhoneDetector(phone_path)
+    face_detector = FaceDetector(phone_path.parent / 'face_yolov8n.onnx')
+    gaze = GazeClassifier(phone_path.parent / 'gaze-direction.json')
     frame = np.zeros((480, 640, 3), dtype=np.uint8)
     times = []
     for _ in range(12):
         start = time.perf_counter()
         assert detector.detect(frame) == []
         times.append(time.perf_counter() - start)
+    assert face_detector.detect(frame) == []
+    assert gaze.observe(None)['direction'] == 'UNKNOWN'
+    probabilities = gaze.probabilities([0.] * 33)
+    assert len(probabilities) == 5 and abs(sum(probabilities)-1) < 1e-6
     with vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(
         base_options=python.BaseOptions(model_asset_path=str(face_path)), num_faces=2,
     )) as face:
@@ -89,11 +97,14 @@ def run(output):
             assert ok and decoded.shape == frame.shape
         finally:
             recorder.close()
-    from shared.version import APP_VERSION
+    from shared.version import APP_VERSION, MODEL_VERSION
+    import hashlib
     import platform
     import sys
     report = {"result": "PASS", "status": "passed", "version": APP_VERSION, "platform": platform.platform(), "frozen": bool(getattr(sys, "frozen", False)), "browser_renderer": True, "kind": "synthetic packaging test; no webcam or accuracy claim",
               "installer_mutex": installer_mutex, "models_verified": True, "onnx_inference": True, "face_landmarker": True,
+              "yolo_face_inference": True, "gaze_forest": True, "model_version": MODEL_VERSION,
+              "model_files": {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in assets},
               "h264_encode_decode": True, "phone_cpu_median_ms": round(statistics.median(times[2:]) * 1000, 2)}
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     Path(output).write_text(json.dumps(report, indent=2), encoding="utf-8")

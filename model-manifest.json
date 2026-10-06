@@ -1,34 +1,88 @@
 {
-  "version": "2026.10.06.1",
-  "pretrained": true,
-  "class_id": 67,
-  "class_name": "cell phone",
-  "architecture": "YOLO11n / COCO80",
-  "training": "Upstream pretrained; no local classroom fine-tuning claimed",
+  "version": "2026.10.06.2",
+  "application_version": "0.4.5",
+  "architecture": "YOLO11n phone / YOLOv8n face / MediaPipe Face Mesh + ExtraTrees gaze",
+  "runtime": "local CPU; no Torch, training service or recognition API required",
+  "model_card": "docs/MODEL_CARD_2026_10_06.md",
+  "initial_phone_weights": {
+    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt",
+    "sha256": "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1",
+    "source_dataset": "COCO 2017",
+    "original_class_id": 67
+  },
+  "phone_training": {
+    "report": "training/reports/phone-v2.json",
+    "completed_epochs": 60,
+    "seed": 20261006,
+    "test_participant_excluded_from_training": true,
+    "checkpoint_sha256": "5beb7689c2e6850967a370eafb2a7b226a7eb2c7657f928ce9cc28018ee76c79"
+  },
   "exporter": {
     "ultralytics": "8.3.221",
-    "torch": "2.6.0+cpu",
+    "torch": "2.6.0",
     "onnx": "1.17.0"
   },
   "files": [
     {
-      "file": "yolo11n.pt",
-      "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt",
-      "sha256": "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1",
-      "license": "AGPL-3.0"
+      "file": "yolo11n.onnx",
+      "url": "https://github.com/ovverage/hackaton-kru/releases/download/models-2026.10.06.2/yolo11n.onnx",
+      "license": "AGPL-3.0",
+      "role": "phone",
+      "architecture": "YOLO11n",
+      "class_id": 0,
+      "class_name": "cell phone",
+      "fine_tuned": true,
+      "source": "https://github.com/ovverage/hackaton-kru/releases/download/models-2026.10.06.2/phone-yolo11n-best.pt",
+      "export": "onnx,640,opset17,float32,batch1,no-nms",
+      "sha256": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+      "bytes": 10564786
     },
     {
       "file": "face_landmarker.task",
       "url": "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+      "license": "Apache-2.0",
+      "role": "face mesh, iris landmarks, head rotation and blendshapes",
+      "fine_tuned": false,
       "sha256": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
-      "license": "Apache-2.0"
+      "bytes": 3758596
     },
     {
-      "file": "yolo11n.onnx",
-      "sha256": "cdf18d1b320b54b92e1cfba8a12a47138b8df82ec5ea8462b540c9754549ea99",
-      "license": "AGPL-3.0",
-      "source": "yolo11n.pt",
-      "export": "onnx,640,opset17,float32,batch1,no-nms"
+      "file": "face_yolov8n.onnx",
+      "url": "https://github.com/ovverage/hackaton-kru/releases/download/models-2026.10.06.2/face_yolov8n.onnx",
+      "license": "Apache-2.0 (upstream model card); Ultralytics exporter AGPL-3.0",
+      "role": "face",
+      "architecture": "YOLOv8n",
+      "class_id": 0,
+      "class_name": "face",
+      "fine_tuned": false,
+      "source": "https://huggingface.co/Bingsu/adetailer/resolve/53cc19de382014514d9d4038601d261a7faa9b7b/face_yolov8n.pt",
+      "source_sha256": "70b640f8f60b1cf0dcc72f30caf3da9495eb2fb6509da48c53374ad6806e6a9c",
+      "export": "onnx,640,opset17,float32,batch1,no-nms",
+      "sha256": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+      "bytes": 12238336
+    },
+    {
+      "file": "gaze-direction.json",
+      "url": "https://github.com/ovverage/hackaton-kru/releases/download/models-2026.10.06.2/gaze-direction.json",
+      "role": "direction classifier over MediaPipe features",
+      "architecture": "ExtraTrees, 300 trees, depth 10",
+      "feature_version": "iris-head-blend-v2",
+      "features": 33,
+      "schema": 3,
+      "classes": [
+        "SCREEN",
+        "DOWN",
+        "LEFT",
+        "RIGHT",
+        "UP"
+      ],
+      "threshold": 0.65,
+      "direction_threshold": 0.55,
+      "manual_calibration_required": false,
+      "reference": "first usable open-eye frame; fixed for current camera activation",
+      "training_report": "training/reports/gaze-v2.json",
+      "sha256": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+      "bytes": 2158264
     }
   ]
 }

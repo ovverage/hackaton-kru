@@ -11,17 +11,29 @@ VERSION=tomllib.loads((ROOT/'pyproject.toml').read_text(encoding='utf-8'))['proj
 DOC_SUFFIXES = {'.md', '.png', '.jpg', '.jpeg', '.webp', '.svg', '.json'}
 
 
+def source_files(root):
+    """Only committed/staged public source; never collect ignored training runs."""
+    tracked = subprocess.check_output(['git', 'ls-files', '-z'], cwd=root).decode('utf-8').split('\0')
+    directories = {'agent','backend','shared','scripts','tests','extension','deploy','training','packaging','.github','web','docs','deliverables'}
+    top_level = {'README.md','THIRD_PARTY_NOTICES.md','.gitignore','.gitattributes','Start-Student.cmd','pyproject.toml','requirements-core.lock','requirements-student.lock','requirements-windows.lock','model-manifest.json','package.json'}
+    paths = []
+    for name in tracked:
+        relative = Path(name)
+        if not name or (relative.parts[0] not in directories and name not in top_level):
+            continue
+        if any(part in {'.local', 'node_modules', '__pycache__', 'runs', 'data', 'models', 'dist'} for part in relative.parts):
+            continue
+        path = root / relative
+        if path.is_file() and not path.is_symlink():
+            paths.append(path)
+    return paths
+
+
 def main():
     dist=ROOT/'dist'
     source=dist/f'Qorgau-Source-{VERSION}.zip'
-    paths=[]
-    for name in ('agent','backend','shared','scripts','tests','extension','deploy','training','packaging','.github','web/src','web/public'):
-        folder=ROOT/name
-        if folder.exists():
-            paths.extend(p for p in folder.rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix!='.pyc')
-    paths.extend(p for p in (ROOT/'docs').rglob('*') if p.is_file() and p.suffix.lower() in DOC_SUFFIXES)
-    paths.extend(ROOT/name for name in ('README.md','THIRD_PARTY_NOTICES.md','.gitignore','.gitattributes','Start-Student.cmd','pyproject.toml','requirements-core.lock','requirements-student.lock','requirements-windows.lock','model-manifest.json','package.json','web/package.json','web/package-lock.json','web/index.html','web/vite.config.ts','web/tsconfig.json','web/tsconfig.app.json','web/tsconfig.node.json') if (ROOT/name).is_file())
-    paths.extend(p for p in (ROOT/'deliverables').iterdir() if p.suffix.lower() in {'.pptx', '.docx'})
+    paths=source_files(ROOT)
+    public_paths=set(paths)
     with zipfile.ZipFile(source,'w',zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(set(paths)):
             archive.write(path,path.relative_to(ROOT).as_posix())
@@ -31,10 +43,10 @@ def main():
             archive.write(file,file.name)
         for folder,name in ((ROOT/'extension','extension'),(ROOT/'docs','docs'),(dist/'third-party','third-party')):
             for file in folder.rglob('*'):
-                if file.is_file() and (name!='docs' or file.suffix.lower() in DOC_SUFFIXES):
+                if file.is_file() and not file.is_symlink() and (name=='third-party' or file in public_paths) and (name!='docs' or file.suffix.lower() in DOC_SUFFIXES):
                     archive.write(file,name+'/'+file.relative_to(folder).as_posix())
         for file in (ROOT/'deliverables').iterdir():
-            if file.suffix.lower() not in {'.pptx', '.docx'}:
+            if file not in public_paths or file.suffix.lower() not in {'.pptx', '.docx'}:
                 continue
             archive.write(file,'deliverables/'+file.name)
     files=[]
@@ -48,7 +60,8 @@ def main():
         source_state={'commit':revision,'working_tree_dirty':dirty}
     except (OSError, subprocess.CalledProcessError):
         source_state={'commit':None,'working_tree_dirty':None}
-    manifest={'version':VERSION,'model_version':'2026.10.06.1','rule_version':'3.0','windows':'x64, Python 3.12 build',
+    model_version=json.loads((ROOT/'model-manifest.json').read_text(encoding='utf-8'))['version']
+    manifest={'version':VERSION,'model_version':model_version,'rule_version':'3.0','windows':'x64, Python 3.12 build',
               'mode':'OBSERVE / GUARDED; STRICT unavailable',
               'source':source_state,'files':files}
     (dist/'release-manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')

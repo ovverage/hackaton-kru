@@ -263,7 +263,7 @@ class StudentWindow(QWidget):
         self.camera_button.setObjectName("primary")
         self.camera_button.clicked.connect(self.prepare_camera)
         layout.addWidget(self.camera_button)
-        self.camera_status = label("Выберите окно и камеру, затем нажмите «Готово».", "small")
+        self.camera_status = label("Выберите окно и камеру, затем нажмите «Готово», глядя на экран.", "small")
         layout.addWidget(self.camera_status)
         self.assignment_title = label("", "small")
         layout.addWidget(self.assignment_title)
@@ -395,7 +395,7 @@ class StudentWindow(QWidget):
             else "Включаем камеру…" if snap.get("camera_preparing")
             else "Камера включена. Ждём преподавателя." if snap.get("camera") and not active
             else model["title"] if active
-            else "Выберите окно и камеру, затем нажмите «Готово»."
+            else "Выберите окно и камеру, затем нажмите «Готово», глядя на экран."
         )
         session = snap.get("session") or {}
         self.assignment_title.setText(session.get("title", ""))

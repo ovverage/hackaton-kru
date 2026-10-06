@@ -23,6 +23,8 @@ def installer_command(root, compiler):
     for relative in (
         "Qorgau-Student.exe",
         "_internal/models/yolo11n.onnx",
+        "_internal/models/face_yolov8n.onnx",
+        "_internal/models/gaze-direction.json",
         "_internal/models/face_landmarker.task",
     ):
         if not (source / relative).is_file():

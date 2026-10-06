@@ -54,8 +54,8 @@ if not args.with_cv:
         command.extend(["--exclude-module", module])
 else:
     sys.path.insert(0, str(root))
-    from agent.resources import verified_models, ffmpeg_executable
-    models = verified_models()
+    from agent.resources import verified_assets, ffmpeg_executable
+    models = verified_assets()
     ffmpeg_executable()
     notices = root / "dist/third-party"
     if not (notices / "package-inventory.json").is_file():

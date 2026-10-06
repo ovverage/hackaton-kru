@@ -69,6 +69,13 @@ jobs:
           for name in ('packaged-selftest.json', 'portable-selftest.json', 'installer-selftest.json', 'plain-first-run.json'):
               report = json.load(open('artifacts/' + name))
               assert report['status'] == 'passed' and report['version'] == version
+          models = json.load(open('model-manifest.json'))
+          expected_models = {entry['file']: entry['sha256'] for entry in models['files']}
+          for name in ('packaged-selftest.json', 'portable-selftest.json', 'installer-selftest.json'):
+              report = json.load(open('artifacts/' + name))
+              runtime = report['runtime'] if name == 'installer-selftest.json' else report
+              assert runtime['frozen'] and runtime['model_version'] == models['version']
+              assert runtime['model_files'] == expected_models
           PY
           zip -r artifacts/Qorgau-Web.zip web-bundle
       - name: Tag and publish that exact commit

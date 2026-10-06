@@ -1,0 +1,31 @@
+{
+  "status": "passed",
+  "images": 108,
+  "onnx_sha256": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+  "provider": "CPUExecutionProvider",
+  "reference_device": "cpu",
+  "versions": {
+    "torch": "2.6.0+cu124",
+    "onnxruntime": "1.24.3"
+  },
+  "confidence": 0.65,
+  "nms_iou": 0.45,
+  "parity_at_confidence": 0.4,
+  "minimum_box_iou": 0.9999903658614137,
+  "maximum_confidence_error": 1.430511474609375e-06,
+  "mismatches": [],
+  "runtime_counts": {
+    "positive_images": 78,
+    "negative_images": 30,
+    "image_tp": 67,
+    "image_fn": 11,
+    "image_fp": 2,
+    "image_tn": 28,
+    "box_tp": 65,
+    "box_fn": 13,
+    "box_fp": 4
+  },
+  "inference_median_ms": 263.9205999439582,
+  "inference_p95_ms": 329.3012649519369,
+  "note": "CPU timings on training server, not a student laptop; still-image audit, not temporal events."
+}

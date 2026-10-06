@@ -1,0 +1,75 @@
+{
+  "architecture": "YOLO11n",
+  "task": "cell phone",
+  "classes": {
+    "0": "cell phone"
+  },
+  "seed": 20261006,
+  "requested_epochs": 60,
+  "completed_epochs": 60,
+  "dataset_images": {
+    "train": 5418,
+    "val": 344,
+    "test": 108
+  },
+  "split_policy": "COCO official train/val; P01 separated contiguous blocks with temporal gaps; P02 entirely test",
+  "test_metrics": {
+    "metrics/precision(B)": 0.9424236662756537,
+    "metrics/recall(B)": 0.8394432952288701,
+    "metrics/mAP50(B)": 0.9490540350899715,
+    "metrics/mAP50-95(B)": 0.7444310034484583,
+    "fitness": 0.7444310034484583
+  },
+  "test_runtime_threshold_audit": {
+    "images": 108,
+    "positive_images": 78,
+    "negative_images": 30,
+    "image_true_positive": 66,
+    "image_false_negative": 12,
+    "image_false_positive": 1,
+    "image_true_negative": 29,
+    "box_tp": 64,
+    "box_fn": 14,
+    "box_fp": 3,
+    "confidence": 0.65,
+    "box_iou": 0.5,
+    "box_precision": 0.9552238805970149,
+    "box_recall": 0.8205128205128205,
+    "image_phone_recall": 0.8461538461538461,
+    "image_false_positive_rate": 0.03333333333333333
+  },
+  "baseline_runtime_threshold_audit": {
+    "images": 108,
+    "positive_images": 78,
+    "negative_images": 30,
+    "image_true_positive": 30,
+    "image_false_negative": 48,
+    "image_false_positive": 0,
+    "image_true_negative": 30,
+    "box_fn": 50,
+    "box_tp": 28,
+    "box_fp": 2,
+    "confidence": 0.65,
+    "box_iou": 0.5,
+    "box_precision": 0.9333333333333333,
+    "box_recall": 0.358974358974359,
+    "image_phone_recall": 0.38461538461538464,
+    "image_false_positive_rate": 0.0
+  },
+  "dataset_manifest_sha256": "2a8519d1e0782fb50bfdc9fd605cb3dc5e89c94babe41447f6c8d1453f83f0a5",
+  "initial_weights_sha256": "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1",
+  "weights_sha256": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+  "checkpoint_sha256": "5beb7689c2e6850967a370eafb2a7b226a7eb2c7657f928ce9cc28018ee76c79",
+  "versions": {
+    "torch": "2.6.0+cu124",
+    "ultralytics": "8.3.221"
+  },
+  "device": "NVIDIA L40S",
+  "limitations": [
+    "Personal validation shares identity and room with train",
+    "Personal test is one unseen participant with limited phone models",
+    "Private boxes were AI-assisted visually reviewed, no independent double annotation",
+    "Still images do not establish temporal event quality",
+    "No raw private images or facial features may be published in the release"
+  ]
+}

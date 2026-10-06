@@ -1,0 +1,508 @@
+{
+  "app_version": "0.4.5",
+  "model_version": "2026.10.06.2",
+  "recordings": 31,
+  "frames": 1879,
+  "sample_fps": 5,
+  "model_sha256": {
+    "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+    "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+    "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+    "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1"
+  },
+  "cpu": "AMD Ryzen 7 3800X, 8 cores / 16 logical processors",
+  "maximum_per_recording_p95_ms": 287.0556150000992,
+  "counts": {
+    "SCREEN": 1242,
+    "phone_positive_frames": 0,
+    "multiple_face_frames": 0,
+    "LEFT": 97,
+    "UNKNOWN": 118,
+    "UP": 47,
+    "RIGHT": 150,
+    "DOWN": 225
+  },
+  "event_counts": {
+    "GAZE_DOWN": 4,
+    "GAZE_LEFT": 2,
+    "GAZE_RIGHT": 1
+  },
+  "results": [
+    {
+      "recording": "person_01_gaze_away_control_001",
+      "frames": 12,
+      "input_sha256": "fab9acce73480ef5e0673e37df775718d0037443c75e4e17bf3dcec6fff3048d",
+      "inference_p95_ms": 287.0556150000992,
+      "counts": {
+        "SCREEN": 9,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "LEFT": 2,
+        "UNKNOWN": 1
+      },
+      "events": []
+    },
+    {
+      "recording": "person_01_gaze_away_control_002",
+      "frames": 10,
+      "input_sha256": "ba1dabfab52c0bd1108f3c9441871122aea4e157ec259ab16580b7ded5b927f1",
+      "inference_p95_ms": 179.39348000036262,
+      "counts": {
+        "SCREEN": 8,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "UNKNOWN": 1,
+        "LEFT": 1
+      },
+      "events": []
+    },
+    {
+      "recording": "person_01_gaze_away_control_003",
+      "frames": 14,
+      "input_sha256": "bcdc2097089faa1893f4886db1243a3a8d013a03d992e17146044ce513e7fb02",
+      "inference_p95_ms": 164.01803999979165,
+      "counts": {
+        "SCREEN": 12,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "UP": 2
+      },
+      "events": []
+    },
+    {
+      "recording": "person_01_gaze_away_control_004",
+      "frames": 12,
+      "input_sha256": "c1d82f37326b80b3cea1cd7b737db3a564c1fbb0f03e18d900d74566e9afcbd7",
+      "inference_p95_ms": 179.52319000023635,
+      "counts": {
+        "SCREEN": 7,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "RIGHT": 4,
+        "DOWN": 1
+      },
+      "events": []
+    },
+    {
+      "recording": "person_01_gaze_away_control_005",
+      "frames": 18,
+      "input_sha256": "28109125c98f6394a896edd6e2f62589553f7c49c883e12b8fa577bc9ef7ea03",
+      "inference_p95_ms": 188.516054998945,
+      "counts": {
+        "SCREEN": 5,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "UNKNOWN": 5,
+        "UP": 8
+      },
+      "events": []
+    },
+    {
+      "recording": "person_01_gaze_away_control_006",
+      "frames": 12,
+      "input_sha256": "ee4701f881bd1a917ae94560fe09a84c04a7567b290151fc4c5d776a09e459c8",
+      "inference_p95_ms": 167.63228499976321,
+      "counts": {
+        "SCREEN": 7,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "RIGHT": 5
+      },
+      "events": []
+    },
+    {
+      "recording": "person_01_gaze_away_control_007",
+      "frames": 13,
+      "input_sha256": "cdc5b232805d682f77d1c2c55bdcc25443a1b5d2d837d0a54d84750eef579e45",
+      "inference_p95_ms": 184.75018000026466,
+      "counts": {
+        "SCREEN": 9,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "LEFT": 4
+      },
+      "events": []
+    },
+    {
+      "recording": "person_01_gaze_away_control_008",
+      "frames": 13,
+      "input_sha256": "729c3e4215e3c47926e4c7b622d3e3cf8ffd4f7e43d4740bccabcb0262ce4627",
+      "inference_p95_ms": 164.86118000029816,
+      "counts": {
+        "SCREEN": 9,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "DOWN": 4
+      },
+      "events": []
+    },
+    {
+      "recording": "person_01_gaze_away_control_009",
+      "frames": 17,
+      "input_sha256": "5f6cc15d4d963ad3da7927949b8d29f362d0c4552cb11580e03808e7b0de548b",
+      "inference_p95_ms": 169.97169999958714,
+      "counts": {
+        "SCREEN": 11,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "UP": 6
+      },
+      "events": []
+    },
+    {
+      "recording": "person_01_gaze_away_down_004",
+      "frames": 103,
+      "input_sha256": "e7baae51b0df006a137717225f4d8db8bdfa032349088b8b2895099462a57e51",
+      "inference_p95_ms": 150.52914999923811,
+      "counts": {
+        "SCREEN": 60,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "DOWN": 43
+      },
+      "events": [
+        {
+          "recording": "person_01_gaze_away_down_004",
+          "type": "GAZE_DOWN",
+          "start": 6.200403645833334,
+          "end": 14.400937500000001
+        }
+      ]
+    },
+    {
+      "recording": "person_01_gaze_away_down_005",
+      "frames": 119,
+      "input_sha256": "ae9ff6780c4ff9940a68af4c04654b30f833279474a2a016a6b75694aa0c7552",
+      "inference_p95_ms": 145.57885999911377,
+      "counts": {
+        "SCREEN": 65,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "DOWN": 53,
+        "UNKNOWN": 1
+      },
+      "events": [
+        {
+          "recording": "person_01_gaze_away_down_005",
+          "type": "GAZE_DOWN",
+          "start": 6.034228218100056,
+          "end": 16.42429005059022
+        }
+      ]
+    },
+    {
+      "recording": "person_01_gaze_away_left_007",
+      "frames": 84,
+      "input_sha256": "29c530ea93aee50025bc8ef13d0990a00d2e7dd335e216535750ba58402088e8",
+      "inference_p95_ms": 161.16656500071258,
+      "counts": {
+        "SCREEN": 53,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "UNKNOWN": 6,
+        "DOWN": 1,
+        "LEFT": 24
+      },
+      "events": []
+    },
+    {
+      "recording": "person_01_gaze_away_left_009",
+      "frames": 92,
+      "input_sha256": "40361c7c94e203273fde000786533dd300d74f955a28ceb72f146f60ca0e494f",
+      "inference_p95_ms": 181.91596499973457,
+      "counts": {
+        "SCREEN": 60,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "LEFT": 31,
+        "DOWN": 1
+      },
+      "events": [
+        {
+          "recording": "person_01_gaze_away_left_009",
+          "type": "GAZE_LEFT",
+          "start": 5.837891466083152,
+          "end": 12.03565295404814
+        }
+      ]
+    },
+    {
+      "recording": "person_01_gaze_away_right_001",
+      "frames": 86,
+      "input_sha256": "0421796163825556654ceac694c9f369347a50fe042dbfa571495ca2bb699188",
+      "inference_p95_ms": 146.30440000019007,
+      "counts": {
+        "SCREEN": 49,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "DOWN": 4,
+        "RIGHT": 33
+      },
+      "events": []
+    },
+    {
+      "recording": "person_01_gaze_away_right_007",
+      "frames": 82,
+      "input_sha256": "3cedeaaa39a2cfb844824ab35a133c651cf5f20e05e8e911d26319f038c7fbe8",
+      "inference_p95_ms": 168.6319199998252,
+      "counts": {
+        "SCREEN": 51,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "UNKNOWN": 1,
+        "RIGHT": 30
+      },
+      "events": [
+        {
+          "recording": "person_01_gaze_away_right_007",
+          "type": "GAZE_RIGHT",
+          "start": 4.4382090909090905,
+          "end": 10.435788943488943
+        }
+      ]
+    },
+    {
+      "recording": "person_01_gaze_away_right_010",
+      "frames": 84,
+      "input_sha256": "6bd8907a1e96089b2e178f8b4ad0225369edb774ab60bf8c47666efcac5f9403",
+      "inference_p95_ms": 180.53970999890223,
+      "counts": {
+        "SCREEN": 54,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "DOWN": 4,
+        "RIGHT": 26
+      },
+      "events": []
+    },
+    {
+      "recording": "person_01_gaze_away_up_006",
+      "frames": 13,
+      "input_sha256": "94fb3dd02f4ae4a13fa765991e1d74ebd582dad4a2d0ce1ee24ac0a4a3dcfd35",
+      "inference_p95_ms": 165.64364000041675,
+      "counts": {
+        "SCREEN": 5,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "UNKNOWN": 2,
+        "UP": 6
+      },
+      "events": []
+    },
+    {
+      "recording": "person_01_gaze_on_screen_left_005",
+      "frames": 32,
+      "input_sha256": "f6848d29ff8c0602637137839dfb600e9483cedc2c0eec4e574664d52b56e275",
+      "inference_p95_ms": 159.0893049998158,
+      "counts": {
+        "SCREEN": 28,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "DOWN": 1,
+        "UNKNOWN": 3
+      },
+      "events": []
+    },
+    {
+      "recording": "person_01_gaze_on_screen_right_001",
+      "frames": 84,
+      "input_sha256": "ee697cc8516cc0678872a020b57f5606a812b3203aad0ad1608d4880aeabf9d1",
+      "inference_p95_ms": 149.8599000010472,
+      "counts": {
+        "SCREEN": 42,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "DOWN": 3,
+        "UNKNOWN": 22,
+        "RIGHT": 17
+      },
+      "events": []
+    },
+    {
+      "recording": "person_01_gaze_on_screen_right_002",
+      "frames": 91,
+      "input_sha256": "96692afa826dddf18d0fe7bbe0c2591fb0bfcd5ad342cd6dd8c6e6061da3e709",
+      "inference_p95_ms": 156.11929999977292,
+      "counts": {
+        "SCREEN": 57,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "UNKNOWN": 22,
+        "RIGHT": 10,
+        "DOWN": 2
+      },
+      "events": []
+    },
+    {
+      "recording": "person_01_gaze_on_screen_right_004",
+      "frames": 48,
+      "input_sha256": "5fc2e872cbcbfb4579d33c1225e6d77e4e153492addc527aa49116aefb647a9f",
+      "inference_p95_ms": 152.1116099997016,
+      "counts": {
+        "SCREEN": 32,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "UNKNOWN": 13,
+        "DOWN": 3
+      },
+      "events": []
+    },
+    {
+      "recording": "person_02_gaze_away_down_002",
+      "frames": 83,
+      "input_sha256": "acfa06c638671eab87728f0dd5a9ccb5a63450b27cebc5a4482e7554bf27724a",
+      "inference_p95_ms": 147.93239000046015,
+      "counts": {
+        "SCREEN": 51,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "UNKNOWN": 21,
+        "DOWN": 11
+      },
+      "events": []
+    },
+    {
+      "recording": "person_02_gaze_away_down_003",
+      "frames": 82,
+      "input_sha256": "2f2475f402a1f5e57e9ac05bd15275f30c245ee0836d437f4b9f9f9b741f57d0",
+      "inference_p95_ms": 149.53527500038035,
+      "counts": {
+        "SCREEN": 49,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "UNKNOWN": 4,
+        "DOWN": 28,
+        "UP": 1
+      },
+      "events": []
+    },
+    {
+      "recording": "person_02_gaze_away_down_004",
+      "frames": 88,
+      "input_sha256": "6cf7f1849ae44b1d83f3bddfa73ec8ee59fecdc5d9fb355694d519d148f9b54c",
+      "inference_p95_ms": 155.36031000010553,
+      "counts": {
+        "SCREEN": 53,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "DOWN": 35
+      },
+      "events": [
+        {
+          "recording": "person_02_gaze_away_down_004",
+          "type": "GAZE_DOWN",
+          "start": 5.619021113243762,
+          "end": 12.617562380038388
+        }
+      ]
+    },
+    {
+      "recording": "person_02_gaze_away_down_005",
+      "frames": 88,
+      "input_sha256": "644cbcfb2d44b1f2a8163821fbd06978e71ee75580f832dbd3470287d7518ba3",
+      "inference_p95_ms": 150.3068350009016,
+      "counts": {
+        "SCREEN": 58,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "DOWN": 30
+      },
+      "events": [
+        {
+          "recording": "person_02_gaze_away_down_005",
+          "type": "GAZE_DOWN",
+          "start": 5.6307408829174665,
+          "end": 11.429063339731286
+        }
+      ]
+    },
+    {
+      "recording": "person_02_gaze_away_left_004",
+      "frames": 89,
+      "input_sha256": "02f3cdbe09bee03c06582b837a45f31c43a3d65638a49c807245f3fa95361dc0",
+      "inference_p95_ms": 151.27292000033776,
+      "counts": {
+        "SCREEN": 53,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "LEFT": 35,
+        "UNKNOWN": 1
+      },
+      "events": [
+        {
+          "recording": "person_02_gaze_away_left_004",
+          "type": "GAZE_LEFT",
+          "start": 5.809429111531191,
+          "end": 12.820809073724007
+        }
+      ]
+    },
+    {
+      "recording": "person_02_gaze_away_right_006",
+      "frames": 90,
+      "input_sha256": "aba305adf5fb2511a57dfe1b4ab89e949e63a965c4e9caedb75e2669b215d02e",
+      "inference_p95_ms": 153.0434500008596,
+      "counts": {
+        "SCREEN": 60,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "UNKNOWN": 5,
+        "RIGHT": 25
+      },
+      "events": []
+    },
+    {
+      "recording": "person_02_gaze_away_up_004",
+      "frames": 80,
+      "input_sha256": "f7c62c28d4bf83f195eed7ccc434769abe3d32b1c67db85eeec1c173c99c16bf",
+      "inference_p95_ms": 150.95643499998914,
+      "counts": {
+        "SCREEN": 55,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "UP": 24,
+        "UNKNOWN": 1
+      },
+      "events": []
+    },
+    {
+      "recording": "person_02_gaze_on_screen_down_005",
+      "frames": 82,
+      "input_sha256": "ef9860fd355d09a909cbaf39a9631de988dcbf5d046bc0866811c042c1313ab4",
+      "inference_p95_ms": 149.5342399995934,
+      "counts": {
+        "SCREEN": 81,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "DOWN": 1
+      },
+      "events": []
+    },
+    {
+      "recording": "person_02_gaze_on_screen_up_003",
+      "frames": 79,
+      "input_sha256": "6fffb6d70eea1352c3904685e5661d056ba960c8c33639a408499b6484b5a562",
+      "inference_p95_ms": 152.64100000003964,
+      "counts": {
+        "SCREEN": 79,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0
+      },
+      "events": []
+    },
+    {
+      "recording": "person_02_gaze_on_screen_up_005",
+      "frames": 79,
+      "input_sha256": "3a59236a783f6ed107caff50401b6e2a1de31457836cc6a7ca8ce51f1fba2c0b",
+      "inference_p95_ms": 147.33192999938183,
+      "counts": {
+        "SCREEN": 70,
+        "phone_positive_frames": 0,
+        "multiple_face_frames": 0,
+        "UNKNOWN": 9
+      },
+      "events": []
+    }
+  ],
+  "scope": "Offline MP4 replay through Camera.analyze (both YOLO models + MediaPipe + gaze) and RuleEngine. No physical webcam, desktop hooks or exam UI. Rule locks are preserved; teacher unlock is not replayed. Timings exclude capture, encoding and network. Reused development recordings, not a fresh independent test."
+}

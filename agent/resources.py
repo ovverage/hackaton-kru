@@ -9,12 +9,15 @@ def resource_root():
     return Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[1]))
 
 
-def verified_models():
+RUNTIME_MODELS = ('yolo11n.onnx', 'face_landmarker.task', 'face_yolov8n.onnx', 'gaze-direction.json')
+
+
+def verified_assets():
     root = resource_root()
     try:
         manifest = json.loads((root / "model-manifest.json").read_text(encoding="utf-8"))
         paths = []
-        for name in ("yolo11n.onnx", "face_landmarker.task"):
+        for name in RUNTIME_MODELS:
             item = next(x for x in manifest["files"] if x["file"] == name)
             path = root / "models" / name
             with path.open("rb") as stream:
@@ -25,6 +28,11 @@ def verified_models():
         return tuple(paths)
     except (OSError, KeyError, StopIteration, json.JSONDecodeError) as error:
         raise ValueError("В сборке нет проверенного комплекта моделей. Скачайте полный EXE.") from error
+
+
+def verified_models():
+    """Keep the camera's public phone/landmarker pair while verifying all assets."""
+    return verified_assets()[:2]
 
 
 def ffmpeg_executable():

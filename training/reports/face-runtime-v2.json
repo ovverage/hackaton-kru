@@ -1,0 +1,27 @@
+{
+  "status": "passed",
+  "onnx_sha256": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+  "images": 16,
+  "face_counts": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    1
+  ],
+  "parity_errors": [],
+  "median_ms": 59.93359999979475,
+  "p95_ms": 71.961950000059,
+  "note": "Convenience sample visually reviewed: one person in each of 16 images, including face occlusions. YOLO returned one face in 15 images and none in one heavily phone-occluded frame. Passed refers to PyTorch/ONNX parity, not general accuracy. Not an independent face benchmark; absence and second-face scenarios need separate validation."
+}

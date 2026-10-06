@@ -19,6 +19,8 @@ def test_installer_paths_with_spaces_and_version(tmp_path):
     for name in (
         "Qorgau-Student.exe",
         "_internal/models/yolo11n.onnx",
+        "_internal/models/face_yolov8n.onnx",
+        "_internal/models/gaze-direction.json",
         "_internal/models/face_landmarker.task",
     ):
         path = root / "dist/Qorgau-Student" / name

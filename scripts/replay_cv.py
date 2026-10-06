@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT))
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("video", type=Path)
-    parser.add_argument("--calibration", type=Path, required=True,
+    parser.add_argument("--calibration", type=Path,
                         help="JSON {centres: {SCREEN: [four features], ...}} or intervals per calibration position")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--recording-id", required=True, help="Anonymous ID used in ground truth")
@@ -33,14 +33,14 @@ def main():
 
     models = verified_models()
     camera = Camera(str(args.video.resolve()), models[0], models[1], calibrate=False)
-    calibration = json.loads(args.calibration.read_text(encoding="utf-8"))
+    calibration = json.loads(args.calibration.read_text(encoding="utf-8")) if args.calibration else {}
     source_fps = camera.capture.get(cv2.CAP_PROP_FPS)
     if not np.isfinite(source_fps) or source_fps <= 0:
         raise ValueError("Recording has no valid frame rate")
     try:
         if "centres" in calibration:
             camera.centres = {key: np.asarray(value, dtype=float) for key, value in calibration["centres"].items()}
-        else:
+        elif "intervals" in calibration:
             # Calibration intervals belong to this recording and must be excluded
             # from scored intervals in the independent ground truth.
             intervals = calibration["intervals"]
@@ -62,7 +62,8 @@ def main():
             if any(len(values) < 25 for values in samples.values()):
                 raise ValueError("Each of the eight calibration intervals needs 25 valid frames")
             camera.centres = {key: np.median(values, axis=0) for key, values in samples.items()}
-        camera.validate_calibration()
+        if camera.centres:
+            camera.validate_calibration()
         camera.capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
         # The underlying MediaPipe VIDEO clock must remain increasing across replay.
         clock_offset = camera.timestamp / 1000 + 1
@@ -73,6 +74,7 @@ def main():
         events, durations = {}, []
         number, next_at, last_at = 0, 0., 0.
         start = float(calibration.get("score_from", 0))
+        next_at = start
         with (args.output / "observations.jsonl").open("w", encoding="utf-8") as output:
             while True:
                 ok, frame = camera.capture.read()
@@ -82,7 +84,7 @@ def main():
                 number += 1
                 if at + 1e-6 < next_at or at < start:
                     continue
-                next_at = at + 1 / args.fps
+                next_at += 1 / args.fps
                 tick = time.perf_counter()
                 observation = camera.analyze(frame, at + clock_offset)
                 durations.append((time.perf_counter()-tick)*1000)

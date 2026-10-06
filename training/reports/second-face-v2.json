@@ -1,0 +1,15 @@
+{
+  "images": 204,
+  "counts_against_second_person_scenario": {
+    "second_person_absent": 33,
+    "tn": 33,
+    "second_person_present": 171,
+    "tp": 150,
+    "yolo_two": 150,
+    "mediapipe_two": 101,
+    "fn": 21
+  },
+  "yolo_sha256": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+  "mediapipe_sha256": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+  "note": "All 204 images were visually reviewed: person_absent means second person absent (one seated student in 33 images), person_present means another person entering/standing near the student (171 images). Some second heads are outside or cropped by the frame. Counts use the full scenario without excluding those difficult frames; not a visible-face box benchmark or empty-room test. These are correlated photos of the same two people, not a general-population accuracy estimate. No private images are included in this report."
+}

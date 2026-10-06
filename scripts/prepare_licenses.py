@@ -36,7 +36,8 @@ def main():
                          'metadata_license': distribution.metadata.get('License-Expression') or distribution.metadata.get('License')})
     for name, url in (
         ('YOLO-AGPL-3.0.txt', 'https://raw.githubusercontent.com/ultralytics/ultralytics/v8.3.221/LICENSE'),
-        ('MediaPipe-Apache-2.0.txt', 'https://raw.githubusercontent.com/google-ai-edge/mediapipe/v0.10.32/LICENSE')):
+        ('MediaPipe-Apache-2.0.txt', 'https://raw.githubusercontent.com/google-ai-edge/mediapipe/v0.10.32/LICENSE'),
+        ('Bingsu-adetailer-model-card.md', 'https://huggingface.co/Bingsu/adetailer/raw/53cc19de382014514d9d4038601d261a7faa9b7b/README.md')):
         response = httpx.get(url, follow_redirects=True, timeout=30)
         response.raise_for_status()
         (output / name).write_text(response.text, encoding='utf-8')
@@ -46,6 +47,7 @@ def main():
     (output / 'FFmpeg-build-and-license.txt').write_text('\n'.join(lines), encoding='utf-8')
     (output / 'package-inventory.json').write_text(json.dumps(packages, ensure_ascii=False, indent=2), encoding='utf-8')
     shutil.copyfile(ROOT / 'THIRD_PARTY_NOTICES.md', output / 'README.md')
+    shutil.copyfile(ROOT / 'model-manifest.json', output / 'model-manifest.json')
     print(f'Notices collected for {len(packages)} installed distributions')
 
 
