@@ -1,0 +1,84 @@
+name: Publish an already verified Windows build
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful run of Verify and package Qorgau
+        required: true
+        type: string
+      tag:
+        description: Version tag matching that build (vX.Y.Z)
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: publish-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SOURCE_RUN: ${{ inputs.run_id }}
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - name: Require a successful build from this repository
+        id: verified
+        run: |
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" > run.json
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/jobs" > jobs.json
+          python - <<'PY'
+          import json, os
+          run = json.load(open('run.json'))
+          jobs = {j['name']: j['conclusion'] for j in json.load(open('jobs.json'))['jobs']}
+          assert run['head_repository']['full_name'] == os.environ['GH_REPO']
+          assert run['path'] == '.github/workflows/release.yml'
+          assert run['conclusion'] == 'success'
+          assert jobs.get('verify') == jobs.get('windows') == 'success'
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('sha=' + run['head_sha'] + '\n')
+          PY
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.verified.outputs.sha }}
+      - name: Download the verified artifacts and check version and checksums
+        run: |
+          gh run download "$SOURCE_RUN" --name Qorgau-Student-Windows-x64 --dir artifacts
+          gh run download "$SOURCE_RUN" --name Qorgau-Web --dir web-bundle
+          python - <<'PY'
+          import hashlib, json, os, pathlib, tomllib
+          version = tomllib.load(open('pyproject.toml', 'rb'))['project']['version']
+          assert os.environ['RELEASE_TAG'] == 'v' + version
+          expected = {'Qorgau-Student-Windows-x64.zip', f'Qorgau-Student-Setup-{version}-x64.exe'}
+          checked = set()
+          for line in pathlib.Path('artifacts/SHA256SUMS.txt').read_text().splitlines():
+              digest, name = line.split('  ', 1)
+              assert name in expected and name not in checked
+              with open(pathlib.Path('artifacts') / name, 'rb') as binary:
+                  assert hashlib.file_digest(binary, 'sha256').hexdigest() == digest
+              checked.add(name)
+          assert checked == expected
+          for name in ('packaged-selftest.json', 'installer-selftest.json'):
+              report = json.load(open('artifacts/' + name))
+              assert report['status'] == 'passed' and report['version'] == version
+          PY
+          zip -r artifacts/Qorgau-Web.zip web-bundle
+      - name: Tag and publish that exact commit
+        env:
+          VERIFIED_SHA: ${{ steps.verified.outputs.sha }}
+        run: |
+          existing=$(git ls-remote --tags origin "refs/tags/$RELEASE_TAG" | cut -f1)
+          if [ -n "$existing" ]; then
+            test "$existing" = "$VERIFIED_SHA"
+          else
+            gh api -X POST "repos/$GH_REPO/git/refs" -f ref="refs/tags/$RELEASE_TAG" -f sha="$VERIFIED_SHA"
+          fi
+          gh release create "$RELEASE_TAG" artifacts/* --verify-tag --prerelease --title "Qorgau $RELEASE_TAG · Windows Installer" --notes-file docs/RELEASE_NOTES.md
