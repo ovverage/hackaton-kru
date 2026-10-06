@@ -61,6 +61,8 @@ def main():
     if args.plain:
         os.environ["PROCTOR_PUBLIC_ENROLLMENT_OWNER"] = "Smoke Teacher"
     processes = []
+    logs = []
+    startup_seconds = []
     with tempfile.TemporaryDirectory(prefix="qorgau-exe-smoke-") as directory:
         folder = Path(directory)
         listener = socket.socket()
@@ -103,10 +105,15 @@ def main():
 
                 def launch(name):
                     print("Launching " + name, flush=True)
+                    started = time.monotonic()
+                    log_path = folder / f"{name}-{len(processes)}.log"
+                    log = log_path.open("wb")
+                    logs.append(log)
                     process = subprocess.Popen(
                         [str(downloaded), "--data", str(folder / name)] + (["--server", address] if args.plain else []),
                         env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
-                        stdout=subprocess.PIPE,
+                        # A pipe that nobody drains can block Qt during startup.
+                        stdout=log,
                         stderr=subprocess.STDOUT,
                         creationflags=subprocess.CREATE_NO_WINDOW
                         if os.name == "nt"
@@ -116,15 +123,19 @@ def main():
 
                     def registered():
                         if process.poll() is not None:
-                            output = process.communicate()[0].decode(
-                                "utf-8", errors="replace"
-                            )
+                            output = log_path.read_text(encoding="utf-8", errors="replace")[-6000:]
                             raise RuntimeError(
                                 f"EXE exited before registration: {process.returncode}\n{output}"
                             )
                         return (folder / name / "config.json").exists()
 
-                    until(registered)
+                    try:
+                        # A full one-file runtime must unpack before its GUI starts.
+                        # Hosted Windows runner disk/AV contention can exceed 30 s.
+                        until(registered, seconds=90)
+                    except RuntimeError as error:
+                        output = log_path.read_text(encoding="utf-8", errors="replace")[-6000:]
+                        raise RuntimeError(f"{name} did not register; exit={process.poll()}; elapsed={time.monotonic() - started:.1f}s\n{output}") from error
                     print("Registered " + name, flush=True)
                     config = json.loads(
                         (folder / name / "config.json").read_text(encoding="utf-8")
@@ -135,10 +146,11 @@ def main():
                             d["id"] == config["device_id"]
                             and d["last_seen"] > registered_at
                             for d in client.get("/api/snapshot").json()["devices"]
-                        )
+                        ), seconds=90
                     )
                     assert process.poll() is None
-                    print("Synced " + name, flush=True)
+                    startup_seconds.append(round(time.monotonic() - started, 2))
+                    print(f"Synced {name} in {startup_seconds[-1]}s", flush=True)
                     return process, config
 
                 first, config1 = launch("pc1")
@@ -168,11 +180,14 @@ def main():
                         "default_server": DEFAULT_SERVER,
                         "profiles": 2, "distinct_tokens": True, "live_sync": True,
                         "restart_without_duplicate": True,
+                        "startup_seconds": startup_seconds,
                         "scope": "isolated HTTP fixture via CLI server override; no webcam or input hooks",
                     }, indent=2), encoding="utf-8")
         finally:
             for process in processes:
                 stop_process(process)
+            for log in logs:
+                log.close()
             server.should_exit = True
             worker.join(timeout=10)
             listener.close()
