@@ -85,13 +85,14 @@ def test_complete_teacher_flow(client):
         ).status_code
         == 200
     )
-    assert cmd(client, current, "UNLOCK").status_code == 409  # stale state version
+    before_review = current
     current = next(x for x in snapshot(client)["devices"] if x["id"] == d["id"])
     assert (
         current["state"]["access"] == "LOCKED"
         and current["state"]["counts"]["DOWN"] == 2
     )
-    assert cmd(client, current, "UNLOCK").status_code == 200
+    # A review changes the counter version, but consent still names the same lock.
+    assert cmd(client, before_review, "UNLOCK").status_code == 200
     current = next(x for x in snapshot(client)["devices"] if x["id"] == d["id"])
     assert current["state"]["counts"]["DOWN"] == 0
     assert cmd(client, current, "END_AND_RELEASE").status_code == 200

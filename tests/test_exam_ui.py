@@ -106,6 +106,7 @@ def test_desktop_overlay_only_during_lock_and_release_after_end(app, tmp_path):
     agent.engine.lock('PHONE_DETECTED')
     controller.tick()
     assert all(s.isVisible() for s in controller.surfaces)
+    assert all(s.isFullScreen() for s in controller.surfaces)
     assert guard.tick.call_args.kwargs['locked'] is True
     agent.engine.unlock(agent.engine.state.lock_id, agent.engine.state.version)
     controller.tick()
@@ -114,5 +115,77 @@ def test_desktop_overlay_only_during_lock_and_release_after_end(app, tmp_path):
     controller.tick()
     guard.stop.assert_called_once()
     assert not any(s.isVisible() for s in controller.surfaces)
+    controller.release()
+    agent.http.close()
+
+
+def test_selected_window_overlay_hides_and_focus_returns_after_remote_unlock(app, tmp_path):
+    from unittest.mock import Mock
+    from PySide6.QtWidgets import QWidget
+    from agent.exam_ui import ExamController
+    from agent.windows_guard import WindowTarget
+    import time
+
+    atomic_json(tmp_path / 'config.json', {'server': 'http://localhost:8000', 'token': 'fixture'})
+    agent = Agent(tmp_path)
+    agent.environment = {'kind': 'DESKTOP', 'guarded': True}
+    agent.journal['exam_id'] = 'selected-test'
+    target = WindowTarget(123, 234, 'Exam', 'browser.exe', 1)
+    agent.guard_target = target.public()
+    parent = QWidget()
+    controller = ExamController(agent, parent)
+    controller.timer.stop()
+    guard = Mock(hooks=[1, 2], locked=False, target=target)
+    def tick(**kwargs):
+        guard.locked = kwargs['locked']
+    guard.tick.side_effect = tick
+    controller.guard = guard
+    agent.engine.start()
+    agent.last_synced_at = time.monotonic()
+    controller.tick()
+    assert not any(s.isVisible() for s in controller.surfaces)
+    agent.engine.lock('PHONE_DETECTED')
+    controller.tick()
+    assert all(s.isVisible() and s.isFullScreen() for s in controller.surfaces)
+    agent.apply({'id': 'remote-unlock', 'type': 'UNLOCK', 'exam_id': 'selected-test',
+                 'expires_at': time.time() + 30, 'expected_version': agent.engine.state.version,
+                 'lock_id': agent.engine.state.lock_id, 'require_camera': False})
+    controller.tick()
+    assert agent.engine.state.access == 'OPEN'
+    assert not any(s.isVisible() for s in controller.surfaces)
+    guard.u.SetForegroundWindow.assert_called_with(target.hwnd)
+    controller.release()
+    agent.http.close()
+
+
+def test_lock_without_target_still_installs_input_guard(app, tmp_path):
+    from unittest.mock import Mock
+    from PySide6.QtWidgets import QWidget
+    from agent.exam_ui import ExamController
+    import time
+
+    atomic_json(tmp_path / 'config.json', {'server': 'http://localhost:8000', 'token': 'fixture'})
+    agent = Agent(tmp_path)
+    agent.environment = {'kind': 'DESKTOP', 'guarded': True}
+    agent.journal['exam_id'] = 'closed-test'
+    parent = QWidget()
+    controller = ExamController(agent, parent)
+    controller.timer.stop()
+    guard = Mock(hooks=[], locked=False, target=None)
+    guard.windows.return_value = []
+    guard.tick.return_value = None
+    controller.guard = guard
+    agent.engine.start()
+    agent.engine.lock('TARGET_CLOSED')
+    agent.last_synced_at = time.monotonic()
+    controller.tick()
+    guard.start.assert_called_once_with(desktop=True)
+    assert guard.tick.call_args.kwargs['locked'] is True
+    assert all(s.isVisible() and s.isFullScreen() for s in controller.surfaces)
+    assert agent.capabilities['guard_fault'] == 'TARGET_CLOSED'
+    agent.apply({'id': 'remote-unlock', 'type': 'UNLOCK', 'exam_id': 'closed-test',
+                 'expires_at': time.time() + 30, 'expected_version': agent.engine.state.version,
+                 'lock_id': agent.engine.state.lock_id, 'require_camera': False})
+    assert agent.engine.state.access == 'LOCKED'
     controller.release()
     agent.http.close()

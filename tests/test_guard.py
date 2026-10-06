@@ -122,6 +122,42 @@ def test_password_unlock_uses_owner_and_preserves_evidence(live_agent):
         )
 
 
+def test_website_unlock_survives_a_review_command_in_same_delivery(live_agent):
+    agent, server = live_agent
+    device = server.get('/api/snapshot').json()['devices'][0]
+    event = agent.journal['recent_events'][0]
+    reviewed = server.post('/api/events/' + event['id'] + '/review', json={
+        'decision': 'REJECTED', 'reason': 'Checked the recording', 'expected_revision': 0,
+    })
+    assert reviewed.status_code == 200
+    sent = server.post('/api/devices/' + device['id'] + '/commands', json={
+        'type': 'UNLOCK', 'reason': 'Allow continuation', 'lock_id': device['state']['lock_id'],
+        'expected_version': device['state']['version'],
+    })
+    assert sent.status_code == 200
+    agent.sync()  # REVIEW increments the local version before UNLOCK arrives.
+    agent.sync()  # Server must accept the authorised release and its acknowledgement.
+    fresh = server.get('/api/snapshot').json()
+    assert agent.engine.state.access == fresh['devices'][0]['state']['access'] == 'OPEN'
+    assert next(c for c in fresh['commands'] if c['id'] == sent.json()['id'])['status'] == 'APPLIED'
+
+
+def test_website_unlock_never_applies_to_a_new_critical_lock(live_agent):
+    agent, server = live_agent
+    device = server.get('/api/snapshot').json()['devices'][0]
+    response = server.post('/api/devices/' + device['id'] + '/commands', json={
+        'type': 'UNLOCK', 'reason': 'Checked', 'lock_id': device['state']['lock_id'],
+        'expected_version': device['state']['version'],
+    })
+    assert response.status_code == 200
+    agent.engine.lock('PHONE_DETECTED')
+    agent.sync()
+    agent.sync()
+    assert agent.engine.state.access == 'LOCKED'
+    commands = server.get('/api/snapshot').json()['commands']
+    assert next(c for c in commands if c['id'] == response.json()['id'])['status'] == 'REJECTED'
+
+
 def test_agent_cannot_clear_a_lock_by_forging_heartbeat(live_agent):
     agent, _ = live_agent
     forged = agent.engine.state.public()

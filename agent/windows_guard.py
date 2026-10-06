@@ -9,6 +9,7 @@ from __future__ import annotations
 import ctypes as C
 from ctypes import wintypes as W
 import os
+from pathlib import Path
 from dataclasses import dataclass, asdict
 
 from .guard_policy import blocked_key
@@ -56,6 +57,10 @@ class WindowsGuard:
             "GetAsyncKeyState": ([C.c_int], C.c_short),
             "GetWindowRect": ([W.HWND, C.POINTER(W.RECT)], W.BOOL),
             "GetSystemMetrics": ([C.c_int], C.c_int),
+            "MonitorFromWindow": ([W.HWND, W.DWORD], W.HANDLE),
+            "PostMessageW": ([W.HWND, W.UINT, W.WPARAM, W.LPARAM], W.BOOL),
+            "GetWindowLongW": ([W.HWND, C.c_int], W.LONG),
+            "SetWindowLongW": ([W.HWND, C.c_int, W.LONG], W.LONG),
             "OpenClipboard": ([W.HWND], W.BOOL),
             "EmptyClipboard": ([], W.BOOL),
             "CloseClipboard": ([], W.BOOL),
@@ -83,6 +88,46 @@ class WindowsGuard:
         self.attempted = False
         self._callbacks = []
         self.original_rect = None
+        self.original_style = None
+        self.browser_fullscreen_changed = False
+
+    def monitor_rect(self, hwnd):
+        class MonitorInfo(C.Structure):
+            _fields_ = [('size', W.DWORD), ('monitor', W.RECT), ('work', W.RECT), ('flags', W.DWORD)]
+        info = MonitorInfo()
+        info.size = C.sizeof(info)
+        self.u.GetMonitorInfoW.argtypes = [W.HANDLE, C.POINTER(MonitorInfo)]
+        if not self.u.GetMonitorInfoW(self.u.MonitorFromWindow(hwnd, 2), C.byref(info)):
+            raise OSError('Не удалось определить экран теста')
+        return info.monitor
+
+    def toggle_browser_fullscreen(self, hwnd):
+        # Send F11 only to the selected browser window, never to the active desktop.
+        if not self.u.PostMessageW(hwnd, 0x100, 0x7A, 0x00570001):
+            raise OSError('Не удалось развернуть браузер. Запустите Qorgau и браузер с одинаковыми правами.')
+        self.u.PostMessageW(hwnd, 0x101, 0x7A, 0xC0570001)
+
+    def fullscreen(self, target):
+        screen = self.monitor_rect(target.hwnd)
+        current = self.original_rect
+        browser = Path(target.executable).name.casefold() in {
+            'msedge.exe', 'chrome.exe', 'firefox.exe', 'opera.exe', 'brave.exe', 'vivaldi.exe',
+        }
+        already_full = all(abs(getattr(current, edge) - getattr(screen, edge)) <= 2
+                           for edge in ('left', 'top', 'right', 'bottom'))
+        if not already_full:
+            self.u.ShowWindow(target.hwnd, 9)
+        if browser:
+            if not already_full:
+                self.toggle_browser_fullscreen(target.hwnd)
+                self.browser_fullscreen_changed = True
+        else:
+            self.original_style = self.u.GetWindowLongW(target.hwnd, -16)
+            self.u.SetWindowLongW(target.hwnd, -16, self.original_style & ~0x00CF0000)
+            self.u.SetWindowPos(target.hwnd, -1, screen.left, screen.top,
+                                screen.right - screen.left, screen.bottom - screen.top, 0x20)
+        self.u.SetWindowPos(target.hwnd, -1, 0, 0, 0, 0, 0x3)
+        self.u.SetForegroundWindow(target.hwnd)
 
     def info(self, hwnd):
         pid = W.DWORD()
@@ -150,6 +195,7 @@ class WindowsGuard:
         if target:
             self.original_rect = W.RECT()
             self.u.GetWindowRect(target.hwnd, C.byref(self.original_rect))
+            self.fullscreen(target)
 
         class Keyboard(C.Structure):
             _fields_ = [
@@ -215,17 +261,22 @@ class WindowsGuard:
                 raise OSError("Windows не разрешила включить защиту ввода")
             self.hooks.append(hook)
         if target:
-            self.u.ShowWindow(target.hwnd, 3)
             self.u.SetWindowPos(target.hwnd, -1, 0, 0, 0, 0, 0x3)
             self.u.SetForegroundWindow(target.hwnd)
 
     def tick(self, *, locked=False, overlays=()):
+        previous = self.locked
         self.locked = locked
         self.overlay_handles = set(overlays)
+        if self.target and self.valid(self.target) and previous != locked:
+            self.u.SetWindowPos(self.target.hwnd, -2 if locked else -1, 0, 0, 0, 0, 0x13)
+            if not locked:
+                self.u.SetForegroundWindow(self.target.hwnd)
         if getattr(self, "teacher_requested", False):
             self.teacher_requested = False
             return "TEACHER_REQUEST"
-        if not self.desktop and (not self.target or not self.valid(self.target)):
+        target_closed = not self.desktop and (not self.target or not self.valid(self.target))
+        if target_closed and not locked:
             return "TARGET_CLOSED"
         if self.u.GetSystemMetrics(0x1000):  # SM_REMOTESESSION
             return "REMOTE_SESSION"
@@ -242,6 +293,8 @@ class WindowsGuard:
             )
             if focus:
                 self.u.SetForegroundWindow(focus)
+        if target_closed:
+            return "TARGET_CLOSED"
         if self.attempted:
             self.attempted = False
             return "ENVIRONMENT_ATTEMPT"
@@ -253,6 +306,13 @@ class WindowsGuard:
         self.hooks.clear()
         self._callbacks.clear()
         if self.target and self.valid(self.target):
+            if self.browser_fullscreen_changed:
+                try:
+                    self.toggle_browser_fullscreen(self.target.hwnd)
+                except OSError:
+                    pass  # Input hooks must still be released if the browser stops responding.
+            if self.original_style is not None:
+                self.u.SetWindowLongW(self.target.hwnd, -16, self.original_style)
             self.u.SetWindowPos(self.target.hwnd, -2, 0, 0, 0, 0, 0x13)
             if self.original_rect:
                 r = self.original_rect
@@ -264,10 +324,12 @@ class WindowsGuard:
                     r.top,
                     r.right - r.left,
                     r.bottom - r.top,
-                    0x14,
+                    0x34,
                 )
         self.target = None
         self.desktop = False
         self.locked = False
         self.attempted = False
         self.original_rect = None
+        self.original_style = None
+        self.browser_fullscreen_changed = False

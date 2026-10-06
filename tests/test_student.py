@@ -121,19 +121,21 @@ def test_desktop_first_run_and_locked_actions(application, tmp_path):
     assert window.pages.currentIndex() == 1
     agent.engine.start()
     window.refresh()
-    assert window.test_button.isEnabled()
+    assert not window.target_button.isEnabled()
+    assert not window.camera_choice.isEnabled()
     agent.engine.lock("PHONE_DETECTED")
     window.refresh()
-    assert not window.test_button.isEnabled()
+    assert not window.target_button.isEnabled()
     assert not window.camera_button.isEnabled()
     with patch.object(agent, "launch_environment") as launch:
         window.open_exam()
         launch.assert_not_called()
-    assert "Позовите преподавателя" in window.hero_title.text()
+    assert "Позовите преподавателя" in window.camera_status.text()
     agent.engine.phone_present = False
     agent.engine.unlock(agent.engine.state.lock_id, agent.engine.state.version)
     window.refresh()
-    assert window.test_button.isEnabled() and window.epoch.text() == "Цикл 2"
+    assert not window.target_button.isEnabled() and agent.engine.state.epoch == 2
+    assert not hasattr(window, 'gaze_button') and not hasattr(window, 'test_button')
     window.close()
     agent.http.close()
 
@@ -200,7 +202,7 @@ def test_tray_start_close_and_exit_preserve_active_control(application, tmp_path
     ):
         window = StudentWindow(tmp_path, agent=agent, run_worker=False)
     window.start_visibility()
-    assert not window.isVisible() and window.tray.isVisible()
+    assert window.isVisible() and window.tray.isVisible()  # Window/camera preparation is visible.
     window.show_status()
     assert window.isVisible()
     agent.engine.start()

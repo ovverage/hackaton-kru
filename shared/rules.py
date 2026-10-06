@@ -138,6 +138,8 @@ class RuleEngine:
         self.state.lock_id = None
         self.state.epoch += 1
         self.state.version += 1
+        # A fresh observation cycle prevents pre-lock gaze timers from carrying over.
+        self.reset_observation()
 
     def end(self):
         self.state.lifecycle = "COMPLETED"
@@ -156,7 +158,7 @@ class RuleEngine:
                 if n >= 3:
                     self.lock("GAZE_" + d)
 
-    def observe(self, t: float, direction="SCREEN", phone_confidence=0.0, faces=1, phone_aiming=False):
+    def observe(self, t: float, direction="SCREEN", phone_confidence=0.0, faces=1, phone_aiming=False, detections=()):
         if self.state.lifecycle != "RUNNING":
             return []
         if self.last_t is not None and t < self.last_t:

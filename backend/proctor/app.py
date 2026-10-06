@@ -690,7 +690,10 @@ def create_app(data_dir=None, *, allow_demo=False):
                 raise HTTPException(409, "Сеанс уже завершён")
             if body.type in ("LOCK", "UNLOCK") and d["state"]["lifecycle"] != "RUNNING":
                 raise HTTPException(409, "Контроль ещё не начат")
-            if body.expected_version != d["state"]["version"]:
+            same_lock = (body.type == "UNLOCK" and d["state"]["access"] == "LOCKED"
+                         and body.lock_id == d["state"]["lock_id"]
+                         and body.expected_version <= d["state"]["version"])
+            if body.expected_version != d["state"]["version"] and not same_lock:
                 raise HTTPException(409, "Состояние изменилось. Обновите карточку.")
             exam = owned(c, "exams", d["exam_id"], u["id"])
             require_camera = exam.get("require_camera", True)
@@ -719,7 +722,7 @@ def create_app(data_dir=None, *, allow_demo=False):
                     elif body.type == "LOCK":
                         engine.lock("TEACHER_LOCK")
                     elif body.type == "UNLOCK":
-                        engine.unlock(body.lock_id, body.expected_version)
+                        engine.unlock(body.lock_id, engine.state.version)
                     else:
                         engine.end()
                 except ValueError as err:
@@ -953,10 +956,16 @@ def create_app(data_dir=None, *, allow_demo=False):
                         if not ack.get("ok") or not command_row:
                             continue
                         cmd = decode(command_row)
+                        if cmd["type"] not in ("UNLOCK", "END_AND_RELEASE"):
+                            continue
                         valid = (
                             cmd["exam_id"] == d["exam_id"]
                             and cmd["status"] == "PENDING"
-                            and cmd["expected_version"] == old["version"]
+                            and (cmd["expected_version"] == old["version"] or (
+                                cmd["type"] == "UNLOCK"
+                                and cmd["expected_version"] <= old["version"]
+                                and cmd.get("lock_id") == old["lock_id"]
+                            ))
                         )
                         if valid and (
                             cmd["type"] == "END_AND_RELEASE"

@@ -63,7 +63,7 @@ class LockScreen(QWidget):
         self.marker = None
         self.setWindowTitle("Qorgau — Позовите преподавателя")
         self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
+            Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
         )
         self.setStyleSheet(
             "QWidget {background:#101a2c;color:#eef3ff;font-family:'Segoe UI';}"
@@ -137,7 +137,7 @@ class LockScreen(QWidget):
         marker = (
             snap["state"]["lock_id"],
             snap["state"]["epoch"],
-            len(snap.get("recent_events", [])),
+            tuple((e["id"], e.get("thumbnail_path"), e.get("end")) for e in snap.get("recent_events", [])),
         )
         if marker == self.marker:
             return
@@ -153,7 +153,7 @@ class LockScreen(QWidget):
             if e.get("epoch") == snap["state"]["epoch"]
         ]
         for event in events[-8:][::-1]:
-            elapsed = int(event.get("at", 0))
+            happened = time.strftime("%H:%M:%S", time.localtime(event.get("created_at", time.time())))
             label = REASONS.get(event["type"], event["type"])
             label = {
                 "GAZE_DOWN": "Длительный взгляд вниз",
@@ -161,7 +161,7 @@ class LockScreen(QWidget):
                 "GAZE_RIGHT": "Длительный взгляд вправо",
             }.get(event["type"], label)
             self.evidence_layout.addWidget(
-                text(f"{elapsed // 60:02d}:{elapsed % 60:02d}  ·  {label}", 16)
+                text(f"{happened}  ·  {label}", 16)
             )
             if event.get("duration"):
                 self.evidence_layout.addWidget(
@@ -175,7 +175,7 @@ class LockScreen(QWidget):
                     preview = QLabel()
                     preview.setPixmap(
                         picture.scaledToWidth(
-                            280, Qt.TransformationMode.SmoothTransformation
+                            max(280, min(640, self.evidence.width() - 24)), Qt.TransformationMode.SmoothTransformation
                         )
                     )
                     self.evidence_layout.addWidget(preview)
@@ -243,9 +243,6 @@ class TargetPicker(QDialog):
         refresh = QPushButton("Обновить окна")
         refresh.clicked.connect(self.refresh)
         row.addWidget(refresh)
-        app = QPushButton("Выбрать .exe…")
-        app.clicked.connect(self.choose_executable)
-        row.addWidget(app)
         use = QPushButton("Использовать окно")
         use.clicked.connect(self.choose_window)
         row.addWidget(use)
@@ -388,7 +385,7 @@ class ExamController(QObject):
                 selected["builtin_url"], self.agent.security_event
             )
             self.browser_exam = snap["exam_id"]
-            self.browser.showMaximized()
+            self.browser.showFullScreen()
             if self.guard:
                 self.agent.guard_target = self.guard.info(
                     int(self.browser.winId())
@@ -398,7 +395,7 @@ class ExamController(QObject):
                 self.release()
             return
         screens = QApplication.screens()
-        desktop = (snap.get("environment") or {}).get("kind") == "DESKTOP"
+        desktop = bool((self.agent.guard_target or {}).get("desktop"))
         locked = snap["state"]["access"] == "LOCKED"
         if not self.active_exam:
             self.active_exam = snap["exam_id"]
@@ -417,9 +414,15 @@ class ExamController(QObject):
             self.surfaces.append(LockScreen(self.agent))
         for i, screen in enumerate(screens):
             surface = self.surfaces[i]
-            surface.setGeometry(screen.geometry())
             surface.update_state(snap)
-            surface.setVisible(locked or not desktop)
+            if locked:
+                if not surface.isVisible() or not surface.isFullScreen():
+                    surface.setGeometry(screen.geometry())
+                    surface.winId()
+                    surface.windowHandle().setScreen(screen)
+                    surface.showFullScreen()
+            else:
+                surface.hide()
         for extra in self.surfaces[len(screens) :]:
             extra.hide()
         if not self.guard:
@@ -428,6 +431,7 @@ class ExamController(QObject):
         try:
             from .windows_guard import WindowTarget
 
+            missing_target = False
             if desktop and not self.guard.hooks:
                 self.guard.start(desktop=True)
             if not desktop and not self.guard.target:
@@ -446,12 +450,21 @@ class ExamController(QObject):
                         ),
                         None,
                     )
+                if target is not None and not self.guard.valid(target):
+                    target = None
                 if target is None:
                     started = self.agent.guard_started_at
                     if started is None or time.monotonic() - started > 10:
                         self.agent.security_event("TARGET_CLOSED")
-                    return
-                self.guard.start(target)
+                    if not locked:
+                        return
+                    # A restarted/closed target cannot leave a locked desktop
+                    # without hooks. Teacher may still end the session here.
+                    missing_target = True
+                    if not self.guard.hooks:
+                        self.guard.start(desktop=True)
+                else:
+                    self.guard.start(target)
             locked = snap["state"]["access"] == "LOCKED"
             previous = self.guard.locked
             result = self.guard.tick(
@@ -461,19 +474,24 @@ class ExamController(QObject):
                     if s.calibration and s.calibration.isVisible()
                 ],
             )
+            if missing_target:
+                result = "TARGET_CLOSED"
             self.agent.capabilities["guard_active"] = result != "TARGET_CLOSED"
             self.agent.capabilities["guard_fault"] = (
                 result if result in ("TARGET_CLOSED", "REMOTE_SESSION") else None
             )
             if result:
                 self.agent.security_event(result, lock=result != "ENVIRONMENT_ATTEMPT")
-            if locked and not previous:
+            if locked:
                 for surface in self.surfaces[: len(screens)]:
                     surface.raise_()
-                self.surfaces[0].activateWindow()
-                self.surfaces[0].password.setFocus()
+                if not previous:
+                    self.surfaces[0].activateWindow()
+                    self.surfaces[0].password.setFocus()
             elif not locked and not desktop:
                 self.guard.u.SetWindowPos(self.guard.target.hwnd, -1, 0, 0, 0, 0, 0x13)
+                if previous:
+                    self.guard.u.SetForegroundWindow(self.guard.target.hwnd)
         except (OSError, ValueError):
             self.agent.capabilities["guard_active"] = False
             self.agent.security_event("GUARD_UNAVAILABLE")

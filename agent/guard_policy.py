@@ -14,7 +14,7 @@ def blocked_key(vk: int, *, ctrl=False, alt=False, shift=False, locked=False):
     if shift and vk in (0x2D, 0x2E):
         return True
     if not locked:
-        if vk in (0x75, 0x7A, 0x7B, 0x5D):  # F6, F11, F12, context menu
+        if vk in (0x1B, 0x75, 0x7A, 0x7B, 0x5D):  # Esc, F6, F11, F12, context menu
             return True
         if ctrl and (vk in (0x09, 0x21, 0x22) or 0x30 <= vk <= 0x39):
             return True

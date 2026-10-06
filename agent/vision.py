@@ -142,6 +142,10 @@ class Camera:
             "phone_confidence": confidence,
             "faces": faces,
             "phone_aiming": self.raising.update(time.monotonic() if at is None else at, detections, 640, 480),
+            "detections": [{"label": "phone", "confidence": float(d["confidence"]),
+                            "box": [float(v) / (640 if i % 2 == 0 else 480)
+                                    for i, v in enumerate(d["box"])]}
+                           for d in detections if d["confidence"] >= .65],
         }
 
     def close(self):

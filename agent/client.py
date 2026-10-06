@@ -107,6 +107,8 @@ class Agent:
         )
         self.origin = time.monotonic() - self.journal.get("clock", 0)
         self.targets = inventory(self.config)
+        if self.config.get("selected_target"):
+            self.targets.append(self.config["selected_target"])
         self.environment = self.journal.get("environment")
         self.status = "Подключение к серверу"
         self.last_synced_at = None
@@ -179,7 +181,7 @@ class Agent:
                 raise ValueError("COMMAND_EXPIRED")
             kind = command["type"]
             if (
-                kind != "REVIEW"
+                kind not in ("REVIEW", "UNLOCK")
                 and command.get("expected_version") != self.engine.state.version
             ):
                 raise ValueError("STATE_CONFLICT")
@@ -215,7 +217,18 @@ class Agent:
                     raise ValueError("WINDOW_GUARD_UNAVAILABLE")
                 if self.guarded and self.capabilities.get("guard_fault"):
                     raise ValueError(self.capabilities["guard_fault"])
-                self.engine.unlock(command.get("lock_id"), command["expected_version"])
+                # Review acknowledgements may bump the version without changing
+                # this lock. The lock identity, not an unrelated review, owns consent.
+                if command.get("expected_version", -1) > self.engine.state.version:
+                    raise ValueError("STATE_CONFLICT")
+                intervals = [self.engine.active_event, *self.engine.duration_events.values()]
+                self.engine.unlock(command.get("lock_id"), self.engine.state.version)
+                for event_id in filter(None, intervals):
+                    update = {"id": event_id, "update": True, "end": time.monotonic() - self.origin}
+                    self.journal["events"].append(update)
+                    self.remember([update])
+                    if self.recorder:
+                        self.recorder.mark(update)
             elif kind == "END_AND_RELEASE":
                 t = time.monotonic() - self.origin
                 for event_id in [self.engine.active_event, *self.engine.duration_events.values()]:
@@ -244,7 +257,15 @@ class Agent:
     def launch_environment(self):
         env = self.environment or {}
         if env.get("kind") == "DESKTOP":
-            self.guard_target = {"desktop": True}
+            selected = next((t for t in self.targets if t.get("id") == "primary-window"), None)
+            if selected:
+                from .windows_guard import WindowsGuard, WindowTarget
+                target = WindowTarget(**selected["window"])
+                if not WindowsGuard().valid(target):
+                    raise ValueError("TARGET_UNAVAILABLE")
+                self.guard_target = target.public()
+            else:
+                self.guard_target = {"desktop": True}
             return
         target = next(
             (
@@ -456,17 +477,21 @@ class Agent:
                 self.journal.setdefault("media_expiry", []).extend(expired)
                 self.save()
 
-    def observe(self, direction="UNKNOWN", phone_confidence=0.0, faces=1, frame=None, phone_aiming=False):
+    def observe(self, direction="UNKNOWN", phone_confidence=0.0, faces=1, frame=None, phone_aiming=False, detections=()):
         with self.mutex:
             t = time.monotonic() - self.origin
             self.last_observation = {"faces": faces, "phone_confidence": phone_confidence}
             self.last_observation_at = time.monotonic()
             before = self.engine.state.version
             events = self.engine.observe(t, direction, phone_confidence, faces, phone_aiming)
+            if frame is not None:
+                from .evidence import annotate
+                frame = annotate(frame, detections)
             for event in events:
                 if not event.get("update"):
                     event["created_at"] = time.time()
                     event["model_version"] = MODEL_VERSION
+                    event["detections"] = list(detections)
             self.journal["events"].extend(events)
             self.remember(events)
             if frame is not None and events:
@@ -475,7 +500,7 @@ class Agent:
                 for event in events:
                     if not event.get("update"):
                         ok, encoded = cv2.imencode(
-                            ".jpg", cv2.resize(frame, (320, 240))
+                            ".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85]
                         )
                         if ok:
                             folder = self.folder / "evidence"

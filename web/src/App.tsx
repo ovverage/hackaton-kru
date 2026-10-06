@@ -234,7 +234,8 @@ export default function App() {
       null,
     ),
     [reason, setReason] = useState("");
-  const [receivedAt, setReceivedAt] = useState(0), [now, setNow] = useState(Date.now());
+  const [receivedAt, setReceivedAt] = useState(0),
+    [now, setNow] = useState(Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
@@ -248,15 +249,29 @@ export default function App() {
     });
     setReceivedAt(Date.now());
   }
-  const liveDevices = connected && now - receivedAt < 6000
-    ? data.devices.filter((d) => d.online) : [];
+  const liveDevices =
+    connected && now - receivedAt < 6000
+      ? data.devices.filter((d) => d.online)
+      : [];
   const user = auth?.user;
   const exam = data.exams.find((x) => x.id === examId) || data.exams[0];
-  const devices = exam ? liveDevices.filter((d) => d.exam_id === exam.id) : [];
+  const devices = exam
+    ? data.devices
+        .filter((d) => d.exam_id === exam.id)
+        .map((d) => ({
+          ...d,
+          online: liveDevices.some((live) => live.id === d.id),
+        }))
+    : [];
+  const sessionActive = Boolean(exam && exam.status !== "COMPLETED");
+  useEffect(() => {
+    if (sessionActive && !["room", "blocked"].includes(page)) setPage("room");
+    if (!sessionActive && page === "blocked") setPage("room");
+  }, [sessionActive, page]);
   const events = exam ? data.events.filter((e) => e.exam_id === exam.id) : [];
   const selectedDevice =
     devices.find((d) => d.id === deviceId) ||
-    liveDevices.find((d) => d.id === deviceId);
+    data.devices.find((d) => d.id === deviceId);
   const selectedEvent = data.events.find((e) => e.id === eventId);
   const pending = data.events.filter((e) => e.decision === "PENDING");
   async function refresh() {
@@ -310,12 +325,52 @@ export default function App() {
     }
   }
   async function command(d: Device, type: string, why = "") {
-    return api("/devices/" + d.id + "/commands", {
-      type,
-      expected_version: d.state.version,
-      lock_id: d.state.lock_id,
-      reason: why,
-    });
+    const snapshot = await api<Snapshot>("/snapshot");
+    const current = snapshot.devices.find((x) => x.id === d.id);
+    if (!current || current.exam_id !== d.exam_id)
+      throw new Error("Сеанс компьютера изменился. Откройте его заново.");
+    if (type === "UNLOCK" && current.state.lock_id !== d.state.lock_id)
+      throw new Error("Возникла новая блокировка. Проверьте её причину.");
+    const sent = await api<Snapshot["commands"][number]>(
+      "/devices/" + d.id + "/commands",
+      {
+        type,
+        expected_version: current.state.version,
+        lock_id: current.state.lock_id,
+        reason: why,
+      },
+    );
+    if (sent.status === "APPLIED") return;
+    const failures: Record<string, string> = {
+      PHONE_STILL_PRESENT:
+        "Телефон всё ещё в кадре. Уберите его и повторите продолжение.",
+      FACE_STILL_ABSENT:
+        "Лицо не видно. Вернитесь в кадр и повторите продолжение.",
+      CAMERA_UNAVAILABLE: "Камера недоступна. Восстановите её в приложении.",
+      WINDOW_GUARD_UNAVAILABLE:
+        "Защита окна не готова. Проверьте приложение на компьютере.",
+      TARGET_CLOSED:
+        "Окно теста закрыто. Завершите этот сеанс и выберите окно заново.",
+      STATE_CONFLICT:
+        "Возникла новая блокировка. Обновите карточку и повторите решение.",
+    };
+    for (let attempt = 0; attempt < 32; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const fresh = await api<Snapshot>("/snapshot");
+      receive(fresh);
+      const ack = fresh.commands.find((c) => c.id === sent.id);
+      if (ack?.status === "APPLIED") return;
+      if (ack && ["REJECTED", "EXPIRED"].includes(ack.status))
+        throw new Error(
+          failures[ack.error || ""] ||
+            (ack.status === "EXPIRED"
+              ? "Компьютер не ответил. Проверьте связь и повторите."
+              : ack.error || "Команда не выполнена"),
+        );
+    }
+    throw new Error(
+      "Компьютер пока не подтвердил команду. Проверьте связь и состояние.",
+    );
   }
   function ask(d: Device, type: string) {
     setAction({ device: d, type });
@@ -343,13 +398,18 @@ export default function App() {
         onLogin={(u) => setAuth({ setup_required: false, user: u })}
       />
     );
-  const nav = [
-    { id: "room", name: "Аудитория", icon: LayoutDashboard },
-    { id: "review", name: "Проверка событий", icon: ClipboardCheck },
-    { id: "history", name: "Сеансы и отчёты", icon: History },
-    { id: "devices", name: "Компьютеры", icon: Monitor },
-    { id: "rules", name: "Правила контроля", icon: Settings2 },
-  ];
+  const nav = sessionActive
+    ? [
+        { id: "room", name: "Текущие компьютеры", icon: Monitor },
+        { id: "blocked", name: "Заблокированные", icon: LockKeyhole },
+      ]
+    : [
+        { id: "room", name: "Аудитория", icon: LayoutDashboard },
+        { id: "review", name: "Проверка событий", icon: ClipboardCheck },
+        { id: "history", name: "Сеансы и отчёты", icon: History },
+        { id: "devices", name: "Компьютеры", icon: Monitor },
+        { id: "rules", name: "Правила контроля", icon: Settings2 },
+      ];
   return (
     <div className="app">
       <aside className="sidebar">
@@ -378,6 +438,12 @@ export default function App() {
             >
               <n.icon size={19} />
               <span>{n.name}</span>
+              {n.id === "blocked" &&
+                devices.some((d) => d.state.access === "LOCKED") && (
+                  <b>
+                    {devices.filter((d) => d.state.access === "LOCKED").length}
+                  </b>
+                )}
               {n.id === "review" && pending.length > 0 && (
                 <b>{pending.length}</b>
               )}
@@ -429,18 +495,22 @@ export default function App() {
             <div>
               <div className="eyebrow">QORGAU / КАБИНЕТ ПРЕПОДАВАТЕЛЯ</div>
               <h1>
-                {page === "room"
-                  ? "Аудитория"
-                  : page === "review"
-                    ? "Проверка событий"
-                    : page === "history"
-                      ? "Сеансы и отчёты"
-                      : page === "devices"
-                        ? "Компьютеры аудитории"
-                        : "Правила контроля"}
+                {page === "blocked"
+                  ? "Заблокированные"
+                  : page === "room"
+                    ? sessionActive
+                      ? "Текущие компьютеры"
+                      : "Аудитория"
+                    : page === "review"
+                      ? "Проверка событий"
+                      : page === "history"
+                        ? "Сеансы и отчёты"
+                        : page === "devices"
+                          ? "Компьютеры аудитории"
+                          : "Правила контроля"}
               </h1>
               <p>
-                {page === "room"
+                {["room", "blocked"].includes(page)
                   ? exam
                     ? `${exam.title} · ${exam.group}`
                     : "Подключите компьютеры и начните первый сеанс."
@@ -453,35 +523,52 @@ export default function App() {
                         : "Отдельные счётчики направлений. Контекст вместо автоматических обвинений."}
               </p>
             </div>
-            {["room", "history", "devices"].includes(page) && (
-              <button className="btn primary" onClick={() => setNewExam(true)}>
-                <Plus size={18} /> Новый сеанс
-              </button>
-            )}
+            {!sessionActive &&
+              ["room", "history", "devices"].includes(page) && (
+                <button
+                  className="btn primary"
+                  onClick={() => setNewExam(true)}
+                >
+                  <Plus size={18} /> Новый сеанс
+                </button>
+              )}
             {page === "devices" && (
               <a className="btn primary" href="/api/student/download">
                 <Download size={18} /> Скачать приложение
               </a>
             )}
           </div>
-          {page === "room" && (
+          {["room", "blocked"].includes(page) && (
             <>
               {!exam ? (
                 <section className="welcome panel">
                   <div className="welcome-icon">
                     <Monitor size={35} />
                   </div>
-                  <Badge tone="green">Подключено компьютеров: {liveDevices.length}</Badge>
+                  <Badge tone="green">
+                    Подключено компьютеров: {liveDevices.length}
+                  </Badge>
                   <h2>Компьютеры появляются автоматически</h2>
-                  <p>Установите и запустите Qorgau на компьютере ученика. Он появится в кабинете после подключения к серверу. Включите камеру и выберите компьютер для контроля.</p>
+                  <p>
+                    Установите и запустите Qorgau на компьютере ученика. Он
+                    появится в кабинете после подключения к серверу. Включите
+                    камеру и выберите компьютер для контроля.
+                  </p>
                   <div className="button-row">
-                    <button className="btn primary" disabled={!liveDevices.length} onClick={() => setNewExam(true)}>
+                    <button
+                      className="btn primary"
+                      disabled={!liveDevices.length}
+                      onClick={() => setNewExam(true)}
+                    >
                       <Play size={18} /> Новый сеанс
                     </button>
                     <button className="btn" onClick={() => setPage("devices")}>
-                      Компьютеры онлайн · {liveDevices.length} <ArrowUpRight size={16} />
+                      Компьютеры онлайн · {liveDevices.length}{" "}
+                      <ArrowUpRight size={16} />
                     </button>
-                    <a className="btn" href="/api/student/download"><Download size={16} /> Скачать Qorgau</a>
+                    <a className="btn" href="/api/student/download">
+                      <Download size={16} /> Скачать Qorgau
+                    </a>
                   </div>
                   <div className="welcome-steps">
                     <div>
@@ -510,14 +597,14 @@ export default function App() {
                   busy={busy}
                   onExam={setExamId}
                   onDevice={setDeviceId}
-                  onEvent={setEventId}
-                  onUpdate={refresh}
-                  notify={setToast}
+                  lockedOnly={page === "blocked"}
                   onStart={() =>
                     run(async () => {
                       const results = await Promise.allSettled(
                         devices
-                          .filter((d) => d.state.lifecycle === "READY")
+                          .filter(
+                            (d) => d.online && d.state.lifecycle === "READY",
+                          )
                           .map((d) => command(d, "START")),
                       );
                       const failed = results.filter(
@@ -527,7 +614,7 @@ export default function App() {
                         throw new Error(
                           `Не удалось запустить ${failed.length} компьютеров. Проверьте их состояние и повторите.`,
                         );
-                    }, "Команды начала контроля отправлены")
+                    }, "Компьютеры подтвердили начало теста")
                   }
                   onEnd={() =>
                     run(async () => {
@@ -600,7 +687,6 @@ export default function App() {
                               ? "Идёт контроль"
                               : "Готов к запуску"}
                         </Badge>
-
                       </div>
                       <div className="history-metrics">
                         <div>
@@ -744,12 +830,33 @@ export default function App() {
                               Подключён
                             </Badge>
                           </td>
-                          <td>{d.capabilities.camera && !d.capabilities.camera_fault ? "Включена" : "Включите в Qorgau"}</td>
-                          <td>{!d.capabilities.desktop_monitor ? "Обновите Qorgau" : gazeEnabled(d) ? "Телефон · лица · взгляд" : "Телефон · лица. Взгляд выключен"}</td>
                           <td>
-                            {d.revoked_at ? "Отозван" : !d.simulated && (
-                              <button className="btn" disabled={busy || d.state.lifecycle === "RUNNING"} onClick={() => ask(d, "REVOKE")}>Отозвать доступ</button>
-                            )}
+                            {d.capabilities.camera &&
+                            !d.capabilities.camera_fault
+                              ? "Включена"
+                              : "Включите в Qorgau"}
+                          </td>
+                          <td>
+                            {!d.capabilities.desktop_monitor
+                              ? "Обновите Qorgau"
+                              : gazeEnabled(d)
+                                ? "Телефон · лица · взгляд"
+                                : "Телефон · лица. Взгляд выключен"}
+                          </td>
+                          <td>
+                            {d.revoked_at
+                              ? "Отозван"
+                              : !d.simulated && (
+                                  <button
+                                    className="btn"
+                                    disabled={
+                                      busy || d.state.lifecycle === "RUNNING"
+                                    }
+                                    onClick={() => ask(d, "REVOKE")}
+                                  >
+                                    Отозвать доступ
+                                  </button>
+                                )}
                           </td>
                         </tr>
                       ))}
@@ -757,7 +864,11 @@ export default function App() {
                   </table>
                 </div>
               )}
-              <p className="fine">Если приложение закрыто или связь потеряна, компьютер исчезнет из списка в течение 6 секунд. История завершённых сеансов остаётся в отчётах.</p>
+              <p className="fine">
+                Если приложение закрыто или связь потеряна, компьютер исчезнет
+                из списка в течение 6 секунд. История завершённых сеансов
+                остаётся в отчётах.
+              </p>
             </>
           )}
           {page === "rules" && (
@@ -838,11 +949,7 @@ export default function App() {
       {selectedDevice && deviceId && (
         <Modal
           title={selectedDevice.student}
-          subtitle={
-            selectedDevice.name +
-            " · " +
-            "локальный агент"
-          }
+          subtitle={selectedDevice.name + " · " + "локальный агент"}
           onClose={() => setDeviceId(null)}
           wide
         >
@@ -869,10 +976,7 @@ export default function App() {
                 </span>
               )}
             </div>
-            {!selectedDevice.simulated && !gazeEnabled(selectedDevice) && (
-              <div className="notice">Контроль взгляда выключен. Отвлечения не считаются; телефон и лица распознаются при включённой камере.</div>
-            )}
-            <Counters d={selectedDevice} />
+            {gazeEnabled(selectedDevice) && <Counters d={selectedDevice} />}
             <div className="button-row">
               {selectedDevice.exam_id === exam?.id &&
                 selectedDevice.state.lifecycle === "READY" && (
@@ -922,14 +1026,66 @@ export default function App() {
                   </>
                 )}
             </div>
-            <h3 className="subheading">События ученика</h3>
-            <EventTable
-              events={events.filter((e) => e.device_id === selectedDevice.id)}
-              onSelect={(id) => {
-                setDeviceId(null);
-                setEventId(id);
-              }}
-            />
+            <h3 className="subheading">Записи этого компьютера</h3>
+            <div className="device-evidence">
+              {events
+                .filter((e) => e.device_id === selectedDevice.id)
+                .map((e) => (
+                  <article className="device-incident" key={e.id}>
+                    <header>
+                      <strong>{eventNames[e.type] || e.type}</strong>
+                      <time>{clock(e.created_at)}</time>
+                    </header>
+                    {e.media.length ? (
+                      e.media.map((media) => (
+                        <video
+                          key={media.id}
+                          controls
+                          preload="metadata"
+                          src={media.url}
+                          aria-label={`${eventNames[e.type] || e.type} — ${selectedDevice.name}`}
+                          onLoadedMetadata={(v) => {
+                            const offset = e.at - (media.clip_start || 0);
+                            if (offset > 0 && offset < v.currentTarget.duration)
+                              v.currentTarget.currentTime = offset;
+                          }}
+                        />
+                      ))
+                    ) : (
+                      <div className="empty">
+                        <Video size={24} />
+                        {e.media_expired_at
+                          ? "Срок хранения записи истёк"
+                          : "Видео передаётся с компьютера…"}
+                      </div>
+                    )}
+                    <footer>
+                      <Badge
+                        tone={
+                          e.decision === "CONFIRMED"
+                            ? "red"
+                            : e.decision === "REJECTED"
+                              ? "green"
+                              : "amber"
+                        }
+                      >
+                        {decisionNames[e.decision]}
+                      </Badge>
+                      <button
+                        className="btn small"
+                        onClick={() => setEventId(e.id)}
+                      >
+                        Проверить событие
+                      </button>
+                    </footer>
+                  </article>
+                ))}
+              {!events.some((e) => e.device_id === selectedDevice.id) && (
+                <div className="empty">
+                  На этом компьютере пока нет событий.
+                </div>
+              )}
+            </div>
             {data.commands
               .filter(
                 (c) =>
@@ -970,11 +1126,13 @@ export default function App() {
       {action && (
         <Modal
           title={
-            action.type === "REVOKE" ? "Отозвать доступ компьютера?" : action.type === "UNLOCK"
-              ? "Разрешить продолжить?"
-              : action.type === "LOCK"
-                ? "Заблокировать ученика?"
-                : "Завершить контроль?"
+            action.type === "REVOKE"
+              ? "Отозвать доступ компьютера?"
+              : action.type === "UNLOCK"
+                ? "Разрешить продолжить?"
+                : action.type === "LOCK"
+                  ? "Заблокировать ученика?"
+                  : "Завершить контроль?"
           }
           subtitle={action.device.student + " · " + action.device.name}
           onClose={() => setAction(null)}
@@ -983,19 +1141,29 @@ export default function App() {
             className="modal-body"
             onSubmit={(e) => {
               e.preventDefault();
-              run(async () => {
-                if (action.type === "REVOKE") await api(`/devices/${action.device.id}/revoke`, { reason });
-                else await command(action.device, action.type, reason);
-                setAction(null);
-              }, "Решение отправлено и записано в журнал");
+              run(
+                async () => {
+                  if (action.type === "REVOKE")
+                    await api(`/devices/${action.device.id}/revoke`, {
+                      reason,
+                    });
+                  else await command(action.device, action.type, reason);
+                  setAction(null);
+                },
+                action.type === "UNLOCK"
+                  ? "Компьютер разблокирован. Тест продолжается."
+                  : "Решение выполнено",
+              );
             }}
           >
             <p>
-              {action.type === "REVOKE" ? "Сохранённый токен компьютера перестанет работать. История сеансов сохранится; для нового подключения понадобится новая регистрация." : action.type === "UNLOCK"
-                ? "Начнётся новый цикл трёх счётчиков. Все события и решения сохранятся в истории."
-                : action.type === "END_AND_RELEASE"
-                  ? "Контроль этого ученика завершится, блокировка будет снята. Внешний тест автоматически не отправляется."
-                  : "Состояние будет заблокировано по решению преподавателя. В режиме наблюдения операционная система остаётся доступной."}
+              {action.type === "REVOKE"
+                ? "Сохранённый токен компьютера перестанет работать. История сеансов сохранится; для нового подключения понадобится новая регистрация."
+                : action.type === "UNLOCK"
+                  ? "Начнётся новый цикл трёх счётчиков. Все события и решения сохранятся в истории."
+                  : action.type === "END_AND_RELEASE"
+                    ? "Контроль этого ученика завершится, блокировка будет снята. Внешний тест автоматически не отправляется."
+                    : "Состояние будет заблокировано по решению преподавателя. В режиме наблюдения операционная система остаётся доступной."}
             </p>
             <label>
               Причина решения
@@ -1039,8 +1207,16 @@ export default function App() {
   );
 }
 function Counters({ d }: { d: Device }) {
-  if (!d.simulated && !gazeEnabled(d) && !Object.values(d.state.counts).some(Boolean)) {
-    return <div className="notice">Счётчики отвлечений недоступны без настройки взгляда.</div>;
+  if (
+    !d.simulated &&
+    !gazeEnabled(d) &&
+    !Object.values(d.state.counts).some(Boolean)
+  ) {
+    return (
+      <div className="notice">
+        Счётчики отвлечений недоступны без настройки взгляда.
+      </div>
+    );
   }
   return (
     <div className="counters">
@@ -1128,8 +1304,8 @@ function EventTable({
                 <strong>{eventNames[e.type] || e.type}</strong>
                 <small>
                   {e.category === "CRITICAL"
-                      ? "Критическое событие"
-                      : "Наблюдение агента"}
+                    ? "Критическое событие"
+                    : "Наблюдение агента"}
                 </small>
               </td>
               <td>
@@ -1166,15 +1342,36 @@ function EventTable({
     </div>
   );
 }
-function NewExam({ devices, onClose, onCreate }: {
-  devices: Device[]; onClose: () => void; onCreate: (body: unknown) => Promise<void>;
+function NewExam({
+  devices,
+  onClose,
+  onCreate,
+}: {
+  devices: Device[];
+  onClose: () => void;
+  onCreate: (body: unknown) => Promise<void>;
 }) {
-  const available = devices.filter((d) => (!d.exam_id || d.state.lifecycle === "COMPLETED") && !d.capabilities.recording_tail);
-  const ready = (d: Device) => Boolean(d.capabilities.desktop_monitor && d.capabilities.window_guard && d.capabilities.camera && d.capabilities.recording && !d.capabilities.camera_fault);
-  const [selected, setSelected] = useState<string[]>(available.filter(ready).map((d) => d.id));
+  const available = devices.filter(
+    (d) =>
+      (!d.exam_id || d.state.lifecycle === "COMPLETED") &&
+      !d.capabilities.recording_tail,
+  );
+  const ready = (d: Device) =>
+    Boolean(
+      d.capabilities.selected_window &&
+      d.capabilities.desktop_monitor &&
+      d.capabilities.window_guard &&
+      d.capabilities.camera &&
+      d.capabilities.recording &&
+      !d.capabilities.camera_fault,
+    );
+  const [selected, setSelected] = useState<string[]>(
+    available.filter(ready).map((d) => d.id),
+  );
   const [studentNames, setStudentNames] = useState<Record<string, string>>({});
   const [title, setTitle] = useState("Контроль аудитории");
-  const [error, setError] = useState(""), [busy, setBusy] = useState(false);
+  const [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
   const chosen = available.filter((d) => selected.includes(d.id) && ready(d));
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -1182,35 +1379,118 @@ function NewExam({ devices, onClose, onCreate }: {
     setBusy(true);
     try {
       await onCreate({
-        title, group: "Аудитория", room: "Подключённые компьютеры",
+        title,
+        group: "Аудитория",
+        room: "Подключённые компьютеры",
         device_ids: chosen.map((d) => d.id),
-        student_names: Object.fromEntries(chosen.map((d) => [d.id, studentNames[d.id]?.trim() || ""])),
-        mode: "GUARDED", require_camera: true,
+        student_names: Object.fromEntries(
+          chosen.map((d) => [d.id, studentNames[d.id]?.trim() || ""]),
+        ),
+        mode: "GUARDED",
+        require_camera: true,
       });
-    } catch (e) { setError((e as Error).message); }
-    finally { setBusy(false); }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
   return (
-    <Modal title="Новый сеанс контроля" subtitle="Выберите компьютеры. Ученики продолжают работать в своих программах." onClose={onClose} wide>
+    <Modal
+      title="Новый сеанс контроля"
+      subtitle="Выберите подготовленные компьютеры. Окно теста откроется на весь экран."
+      onClose={onClose}
+      wide
+    >
       <form className="modal-body" onSubmit={submit}>
-        <label>Название сеанса<input autoFocus required minLength={2} maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} /></label>
-        <h3 className="subheading">Компьютеры онлайн <span className="count">{chosen.length}</span></h3>
-        {!available.length ? <div className="notice">Нет свободных компьютеров онлайн. Запустите Qorgau или завершите предыдущий сеанс.</div> : (
-          <div className="check-list">{available.map((d) => (
-            <div className="workstation-assignment" key={d.id}>
-              <label className="workstation-choice">
-                <input type="checkbox" checked={chosen.some((c) => c.id === d.id)} disabled={!ready(d)} onChange={(e) => setSelected(e.target.checked ? [...selected, d.id] : selected.filter((id) => id !== d.id))} />
-                <strong>{d.name}</strong>
-                {!ready(d) && <small>{!d.capabilities.desktop_monitor ? "Обновите Qorgau" : "Включите камеру в Qorgau"}</small>}
-              </label>
-              <input aria-label={`Ученик на ${d.name}`} placeholder="Имя ученика (необязательно)" maxLength={80} disabled={!ready(d)} value={studentNames[d.id] || ""} onChange={(e) => setStudentNames({ ...studentNames, [d.id]: e.target.value })} />
-            </div>
-          ))}</div>
+        <label>
+          Название сеанса
+          <input
+            autoFocus
+            required
+            minLength={2}
+            maxLength={120}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </label>
+        <h3 className="subheading">
+          Компьютеры онлайн <span className="count">{chosen.length}</span>
+        </h3>
+        {!available.length ? (
+          <div className="notice">
+            Нет свободных компьютеров онлайн. Запустите Qorgau или завершите
+            предыдущий сеанс.
+          </div>
+        ) : (
+          <div className="check-list">
+            {available.map((d) => (
+              <div className="workstation-assignment" key={d.id}>
+                <label className="workstation-choice">
+                  <input
+                    type="checkbox"
+                    checked={chosen.some((c) => c.id === d.id)}
+                    disabled={!ready(d)}
+                    onChange={(e) =>
+                      setSelected(
+                        e.target.checked
+                          ? [...selected, d.id]
+                          : selected.filter((id) => id !== d.id),
+                      )
+                    }
+                  />
+                  <strong>{d.name}</strong>
+                  {!ready(d) && (
+                    <small>
+                      {!d.capabilities.selected_window
+                        ? "Выберите окно в Qorgau 0.4.4"
+                        : "Включите камеру в Qorgau"}
+                    </small>
+                  )}
+                </label>
+                <input
+                  aria-label={`Ученик на ${d.name}`}
+                  placeholder="Имя ученика (необязательно)"
+                  maxLength={80}
+                  disabled={!ready(d)}
+                  value={studentNames[d.id] || ""}
+                  onChange={(e) =>
+                    setStudentNames({ ...studentNames, [d.id]: e.target.value })
+                  }
+                />
+              </div>
+            ))}
+          </div>
         )}
-        <div className="notice"><Eye size={17} /><span>Контроль работает поверх текущего рабочего стола. При блокировке продолжить сможет только преподаватель. Ctrl+Alt+Q вызывает преподавателя.</span></div>
-        {chosen.some((d) => !gazeEnabled(d)) && <div className="notice">У части компьютеров контроль взгляда выключен. Телефон и лица распознаются; отвлечения считаются только после отдельной настройки взгляда.</div>}
+        <div className="notice">
+          <Eye size={17} />
+          <span>
+            Каждый компьютер откроет выбранное в Qorgau окно на весь экран. При
+            блокировке продолжить сможет только преподаватель. Ctrl+Alt+Q
+            вызывает преподавателя.
+          </span>
+        </div>
+        {chosen.some((d) => !gazeEnabled(d)) && (
+          <div className="notice">
+            У части компьютеров контроль взгляда выключен. Телефон и лица
+            распознаются; отвлечения считаются только после отдельной настройки
+            взгляда.
+          </div>
+        )}
         {error && <div className="error">{error}</div>}
-        <div className="button-row end"><button className="btn" type="button" onClick={onClose}>Отмена</button><button className="btn primary" disabled={busy || !chosen.length}>{busy ? <LoaderCircle className="spin" size={17} /> : <Plus size={17} />} Создать сеанс</button></div>
+        <div className="button-row end">
+          <button className="btn" type="button" onClick={onClose}>
+            Отмена
+          </button>
+          <button className="btn primary" disabled={busy || !chosen.length}>
+            {busy ? (
+              <LoaderCircle className="spin" size={17} />
+            ) : (
+              <Plus size={17} />
+            )}{" "}
+            Создать сеанс
+          </button>
+        </div>
       </form>
     </Modal>
   );
@@ -1297,7 +1577,13 @@ function EventReview({
               </select>
             )}
             {e.media[index]?.complete === false && (
-              <p role="status">Запись неполная: отсутствует часть нужного интервала. Разрывы: {e.media[index]?.gaps?.map(([a, b]) => `${a.toFixed(1)}–${b.toFixed(1)} с`).join(", ") || "начало или конец фрагмента"}.</p>
+              <p role="status">
+                Запись неполная: отсутствует часть нужного интервала. Разрывы:{" "}
+                {e.media[index]?.gaps
+                  ?.map(([a, b]) => `${a.toFixed(1)}–${b.toFixed(1)} с`)
+                  .join(", ") || "начало или конец фрагмента"}
+                .
+              </p>
             )}
           </>
         ) : (
@@ -1305,7 +1591,9 @@ function EventReview({
             <Video size={34} />
             <h3>Запись не прикреплена</h3>
             <p>
-              {e.media_expired_at ? "Срок хранения записи истёк. Событие и решения сохранены." : "Агент ещё не передал фрагмент. Решение доступно, но визуального подтверждения пока нет."}
+              {e.media_expired_at
+                ? "Срок хранения записи истёк. Событие и решения сохранены."
+                : "Агент ещё не передал фрагмент. Решение доступно, но визуального подтверждения пока нет."}
             </p>
           </div>
         )}
@@ -1326,16 +1614,33 @@ function EventReview({
           Время указано от начала контроля. Автоматическое событие — основание
           для проверки; оно не является доказательством нарушения само по себе.
         </p>
-        <p className="fine">Записи завершённых сеансов хранятся 7 дней.{e.retain_until ? ` Срок продлён до ${new Date(e.retain_until * 1000).toLocaleDateString("ru")}.` : ""}</p>
-        <button className="btn" disabled={busy || !reason.trim()} onClick={async () => {
-          setBusy(true);
-          try {
-            await api(`/events/${e.id}/retain`, { days: 7, reason: reason.trim() });
-            await onUpdate();
-            notify("Запись сохранится ещё минимум 7 дней");
-          } catch (error) { notify((error as Error).message); }
-          finally { setBusy(false); }
-        }}>Продлить хранение на 7 дней</button>
+        <p className="fine">
+          Записи завершённых сеансов хранятся 7 дней.
+          {e.retain_until
+            ? ` Срок продлён до ${new Date(e.retain_until * 1000).toLocaleDateString("ru")}.`
+            : ""}
+        </p>
+        <button
+          className="btn"
+          disabled={busy || !reason.trim()}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await api(`/events/${e.id}/retain`, {
+                days: 7,
+                reason: reason.trim(),
+              });
+              await onUpdate();
+              notify("Запись сохранится ещё минимум 7 дней");
+            } catch (error) {
+              notify((error as Error).message);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Продлить хранение на 7 дней
+        </button>
         <label>
           Комментарий к решению
           <textarea

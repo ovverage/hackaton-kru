@@ -131,7 +131,7 @@ class CalibrationWorker(QThread):
 
 
 class CameraSetup(QDialog):
-    def __init__(self, agent, parent=None, *, calibrate=False):
+    def __init__(self, agent, parent=None, *, calibrate=False, index=None):
         super().__init__(parent)
         self.agent = agent
         self.calibrate = calibrate
@@ -141,8 +141,8 @@ class CameraSetup(QDialog):
         self.setWindowTitle(
             "Qorgau — настройка взгляда" if calibrate else "Qorgau — включение камеры"
         )
-        self.resize(720, 720)
-        self.setMinimumWidth(620)
+        self.resize(560, 520)
+        self.setMinimumWidth(480)
         from .desktop import STYLE, label
 
         self.setStyleSheet(STYLE)
@@ -158,9 +158,9 @@ class CameraSetup(QDialog):
                 (
                     "Дополнительная настройка контроля взгляда: центр, края и пространство за экраном. "
                     if calibrate
-                    else "Телефон и лица распознаются без калибровки. Смотреть по точкам не нужно. "
+                    else "Проверьте изображение с выбранной камеры. "
                 )
-                + "Анализ выполняется на этом ПК, без записи звука. Преподаватель получает события и видеофрагменты экзамена. Видео хранится 7 дней; преподаватель может продлить разбор. Локальная копия удаляется после отправки. Резервные копии сервера хранятся ещё до 7 дней.",
+                + "Звук не записывается.",
                 "body",
             )
         )
@@ -169,7 +169,7 @@ class CameraSetup(QDialog):
         row.addWidget(label("Номер камеры", "field"))
         self.index = QSpinBox()
         self.index.setRange(0, 9)
-        self.index.setValue(settings.get("index", 0))
+        self.index.setValue(settings.get("index", 0) if index is None else index)
         row.addWidget(self.index)
         row.addStretch()
         layout.addLayout(row)
@@ -188,7 +188,7 @@ class CameraSetup(QDialog):
         layout.addWidget(
             label(
                 self.model_error
-                or "Модели проверены. Анализ выполняется на этом компьютере без внешнего сервиса распознавания.",
+                or "",
                 "small",
             )
         )
@@ -202,7 +202,7 @@ class CameraSetup(QDialog):
         self.instruction = label(
             "Перед началом уберите телефон и убедитесь, что в кадре только вы."
             if calibrate
-            else "Просто работайте как обычно. Контроль взгляда настраивается отдельно и сейчас выключен.",
+            else "После подключения дождитесь начала теста.",
             "heading",
         )
         layout.addWidget(self.instruction)

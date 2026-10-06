@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
-    QScrollArea,
+    QComboBox,
     QStackedWidget,
     QSystemTrayIcon,
     QVBoxLayout,
@@ -163,40 +163,12 @@ class StudentWindow(QWidget):
         self.setObjectName("window")
         self.setWindowTitle("Qorgau — агент аудитории")
         self.setWindowIcon(icon())
-        self.resize(690, 735)
-        self.setMinimumSize(600, 620)
+        self.resize(560, 450)
+        self.setMinimumSize(480, 400)
         self.setStyleSheet(STYLE)
         root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
-        side = QFrame()
-        side.setObjectName("sidebar")
-        side.setFixedWidth(225)
-        rail = QVBoxLayout(side)
-        rail.setContentsMargins(27, 34, 24, 25)
-        rail.setSpacing(12)
-        rail.addWidget(label("qorgau.", "brand"))
-        rail.addSpacing(34)
-        rail.addWidget(label("ПРИЛОЖЕНИЕ УЧЕНИКА", "sideHeading"))
-        rail.addWidget(label("01   Подключение", "sideStep"))
-        rail.addWidget(label("02   Подготовка", "sideStep"))
-        rail.addWidget(label("03   Внешний тест", "sideStep"))
-        rail.addStretch()
-        rail.addWidget(label("Тест — в привычной системе", "sideStep"))
-        rail.addWidget(
-            label(
-                "Qorgau работает рядом с браузером или приложением. Решения по спорным событиям принимает преподаватель.",
-                "sideNote",
-            )
-        )
-        rail.addSpacing(30)
-        rail.addWidget(
-            label(
-                "Режим наблюдения\nБез блокировки ОС\n\nQostanai Industry Hackathon\nЛокальный агент · 0.2",
-                "sideNote",
-            )
-        )
-        side.hide()
         self.pages = QStackedWidget()
         root.addWidget(self.pages, 1)
         self.pages.addWidget(self.build_auto_setup())
@@ -255,122 +227,52 @@ class StudentWindow(QWidget):
         return page
 
     def build_dashboard(self):
-        outer = QWidget()
-        root = QVBoxLayout(outer)
-        root.setContentsMargins(0, 0, 0, 0)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        root.addWidget(scroll)
         page = QWidget()
-        page.setObjectName("window")
-        scroll.setWidget(page)
         layout = QVBoxLayout(page)
-        layout.setContentsMargins(32, 29, 32, 25)
-        layout.setSpacing(15)
-        top = QHBoxLayout()
-        top.addWidget(label("QORGAU / СОСТОЯНИЕ АГЕНТА", "eyebrow", False))
-        top.addStretch()
-        self.connection = label("Подключаемся…", "badge", False)
-        top.addWidget(self.connection)
-        layout.addLayout(top)
-        self.device_name = label("Компьютер аудитории", "title")
+        layout.setContentsMargins(30, 28, 30, 28)
+        layout.setSpacing(16)
+        row = QHBoxLayout()
+        row.addWidget(label("qorgau.", "title"))
+        row.addStretch()
+        self.connection = label("Подключаемся…", "small")
+        row.addWidget(self.connection)
+        layout.addLayout(row)
+        self.device_name = label("Компьютер аудитории", "small")
         layout.addWidget(self.device_name)
-        self.endpoint_label = label("", "small")
-        self.endpoint_label.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextSelectableByMouse
-        )
-        layout.addWidget(self.endpoint_label)
-        self.hero, self.hero_layout = card()
-        layout.addWidget(self.hero)
-        row = QHBoxLayout()
-        self.state_badge = label("Ожидание", "badge", False)
-        row.addWidget(self.state_badge)
-        row.addStretch()
-        self.epoch = label("Цикл 1", "small", False)
-        row.addWidget(self.epoch)
-        self.hero_layout.addLayout(row)
-        self.hero_title = label("Компьютер подключён", "heroTitle")
-        self.hero_layout.addWidget(self.hero_title)
-        self.hero_message = label()
-        self.hero_layout.addWidget(self.hero_message)
-        self.test_button = QPushButton("Открыть среду теста  ↗")
-        self.test_button.setObjectName("primary")
-        self.test_button.clicked.connect(self.open_exam)
-        self.hero_layout.addWidget(self.test_button)
-        assignment, body = card()
-        layout.addWidget(assignment)
-        body.addWidget(label("Ваш сеанс", "heading"))
-        self.assignment_title = label("Преподаватель ещё не назначил тест")
-        body.addWidget(self.assignment_title)
-        self.environment_label = label(
-            "Среда появится после назначения сеанса", "small"
-        )
-        self.environment_label.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextSelectableByMouse
-        )
-        body.addWidget(self.environment_label)
-        self.counter_frame, counts = card()
-        layout.addWidget(self.counter_frame)
-        header = QHBoxLayout()
-        header.addWidget(label("Отвлечения в текущем цикле", "heading", False))
-        header.addStretch()
-        header.addWidget(label("Порог — 5 секунд", "small", False))
-        counts.addLayout(header)
-        grid = QHBoxLayout()
-        self.count_labels = {}
-        for key, title in [("DOWN", "Вниз"), ("LEFT", "Влево"), ("RIGHT", "Вправо")]:
-            col = QVBoxLayout()
-            col.addWidget(label(title, "small"))
-            number = label("0 / 3", "count")
-            self.count_labels[key] = number
-            col.addWidget(number)
-            grid.addLayout(col, 1)
-        counts.addLayout(grid)
-        counts.addWidget(
-            label(
-                "Направления считаются отдельно. Телефон вызывает немедленное событие блокировки. Второе лицо проверяет преподаватель.",
-                "small",
-            )
-        )
-        checks, body = card()
-        layout.addWidget(checks)
-        self.target_button = QPushButton("Выбрать главное окно / приложение")
+        layout.addWidget(label("Окно теста", "field"))
+        self.target_button = QPushButton("Выбрать открытое окно")
         self.target_button.clicked.connect(self.select_target)
-        body.addWidget(self.target_button)
-        self.target_status = label(
-            "Выберите окно теста перед назначением сеанса.", "small"
-        )
-        body.addWidget(self.target_status)
-        row = QHBoxLayout()
-        row.addWidget(label("Готовность компьютера", "heading"))
-        row.addStretch()
-        self.camera_button = QPushButton("Включить камеру")
+        layout.addWidget(self.target_button)
+        self.target_status = label("Откройте тест в браузере или приложении.", "small")
+        layout.addWidget(self.target_status)
+        layout.addWidget(label("Камера", "field"))
+        self.camera_choice = QComboBox()
+        self.camera_choice.setAccessibleName("Камера")
+        try:
+            from PySide6.QtMultimedia import QMediaDevices
+            devices = QMediaDevices.videoInputs()
+            for index, device in enumerate(devices):
+                self.camera_choice.addItem(device.description(), index)
+        except ImportError:
+            pass
+        if not self.camera_choice.count():
+            for index in range(4):
+                self.camera_choice.addItem(f"Камера {index + 1}", index)
+        layout.addWidget(self.camera_choice)
+        self.camera_button = QPushButton("Готово")
+        self.camera_button.setObjectName("primary")
         self.camera_button.clicked.connect(self.prepare_camera)
-        row.addWidget(self.camera_button)
-        body.addLayout(row)
-        self.camera_status = label()
-        body.addWidget(self.camera_status)
-        body.addWidget(label("Кнопка включает локальный анализ телефона и лиц, без записи звука. Во время экзамена преподавателю передаются события и видеофрагменты.", "small"))
-        self.gaze_status = label("Контроль взгляда выключен", "small")
-        body.addWidget(self.gaze_status)
-        self.gaze_button = QPushButton("Настроить взгляд (необязательно)")
-        self.gaze_button.clicked.connect(lambda: self.prepare_camera(calibrate=True))
-        body.addWidget(self.gaze_button)
-        self.delivery_status = label(
-            "События будут передаваться преподавателю", "small"
-        )
-        body.addWidget(self.delivery_status)
+        layout.addWidget(self.camera_button)
+        self.camera_status = label("Выберите окно и камеру, затем нажмите «Готово».", "small")
+        layout.addWidget(self.camera_status)
+        self.assignment_title = label("", "small")
+        layout.addWidget(self.assignment_title)
         self.runtime_error = label("", "error")
         self.runtime_error.hide()
         layout.addWidget(self.runtime_error)
-        layout.addWidget(
-            label(
-                "На Windows доступно ограничение выбранного окна и горячих клавиш. Включите камеру и выберите режим «Ограничение Windows» в кабинете преподавателя.",
-                "notice",
-            )
-        )
         layout.addStretch()
-        return outer
+        layout.addWidget(label("Во время теста фиксируются события и видео с камеры. Звук не записывается.", "small"))
+        return page
 
     def register(self):
         if self.shutting_down or self.agent:
@@ -415,7 +317,7 @@ class StudentWindow(QWidget):
         self.exam_controller = ExamController(agent, self)
         self.pages.setCurrentIndex(1)
         self.device_name.setText(agent.config.get("name", "Компьютер аудитории"))
-        self.endpoint_label.setText("Сервер: " + agent.server)
+        self.camera_choice.setCurrentIndex(max(0, self.camera_choice.findData(agent.config.get("camera_settings", {}).get("index", 0))))
         if self.run_worker:
             self.worker = AgentWorker(agent, self.stop)
             self.worker.failed.connect(self.agent_failed)
@@ -479,83 +381,24 @@ class StudentWindow(QWidget):
             if snap.get("connected") and not self.failure
             else "○ Нет связи с сервером"
         )
-        self.hero_title.setText(model["title"])
-        self.hero_message.setText(model["message"])
-        self.state_badge.setText(model["badge"])
-        color = {
-            "red": ("#fff5ef", "#edd1c2", "#a85747"),
-            "green": ("#f1f7eb", "#dce9d1", "#568343"),
-            "amber": ("#fcf8ea", "#ede1bd", "#9d813d"),
-            "neutral": ("#ffffff", "#e1e6f0", "#718761"),
-        }[model["tone"]]
-        self.hero.setStyleSheet(
-            f"QFrame#card {{background:{color[0]};border:1px solid {color[1]};border-radius:12px;}}"
-        )
-        self.hero_title.setStyleSheet(
-            f"color:{color[2]};font-size:23px;font-weight:600;"
-        )
-        legacy_environment = (snap.get("environment") or {}).get("kind") in ("APP", "BROWSER")
-        self.test_button.setVisible(state["lifecycle"] == "RUNNING" and legacy_environment)
-        self.target_button.setVisible(legacy_environment)
-        self.target_status.setVisible(legacy_environment)
-        self.test_button.setEnabled(model["can_open"] and not self.failure)
-        self.epoch.setText(f"Цикл {state['epoch']}")
-        for key, value in self.count_labels.items():
-            n = state["counts"][key]
-            value.setText(f"{n} / 3")
-            value.setStyleSheet("color:#b95f4b;" if n >= 3 else "")
-        session = snap.get("session") or {}
-        self.assignment_title.setText(
-            " · ".join(
-                str(session[k])
-                for k in ("title", "group", "room", "student")
-                if session.get(k)
-            )
-            or (
-                "Сеанс назначен преподавателем"
-                if snap.get("exam_id")
-                else "Преподаватель ещё не назначил тест"
-            )
-        )
-        env = snap.get("environment") or {}
-        self.environment_label.setText(
-            snap.get("environment_name", "Среда не выбрана")
-            + (" · " + env["url"] if env.get("url") else "")
-        )
-        self.camera_button.setEnabled(model["can_calibrate"] and not self.failure)
-        self.gaze_button.setEnabled(model["can_calibrate"] and not self.failure)
-        self.target_button.setEnabled(
-            state["lifecycle"] != "RUNNING"
-            and not snap.get("exam_id")
-            or state["lifecycle"] == "COMPLETED"
-        )
-        self.camera_button.setText(
-            "Перезапустить камеру" if snap.get("camera") else "Включить камеру"
-        )
+        active = state["lifecycle"] == "RUNNING"
+        selected = next((t for t in self.agent.targets if t.get("id") == "primary-window"), None)
+        self.agent.capabilities["selected_window"] = bool(selected)
+        self.target_button.setEnabled(not active)
+        self.target_button.setText("Изменить окно" if selected else "Выбрать открытое окно")
+        self.target_status.setText(selected["name"] if selected else "Откройте тест в браузере или приложении.")
+        self.camera_choice.setEnabled(not active and not snap.get("camera_preparing"))
+        self.camera_button.setEnabled(bool(selected) and model["can_calibrate"] and not self.failure)
+        self.camera_button.setText("Изменить камеру" if snap.get("camera") else "Готово")
         self.camera_status.setText(
-            "Камера недоступна — сообщите преподавателю"
-            if snap.get("camera_fault")
-            else "Включаем камеру…"
-            if snap.get("camera_preparing")
-            else "● Камера включена · локальный буфер; преподавателю отправляются события экзамена"
-            if snap.get("camera")
-            else "○ Камера выключена · анализ взгляда и телефона не выполняется"
+            "Камера недоступна — выберите её повторно" if snap.get("camera_fault")
+            else "Включаем камеру…" if snap.get("camera_preparing")
+            else "Камера включена. Ждём преподавателя." if snap.get("camera") and not active
+            else model["title"] if active
+            else "Выберите окно и камеру, затем нажмите «Готово»."
         )
-        self.gaze_status.setText(
-            "● Контроль взгляда включён: используется персональная настройка."
-            if snap.get("gaze")
-            else "○ Контроль взгляда выключен: отвлечения не считаются. Телефон и лица распознаются после включения камеры."
-        )
-        self.counter_frame.setVisible(bool(snap.get("gaze") or any(state["counts"].values())))
-        pending = snap.get("pending", 0)
-        media = snap.get("pending_media", 0)
-        self.delivery_status.setText(
-            f"Ожидают отправки: {pending} событий, {media} видеофрагментов. Данные сохраняются на компьютере."
-            if pending or media
-            else "Очередь событий отправлена"
-            if snap.get("connected")
-            else "При потере связи события сохраняются локально и отправляются после восстановления."
-        )
+        session = snap.get("session") or {}
+        self.assignment_title.setText(session.get("title", ""))
 
     def open_exam(self):
         if not self.agent:
@@ -577,16 +420,13 @@ class StudentWindow(QWidget):
             return
         from .camera_setup import CameraSetup
 
-        self.calibration = CameraSetup(self.agent, self, calibrate=calibrate)
+        self.calibration = CameraSetup(self.agent, self, calibrate=calibrate, index=self.camera_choice.currentData())
         self.calibration.exec()
         self.calibration = None
         self.refresh()
 
     def select_target(self):
-        if not self.agent or (
-            self.agent.journal.get("exam_id")
-            and self.agent.engine.state.lifecycle != "COMPLETED"
-        ):
+        if not self.agent or self.agent.engine.state.lifecycle == "RUNNING":
             return
         from .exam_ui import TargetPicker
 
@@ -599,9 +439,11 @@ class StudentWindow(QWidget):
                     if t["id"] not in ("primary-window", "primary-app")
                 ]
                 self.agent.targets.append(picker.selected)
-            self.target_status.setText(
-                picker.selected["name"] + " · доступно преподавателю"
-            )
+                self.agent.capabilities["selected_window"] = True
+                self.agent.config["selected_target"] = picker.selected
+                from .client import atomic_json
+                atomic_json(self.folder / "config.json", self.agent.config)
+            self.refresh()
 
     def create_tray(self):
         if not QSystemTrayIcon.isSystemTrayAvailable():
@@ -627,12 +469,15 @@ class StudentWindow(QWidget):
             self.show_status()
 
     def show_status(self):
+        if self.agent and self.agent.engine.state.access == "LOCKED" and self.exam_controller:
+            self.exam_controller.tick()
+            return
         self.showNormal()
         self.raise_()
         self.activateWindow()
 
     def start_visibility(self, show_window=False):
-        if show_window or not self.agent or not self.tray:
+        if show_window or not self.agent or not self.tray or not self.agent.capabilities.get("selected_window"):
             self.show()
         else:
             self.hide()
