@@ -1223,7 +1223,7 @@ td small {
   font-weight: 400;
   font-size: 12px;
 }
-.check-list input {
+.check-list input[type="checkbox"] {
   width: 15px;
   height: 15px;
   accent-color: #375ca1;
