@@ -47,6 +47,12 @@ def check_browser():
 
 
 def run(output):
+    from .install_guard import hold_installation_mutex
+    import os
+
+    installer_mutex = bool(hold_installation_mutex())
+    if os.name == "nt" and not installer_mutex:
+        raise RuntimeError("Installation mutex is unavailable")
     check_browser()
     import cv2
     import numpy as np
@@ -87,7 +93,7 @@ def run(output):
     import platform
     import sys
     report = {"result": "PASS", "status": "passed", "version": APP_VERSION, "platform": platform.platform(), "frozen": bool(getattr(sys, "frozen", False)), "browser_renderer": True, "kind": "synthetic packaging test; no webcam or accuracy claim",
-              "models_verified": True, "onnx_inference": True, "face_landmarker": True,
+              "installer_mutex": installer_mutex, "models_verified": True, "onnx_inference": True, "face_landmarker": True,
               "h264_encode_decode": True, "phone_cpu_median_ms": round(statistics.median(times[2:]) * 1000, 2)}
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     Path(output).write_text(json.dumps(report, indent=2), encoding="utf-8")

@@ -1,0 +1,25 @@
+{
+  "version": "0.4.0",
+  "kind": "Public deployment synthetic check; no webcam or active keyboard hooks",
+  "health": {
+    "status": "ok",
+    "version": "0.4.0"
+  },
+  "web_assets": [
+    "/assets/index-DyHF7jnG.js",
+    "/assets/index-D6xDNlsj.css"
+  ],
+  "wss_and_cookie": "PASS",
+  "base_exe_sha256": "ad8bdb3cc4f24379b23692dd77673c8f1437cbf0a4955745d2100aac950ce794",
+  "registration": "Two independent profiles, distinct tokens, restart without duplicate or quota consumption",
+  "checks": [
+    "forged OPEN rejected 409",
+    "password-authorized completion with camera fault acknowledged immediately",
+    "synthetic MP4 upload/download equality",
+    "Range 206",
+    "anonymous media 401",
+    "CSV export"
+  ],
+  "status": "PASS",
+  "cleanup": "Test devices and enrollment package revoked; synthetic exam completed"
+}

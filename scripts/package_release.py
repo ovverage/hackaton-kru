@@ -19,7 +19,7 @@ def main():
             paths.extend(p for p in folder.rglob('*') if p.is_file() and '__pycache__' not in p.parts and p.suffix!='.pyc')
     paths.extend(p for p in (ROOT/'docs').rglob('*') if p.is_file() and p.suffix.lower() in DOC_SUFFIXES)
     paths.extend(ROOT/name for name in ('README.md','THIRD_PARTY_NOTICES.md','.gitignore','.gitattributes','Start-Student.cmd','pyproject.toml','requirements-core.lock','requirements-student.lock','requirements-windows.lock','model-manifest.json','package.json','web/package.json','web/package-lock.json','web/index.html','web/vite.config.ts','web/tsconfig.json','web/tsconfig.app.json','web/tsconfig.node.json') if (ROOT/name).is_file())
-    paths.extend((ROOT/'deliverables').glob('*.pptx'))
+    paths.extend(p for p in (ROOT/'deliverables').iterdir() if p.suffix.lower() in {'.pptx', '.docx'})
     with zipfile.ZipFile(source,'w',zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(set(paths)):
             archive.write(path,path.relative_to(ROOT).as_posix())
@@ -31,7 +31,9 @@ def main():
             for file in folder.rglob('*'):
                 if file.is_file() and (name!='docs' or file.suffix.lower() in DOC_SUFFIXES):
                     archive.write(file,name+'/'+file.relative_to(folder).as_posix())
-        for file in (ROOT/'deliverables').glob('*.pptx'):
+        for file in (ROOT/'deliverables').iterdir():
+            if file.suffix.lower() not in {'.pptx', '.docx'}:
+                continue
             archive.write(file,'deliverables/'+file.name)
     files=[]
     for path in (dist/'Qorgau-Student.exe',dist/'Qorgau-NativeHost.exe',dist/'Qorgau-SecurityBridge.exe',source,staff):

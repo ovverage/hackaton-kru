@@ -143,6 +143,7 @@ def smoke(installer, output):
             )  # Only our unique CI sentinel, never user data.
         output.write_text(json.dumps(report, indent=2), encoding="utf-8")
     if report["status"] != "passed":
+        print(report["error"])
         raise SystemExit(1)
 
 

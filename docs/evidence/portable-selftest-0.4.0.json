@@ -10,5 +10,5 @@
   "onnx_inference": true,
   "face_landmarker": true,
   "h264_encode_decode": true,
-  "phone_cpu_median_ms": 49.47
+  "phone_cpu_median_ms": 49.08
 }
