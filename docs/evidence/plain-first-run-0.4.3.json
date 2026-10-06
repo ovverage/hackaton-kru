@@ -1,0 +1,16 @@
+{
+  "status": "passed",
+  "version": "0.4.3",
+  "mode": "ordinary executable without bootstrap trailer",
+  "default_server": "https://212.19.134.23",
+  "profiles": 2,
+  "distinct_tokens": true,
+  "live_sync": true,
+  "restart_without_duplicate": true,
+  "startup_seconds": [
+    11.89,
+    18.88,
+    7.47
+  ],
+  "scope": "isolated HTTP fixture via CLI server override; no webcam or input hooks"
+}

@@ -1,0 +1,18 @@
+{
+  "version": "0.4.3",
+  "status": "PASS",
+  "health": {
+    "status": "ok",
+    "version": "0.4.3"
+  },
+  "web_assets": [
+    "/assets/index-Bojy-6jn.js",
+    "/assets/index-Idap8S2a.css"
+  ],
+  "download_range": "bytes 0-1/378937609",
+  "deployment_exe_sha256": "7c2f3901feaff3db06fc904ff4f12b3a4b82ff2f82360dce5ebfdaaaf9a8baf1",
+  "teacher_snapshot_has_no_demo": true,
+  "online_requires_heartbeat": true,
+  "online_devices": 0,
+  "scope": "Full executable SHA verified during deployment; external HTTPS verifies matching web assets, Range, authenticated teacher snapshot. No camera or production test devices used."
+}

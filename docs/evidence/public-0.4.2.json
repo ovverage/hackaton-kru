@@ -1,0 +1,15 @@
+{
+  "version": "0.4.2",
+  "status": "PASS",
+  "health": {
+    "status": "ok",
+    "version": "0.4.2"
+  },
+  "web_assets": [
+    "/assets/index-UEVMNti-.js",
+    "/assets/index-D6xDNlsj.css"
+  ],
+  "download_range": "bytes 0-1/378935940",
+  "deployment_exe_sha256": "552e6b6d99c1a72ead1ebac1c2e5ca3a49f8fce165c85bfe6f41b11d7c5738d7",
+  "scope": "Deployment script verified full SHA-256 on server; HTTPS check verified health, web assets and two-byte executable Range. No production camera or test devices used."
+}

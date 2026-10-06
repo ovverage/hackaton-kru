@@ -1,0 +1,29 @@
+{
+  "version": "0.4.3",
+  "application_commit": "e00689c3ed3c7e205ebe961acaf1ab7d5ead10b7",
+  "status": "PASS",
+  "tests": 133,
+  "passed": 132,
+  "skipped": 1,
+  "failures": 0,
+  "errors": 0,
+  "seconds": 22.401,
+  "checks": [
+    "production hides old demo devices and sessions; simulation endpoints disabled",
+    "registration without heartbeat stays offline; expired heartbeat and revoked access stay offline",
+    "desktop exam without target or URL; no subprocess launch",
+    "phone event locks desktop session; evidence persists",
+    "desktop input allowed while open; lock accepts only overlay input",
+    "GUI overlay hidden while open, visible on lock, released after END",
+    "real desktop input hooks reserved for isolated Windows CI"
+  ],
+  "ui_checks": {
+    "browser": "Codex in-app browser, local fixture on 127.0.0.1:8874",
+    "real_webcam": false,
+    "production_test_devices_created": false,
+    "connected_only": true,
+    "no_target_url_fields": true,
+    "heartbeat_stop_hides_row": true
+  },
+  "limitations": "Automated and synthetic UI checks; no physical camera accuracy or Windows 11 manual acceptance claim."
+}

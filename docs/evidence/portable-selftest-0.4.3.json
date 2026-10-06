@@ -1,0 +1,15 @@
+{
+  "result": "PASS",
+  "status": "passed",
+  "version": "0.4.3",
+  "platform": "Windows-11-10.0.28000-SP0",
+  "frozen": true,
+  "browser_renderer": true,
+  "kind": "synthetic packaging test; no webcam or accuracy claim",
+  "installer_mutex": true,
+  "models_verified": true,
+  "onnx_inference": true,
+  "face_landmarker": true,
+  "h264_encode_decode": true,
+  "phone_cpu_median_ms": 71.26
+}
