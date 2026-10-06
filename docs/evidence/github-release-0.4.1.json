@@ -1,0 +1,78 @@
+{
+  "version": "0.4.1",
+  "source_commit": "95020d374e7913a54e26937d51da262933139a18",
+  "workflow": "https://github.com/ovverage/hackaton-kru/actions/runs/37490000984",
+  "release": "https://github.com/ovverage/hackaton-kru/releases/tag/v0.4.1",
+  "status": "PASS",
+  "scope": "GitHub disposable Windows Server runner, no physical webcam or classroom trial",
+  "jobs": {
+    "verify": "success",
+    "windows": "success"
+  },
+  "assets": [
+    {
+      "name": "installer-selftest.json",
+      "size": 1418,
+      "digest": "sha256:75165f358ee832bb231a859edee69161dd3cf6ea32b65c8ac4d225d5b93747b0",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.1/installer-selftest.json"
+    },
+    {
+      "name": "packaged-selftest.json",
+      "size": 412,
+      "digest": "sha256:7cb9332c1f11d1bab88ffd0baac69c0230bb3b6ea6414529e1e96f1218eed02e",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.1/packaged-selftest.json"
+    },
+    {
+      "name": "plain-first-run.json",
+      "size": 348,
+      "digest": "sha256:eb3e2d6cc4bd332e8a50e4b02466a24e0c2d6e39596e17d44054adcc73325e26",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.1/plain-first-run.json"
+    },
+    {
+      "name": "portable-selftest.json",
+      "size": 413,
+      "digest": "sha256:ee5b7da6b4ffe2d2dabc2619767b86542f2f145945f5e880e62bdfd94f4ecda3",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.1/portable-selftest.json"
+    },
+    {
+      "name": "Qorgau-Student-Setup-0.4.1-x64.exe",
+      "size": 334938535,
+      "digest": "sha256:5f537e81f09b0f622e6f43049dc0ddac4e304257c312c0319d03948063b505c0",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.1/Qorgau-Student-Setup-0.4.1-x64.exe"
+    },
+    {
+      "name": "Qorgau-Student-Windows-x64.zip",
+      "size": 390820262,
+      "digest": "sha256:da692728383033dbe4ff68c9c5e53364f84a959410c39973993dcbd656f921f0",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.1/Qorgau-Student-Windows-x64.zip"
+    },
+    {
+      "name": "Qorgau-Student.exe",
+      "size": 378410551,
+      "digest": "sha256:4d6cb92d7b29e12a35f2cfe25e8d3d8a85143f30bd38a08eb3c8be114cd6ce91",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.1/Qorgau-Student.exe"
+    },
+    {
+      "name": "Qorgau-Web.zip",
+      "size": 97485,
+      "digest": "sha256:916d4a062e4864dc4a1bc994f5ed27182b74557bbac9f28cae7f204d39324a0d",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.1/Qorgau-Web.zip"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "size": 286,
+      "digest": "sha256:999fefa17adf8c06ba3588b5b2a11e9cfad206d343574d0d727534f00f8feee8",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.1/SHA256SUMS.txt"
+    }
+  ],
+  "installer_checks": [
+    "per-user installation and uninstall registration",
+    "Start menu and requested desktop shortcuts",
+    "same-version repair/reinstall",
+    "running-client mutex blocks install and uninstall",
+    "installed browser, CV models and H264 runtime",
+    "ordinary installed app auto-registers two profiles and restarts without a code or enrollment trailer",
+    "uninstall removes app, shortcuts and registration",
+    "user data retained"
+  ]
+}

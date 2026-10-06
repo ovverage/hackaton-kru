@@ -43,7 +43,7 @@ Get-FileHash .\Qorgau-Student-Setup-0.4.1-x64.exe -Algorithm SHA256
 .\Qorgau-Student-Setup-0.4.1-x64.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
 ```
 
-Исходник установщика — `packaging/windows/qorgau.iss`. После `python scripts/build_student.py --with-cv --onedir` выполните `python scripts/build_installer.py` на Windows с Inno Setup 6. Сборка проверяет наличие `.exe` и обеих моделей. `scripts/test_installer.py` разрешён только на одноразовом Windows-runner GitHub Actions: он устанавливает, повторно устанавливает, запускает самопроверку и удаляет тестовую копию. Не запускайте такой жизненный цикл на рабочем экзаменационном ПК.
+Исходник установщика — `packaging/windows/qorgau.iss`. После `python scripts/build_student.py --with-cv --onedir` выполните `python scripts/build_installer.py` на Windows с Inno Setup 6. Сборка проверяет наличие `.exe` и обеих моделей. `scripts/test_installer.py` разрешён только на одноразовом Windows-runner GitHub Actions: он устанавливает, повторно устанавливает, запускает самопроверку, проверяет автоматическое подключение двух профилей и удаляет тестовую копию. Не запускайте такой жизненный цикл на рабочем экзаменационном ПК.
 
 Основание настроек: [Inno Setup — установка без повышения прав](https://jrsoftware.org/ishelp/topic_setup_privilegesrequired.htm), [AppMutex — запрет изменения работающего приложения](https://jrsoftware.org/ishelp/topic_setup_appmutex.htm). В [образе Windows CI](https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-Readme.md) уже предусмотрен Inno Setup.
 

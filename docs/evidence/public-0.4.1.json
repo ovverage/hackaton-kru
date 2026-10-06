@@ -1,0 +1,24 @@
+{
+  "version": "0.4.1",
+  "kind": "Ordinary downloaded EXE, default public server, two isolated profiles on one PC; no camera or active input hooks",
+  "health": {
+    "status": "ok",
+    "version": "0.4.1"
+  },
+  "web_assets": [
+    "/assets/index-BYLPZZHZ.js",
+    "/assets/index-D6xDNlsj.css"
+  ],
+  "base_exe_sha256": "7f52f5332f18970cdf4f02d48ca97cf1d6bb31b88f1b024ceb57c20f883325b5",
+  "download_without_auth_or_bootstrap": true,
+  "wss_and_cookie": "PASS",
+  "profiles": 2,
+  "distinct_tokens": true,
+  "live_sync": true,
+  "restart_without_duplicate": true,
+  "no_server_argument": true,
+  "no_classroom_package": true,
+  "camera_and_exam_not_started": true,
+  "status": "PASS",
+  "cleanup": "Only the two verification devices were revoked and removed after checking their installation hashes and absence of exams, events and commands. Audit history retained; no classroom packages created."
+}
