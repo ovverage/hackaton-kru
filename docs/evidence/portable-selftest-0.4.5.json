@@ -1,0 +1,24 @@
+{
+  "result": "PASS",
+  "status": "passed",
+  "version": "0.4.5",
+  "platform": "Windows-2025Server-10.0.26100-SP0",
+  "frozen": true,
+  "browser_renderer": true,
+  "kind": "synthetic packaging test; no webcam or accuracy claim",
+  "installer_mutex": true,
+  "models_verified": true,
+  "onnx_inference": true,
+  "face_landmarker": true,
+  "yolo_face_inference": true,
+  "gaze_forest": true,
+  "model_version": "2026.10.06.2",
+  "model_files": {
+    "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+    "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+    "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+    "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1"
+  },
+  "h264_encode_decode": true,
+  "phone_cpu_median_ms": 77.83
+}

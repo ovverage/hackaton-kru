@@ -1,0 +1,30 @@
+{
+  "status": "passed",
+  "version": "0.4.5",
+  "workflow": "https://github.com/ovverage/hackaton-kru/actions/runs/37526743838",
+  "health": {
+    "status": "ok",
+    "version": "0.4.5"
+  },
+  "deployment": {
+    "commit": "0bfa45f1a29eb35b16ea1d29794b922551ca926b",
+    "archive_sha256": "95758d20be864a3221b4693c770e7420618d4228aec73aed2e1dcbaa6e2640c3",
+    "previous_release": "20261006T203022-0bfa45f1a29e",
+    "student_sha256": "a20834c2d291fa83c130cec471b766d017039c2d1862d5638475a54a20899c41"
+  },
+  "public_exe": {
+    "url": "https://212.19.134.23/api/student/download",
+    "bytes": 398642631,
+    "sha256": "a20834c2d291fa83c130cec471b766d017039c2d1862d5638475a54a20899c41",
+    "download_seconds": 62.03
+  },
+  "web_assets": {
+    "/assets/index-CMnxvrpo.js": "cefbaa09c626b38f2b36e30bef6c703f7d99287231f365c9ba3db57453006226",
+    "/assets/index-s6eQyL5B.css": "c4735456d55738a5950c0f9dd7695111cb7f9d29e08cf74facd49a0d693b8efa"
+  },
+  "ci_tests": {
+    "windows": "166 passed, 1 warning in 42.23s",
+    "verify": "162 passed, 4 skipped, 1 warning in 10.62s"
+  },
+  "scope": "Windows CI, packaged runtime and installed runtime; local browser and Qt use synthetic fixtures. No physical-camera accuracy claim."
+}
