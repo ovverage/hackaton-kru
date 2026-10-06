@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import secrets
 import shutil
@@ -17,7 +18,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from shared.rules import RuleEngine, State
+from shared.rules import PHONE_CONFIDENCE_THRESHOLD, RuleEngine, State
 from shared.storage import atomic_json
 from shared.version import APP_VERSION, MODEL_VERSION
 
@@ -130,6 +131,10 @@ class Agent:
         self.camera_fault = False
         self.last_observation = None
         self.last_observation_at = None
+        self.gaze_diagnostics = None
+        self.recognition_paused = False
+        self._paused_camera = None
+        self._recognition_after = self.origin
         self.browser_seen = None
         self.bridge_binding = secrets.token_urlsafe(32)
         self.last_browser_event = {}
@@ -161,11 +166,44 @@ class Agent:
             self.save()
 
     def save(self):
-        self.journal["state"] = self.engine.state.public()
-        self.journal["clock"] = max(0, time.monotonic() - self.origin)
-        self.journal["environment"] = self.environment
-        self.journal["session"] = self.session
-        atomic_json(self.journal_path, self.journal)
+        with self.mutex:
+            self.update_recognition_mode()
+            self.journal["state"] = self.engine.state.public()
+            self.journal["clock"] = max(0, time.monotonic() - self.origin)
+            self.journal["environment"] = self.environment
+            self.journal["session"] = self.session
+            atomic_json(self.journal_path, self.journal)
+
+    def update_recognition_mode(self):
+        """Caller holds mutex; pausing inference must not stop evidence capture."""
+        paused = self.engine.state.access == "LOCKED" or self.engine.state.lifecycle == "COMPLETED"
+        changed = paused != self.recognition_paused
+        if self.capture_pump:
+            self.capture_pump.set_recognition(not paused)
+        if paused and self.camera is not None and self._paused_camera is not self.camera:
+            changed = True
+            # We no longer measure incident duration after the final analyzed
+            # frame. Otherwise stale phone/absence flags would prevent unlock.
+            t = self.engine.last_t
+            if t is None:
+                t = max(0, time.monotonic() - self.origin)
+            for event_id in filter(None, [self.engine.active_event, *self.engine.duration_events.values()]):
+                update = {"id": event_id, "update": True, "end": t}
+                self.journal["events"].append(update)
+                self.remember([update])
+                if self.recorder:
+                    self.recorder.mark(update)
+            self.engine.reset_observation()
+            self.last_observation = None
+            self.last_observation_at = None
+            self._paused_camera = self.camera
+        elif not paused and self.recognition_paused:
+            self._recognition_after = time.monotonic()
+            self.last_observation = None
+            self.last_observation_at = None
+            self._paused_camera = None
+        self.recognition_paused = paused
+        return changed
 
     def apply(self, command, now=None):
         now = time.time() if now is None else now
@@ -181,7 +219,7 @@ class Agent:
                 raise ValueError("COMMAND_EXPIRED")
             kind = command["type"]
             if (
-                kind not in ("REVIEW", "UNLOCK")
+                kind not in ("REVIEW", "UNLOCK", "END_AND_RELEASE")
                 and command.get("expected_version") != self.engine.state.version
             ):
                 raise ValueError("STATE_CONFLICT")
@@ -201,7 +239,7 @@ class Agent:
                         raise ValueError("CAMERA_FRAME_STALE")
                     if self.last_observation["faces"] != 1:
                         raise ValueError("NEED_EXACTLY_ONE_FACE")
-                    if self.last_observation["phone_confidence"] >= .65:
+                    if self.last_observation["phone_confidence"] >= PHONE_CONFIDENCE_THRESHOLD:
                         raise ValueError("REMOVE_PHONE_BEFORE_START")
                     if shutil.disk_usage(self.folder).free < 1024**3:
                         raise ValueError("NEED_1GB_RECORDING_SPACE")
@@ -221,6 +259,7 @@ class Agent:
                 # this lock. The lock identity, not an unrelated review, owns consent.
                 if command.get("expected_version", -1) > self.engine.state.version:
                     raise ValueError("STATE_CONFLICT")
+                self.update_recognition_mode()
                 intervals = [self.engine.active_event, *self.engine.duration_events.values()]
                 self.engine.unlock(command.get("lock_id"), self.engine.state.version)
                 for event_id in filter(None, intervals):
@@ -230,6 +269,10 @@ class Agent:
                     if self.recorder:
                         self.recorder.mark(update)
             elif kind == "END_AND_RELEASE":
+                # The teacher ends this exam even if a new incident or review
+                # changed its version while the command was in flight.
+                if not 0 <= command.get("expected_version", -1) <= self.engine.state.version:
+                    raise ValueError("STATE_CONFLICT")
                 t = time.monotonic() - self.origin
                 for event_id in [self.engine.active_event, *self.engine.duration_events.values()]:
                     if event_id:
@@ -238,6 +281,7 @@ class Agent:
                         if self.recorder:
                             self.recorder.mark(update)
                 self.engine.end()
+                self.engine.reset_observation()
                 self.record_until = time.monotonic() + 5 if self.camera else None
             elif kind == "REVIEW":
                 event_id = command["event_id"]
@@ -352,11 +396,17 @@ class Agent:
                 # a second exam. END already closes the previous capture tail.
                 self.last_observation = None
                 self.last_observation_at = None
+                self.gaze_diagnostics = None
                 self.engine = RuleEngine()
                 self.journal.update(exam_id=config["exam_id"], reviews={}, processed={})
                 self.journal["recent_events"] = []
                 self.guard_target = None
                 self.origin = time.monotonic()
+                self._recognition_after = self.origin
+                if self.capture_pump:
+                    # A queued frame belongs to the old exam's clock.
+                    self.capture_pump.set_recognition(False)
+                    self.capture_pump.set_recognition(True)
                 if self.recorder:
                     self.collect_media(float("inf"))
                     self.recorder.reset_session(config["exam_id"])
@@ -477,13 +527,53 @@ class Agent:
                 self.journal.setdefault("media_expiry", []).extend(expired)
                 self.save()
 
-    def observe(self, direction="UNKNOWN", phone_confidence=0.0, faces=1, frame=None, phone_aiming=False, detections=()):
+    def record_frame(self, frame, *, captured_at=None):
+        """Record raw frames while recognition is paused, without invented observations."""
         with self.mutex:
-            t = time.monotonic() - self.origin
+            changed = self.update_recognition_mode()
+            at = time.monotonic() if captured_at is None else captured_at
+            if self.recorder and frame is not None and math.isfinite(at) and at <= time.monotonic() + .1:
+                t = at - self.origin
+                last_t = getattr(self.recorder, "last_t", None)
+                if t >= 0 and (last_t is None or t > last_t):
+                    self.recorder.push(t, frame)
+                    self.collect_media(t)
+            if changed:
+                self.save()
+
+    def observe(self, direction="UNKNOWN", phone_confidence=0.0, faces=1, frame=None, phone_aiming=False, detections=(), captured_at=None, gaze_diagnostics=None):
+        with self.mutex:
+            mode_changed = self.update_recognition_mode()
+            now = time.monotonic()
+            at = now if captured_at is None else captured_at
+            if (self.recognition_paused or not math.isfinite(at)
+                    or at < max(self.origin, self._recognition_after)
+                    or at > now + .1 or now - at > 2
+                    or (self.last_observation_at is not None
+                        and (at < self.last_observation_at
+                             or (captured_at is not None and at == self.last_observation_at)))):
+                self.record_frame(frame, captured_at=at)
+                if mode_changed:
+                    self.save()
+                return
+            t = at - self.origin
+            interval_ms = None if self.last_observation_at is None else (at - self.last_observation_at) * 1000
             self.last_observation = {"faces": faces, "phone_confidence": phone_confidence}
-            self.last_observation_at = time.monotonic()
+            self.last_observation_at = at
+            diagnostics = gaze_diagnostics or {}
+            self.gaze_diagnostics = {
+                "direction": direction,
+                **{key: diagnostics.get(key) for key in (
+                    "offscreen_probability", "head_yaw", "head_pitch", "source", "reference_ready",
+                )},
+                "interval_ms": interval_ms,
+            }
+            detections = [d for d in detections if d.get("label") != "phone"
+                          or d.get("confidence", 0) >= PHONE_CONFIDENCE_THRESHOLD]
             before = self.engine.state.version
             events = self.engine.observe(t, direction, phone_confidence, faces, phone_aiming)
+            if self.capture_pump and self.engine.state.access == "LOCKED":
+                self.capture_pump.set_recognition(False)
             if frame is not None:
                 from .evidence import annotate
                 frame = annotate(frame, detections)
@@ -513,7 +603,7 @@ class Agent:
                 for event in events:
                     self.recorder.mark(event)
                 self.collect_media(t)
-            if events or before != self.engine.state.version:
+            if events or before != self.engine.state.version or mode_changed:
                 self.save()
 
     def read_browser(self):
@@ -580,6 +670,9 @@ class Agent:
                 "gaze": self.capabilities.get("gaze", False) and self.capabilities["camera"] and not self.camera_fault,
                 "camera_fault": self.camera_fault,
                 "camera_preparing": self.camera_preparing,
+                "recognition_paused": self.recognition_paused,
+                "gaze_diagnostics": dict(self.gaze_diagnostics) if self.gaze_diagnostics else None,
+                "gaze_seconds": self.engine.seconds,
                 "connected": self.last_synced_at is not None
                 and time.monotonic() - self.last_synced_at < 6,
                 "session": self.session,
@@ -663,15 +756,21 @@ class Agent:
                     self.read_browser()
                     should_capture = self.camera and (self.engine.state.lifecycle != "COMPLETED" or self.record_until is not None)
                     if should_capture:
-                        if self.capture_pump is None:
-                            from .capture import CapturePump
-                            self.capture_pump = CapturePump(self.camera)
-                        captured = self.capture_pump.poll()
-                        if captured:
-                            frame, observation = captured
-                            self.camera_fault = False
-                            self.observe(frame=frame, **observation)
-                        else:
+                        with self.mutex:
+                            if self.update_recognition_mode():
+                                self.save()
+                            if self.capture_pump is None:
+                                from .capture import CapturePump
+                                self.capture_pump = CapturePump(self.camera, recognize=not self.recognition_paused)
+                            captured = self.capture_pump.poll()
+                            if captured:
+                                frame, observation = captured
+                                self.camera_fault = False
+                                if observation is None:
+                                    self.record_frame(frame, captured_at=self.capture_pump.last_captured_at)
+                                else:
+                                    self.observe(frame=frame, **observation)
+                        if not captured:
                             stop.wait(.02)
                     else:
                         stop.wait(0.1)

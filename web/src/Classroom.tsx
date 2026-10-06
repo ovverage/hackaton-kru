@@ -25,7 +25,7 @@ type Props = {
   onExam: (id: string) => void;
   onDevice: (id: string) => void;
   onStart: () => void;
-  onEnd: () => Promise<void>;
+  onEnd: () => Promise<boolean>;
 };
 
 export default function Classroom(p: Props) {
@@ -266,8 +266,7 @@ export default function Classroom(p: Props) {
                   className="btn primary"
                   disabled={p.busy}
                   onClick={async () => {
-                    await p.onEnd();
-                    setEnding(false);
+                    if (await p.onEnd()) setEnding(false);
                   }}
                 >
                   Завершить сеанс

@@ -9,6 +9,7 @@ from __future__ import annotations
 import ctypes as C
 from ctypes import wintypes as W
 import os
+import time
 from pathlib import Path
 from dataclasses import dataclass, asdict
 
@@ -90,6 +91,7 @@ class WindowsGuard:
         self.original_rect = None
         self.original_style = None
         self.browser_fullscreen_changed = False
+        self.fullscreen_pending_until = None
 
     def monitor_rect(self, hwnd):
         class MonitorInfo(C.Structure):
@@ -105,29 +107,46 @@ class WindowsGuard:
         # Send F11 only to the selected browser window, never to the active desktop.
         if not self.u.PostMessageW(hwnd, 0x100, 0x7A, 0x00570001):
             raise OSError('Не удалось развернуть браузер. Запустите Qorgau и браузер с одинаковыми правами.')
-        self.u.PostMessageW(hwnd, 0x101, 0x7A, 0xC0570001)
+        if not self.u.PostMessageW(hwnd, 0x101, 0x7A, 0xC0570001):
+            raise OSError('Не удалось завершить переключение браузера в полный экран')
+
+    def is_fullscreen(self, hwnd):
+        current = W.RECT()
+        if not self.u.GetWindowRect(hwnd, C.byref(current)):
+            return False
+        screen = self.monitor_rect(hwnd)
+        return all(abs(getattr(current, edge) - getattr(screen, edge)) <= 2
+                   for edge in ('left', 'top', 'right', 'bottom'))
 
     def fullscreen(self, target):
         screen = self.monitor_rect(target.hwnd)
-        current = self.original_rect
         browser = Path(target.executable).name.casefold() in {
             'msedge.exe', 'chrome.exe', 'firefox.exe', 'opera.exe', 'brave.exe', 'vivaldi.exe',
         }
-        already_full = all(abs(getattr(current, edge) - getattr(screen, edge)) <= 2
-                           for edge in ('left', 'top', 'right', 'bottom'))
+        already_full = self.is_fullscreen(target.hwnd)
         if not already_full:
             self.u.ShowWindow(target.hwnd, 9)
+            already_full = self.is_fullscreen(target.hwnd)
         if browser:
             if not already_full:
                 self.toggle_browser_fullscreen(target.hwnd)
-                self.browser_fullscreen_changed = True
+                # Preserve the original fullscreen state even after repairing
+                # a later attempt to leave fullscreen using browser chrome.
+                was_full = self.original_rect is not None and all(
+                    abs(getattr(self.original_rect, edge) - getattr(screen, edge)) <= 2
+                    for edge in ('left', 'top', 'right', 'bottom'))
+                self.browser_fullscreen_changed = not was_full
         else:
-            self.original_style = self.u.GetWindowLongW(target.hwnd, -16)
+            if self.original_style is None:
+                self.original_style = self.u.GetWindowLongW(target.hwnd, -16)
             self.u.SetWindowLongW(target.hwnd, -16, self.original_style & ~0x00CF0000)
             self.u.SetWindowPos(target.hwnd, -1, screen.left, screen.top,
                                 screen.right - screen.left, screen.bottom - screen.top, 0x20)
         self.u.SetWindowPos(target.hwnd, -1, 0, 0, 0, 0, 0x3)
         self.u.SetForegroundWindow(target.hwnd)
+        # F11 is asynchronous. Verify in the GUI timer without blocking the
+        # Windows message loop that must keep the keyboard/mouse hooks alive.
+        self.fullscreen_pending_until = time.monotonic() + 3
 
     def info(self, hwnd):
         pid = W.DWORD()
@@ -184,7 +203,16 @@ class WindowsGuard:
         )
 
     def start(self, target=None, *, desktop=False):
-        if not desktop and not self.valid(target):
+        try:
+            self._start(target, desktop=desktop)
+        except (OSError, ValueError):
+            # A failed fullscreen request must not leave a target looking
+            # active on the next UI tick while neither input hook exists.
+            self.stop()
+            raise
+
+    def _start(self, target=None, *, desktop=False):
+        if not desktop and (target is None or not self.valid(target)):
             raise OSError("Выбранное окно закрыто. Выберите его заново.")
         self.stop()
         self.target = target
@@ -194,7 +222,8 @@ class WindowsGuard:
         self.teacher_requested = False
         if target:
             self.original_rect = W.RECT()
-            self.u.GetWindowRect(target.hwnd, C.byref(self.original_rect))
+            if not self.u.GetWindowRect(target.hwnd, C.byref(self.original_rect)):
+                raise OSError("Не удалось прочитать положение выбранного окна")
             self.fullscreen(target)
 
         class Keyboard(C.Structure):
@@ -275,11 +304,21 @@ class WindowsGuard:
         if getattr(self, "teacher_requested", False):
             self.teacher_requested = False
             return "TEACHER_REQUEST"
+        if len(self.hooks) != 2:
+            return "GUARD_UNAVAILABLE"
         target_closed = not self.desktop and (not self.target or not self.valid(self.target))
         if target_closed and not locked:
             return "TARGET_CLOSED"
         if self.u.GetSystemMetrics(0x1000):  # SM_REMOTESESSION
             return "REMOTE_SESSION"
+        if not locked and self.target and not target_closed:
+            if self.is_fullscreen(self.target.hwnd):
+                self.fullscreen_pending_until = None
+            elif self.fullscreen_pending_until is None:
+                self.fullscreen(self.target)
+                self.attempted = True
+            elif time.monotonic() >= self.fullscreen_pending_until:
+                return "GUARD_UNAVAILABLE"
         if (locked or not self.desktop) and self.u.OpenClipboard(None):
             try:
                 self.u.EmptyClipboard()
@@ -308,7 +347,8 @@ class WindowsGuard:
         if self.target and self.valid(self.target):
             if self.browser_fullscreen_changed:
                 try:
-                    self.toggle_browser_fullscreen(self.target.hwnd)
+                    if self.is_fullscreen(self.target.hwnd):
+                        self.toggle_browser_fullscreen(self.target.hwnd)
                 except OSError:
                     pass  # Input hooks must still be released if the browser stops responding.
             if self.original_style is not None:
@@ -333,3 +373,4 @@ class WindowsGuard:
         self.original_rect = None
         self.original_style = None
         self.browser_fullscreen_changed = False
+        self.fullscreen_pending_until = None

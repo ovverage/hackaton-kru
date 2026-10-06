@@ -3,6 +3,7 @@
 from __future__ import annotations
 from pathlib import Path
 import time
+from shared.rules import PHONE_CONFIDENCE_THRESHOLD
 
 
 class Camera:
@@ -51,6 +52,7 @@ class Camera:
         self.last_frame = 0
         from .behavior import PhoneRaising
         self.raising = PhoneRaising()
+        self.recognition_was_paused = False
         if calibrate:
             self.calibrate()
 
@@ -125,13 +127,14 @@ class Camera:
         from .behavior import validate_centres
         validate_centres(self.centres)
 
-    def read(self):
+    def read(self, *, analyze=True):
         # Request 720p/15fps for recording; inference uses a smaller image.
         delay = 1/15 - (time.monotonic() - self.last_frame)
         if delay > 0:
             time.sleep(delay)
         self.last_frame = time.monotonic()
         ok, frame = self.capture.read()
+        captured_at = time.monotonic()
         if not ok:
             raise OSError("Не получен кадр камеры")
         import hashlib
@@ -141,7 +144,17 @@ class Camera:
             self.frame_changed_at = time.monotonic()
         elif time.monotonic() - self.frame_changed_at > 5:
             raise OSError("CAMERA_FROZEN: изображение не меняется более 5 секунд")
-        return frame, self.analyze(frame)
+        if not analyze:
+            self.recognition_was_paused = True
+            return frame, None
+        if self.recognition_was_paused:
+            from .behavior import PhoneRaising
+            self.raising = PhoneRaising()
+            self.recognition_was_paused = False
+        observation = self.analyze(frame)
+        observation['captured_at'] = captured_at
+        observation['gaze_diagnostics'] = self.gaze_diagnostics
+        return frame, observation
 
     def analyze(self, frame, at=None):
         """The same inference for live capture and timestamped offline evaluation."""
@@ -153,8 +166,10 @@ class Camera:
         faces = max(mesh_faces, len(face_detections))
         from .behavior import classify_gaze
         gaze = self.gaze.observe(self.gaze_vector if faces == 1 else None)
+        self.gaze_diagnostics = gaze
         direction = classify_gaze(feature, self.centres) if self.centres else gaze['direction']
-        detections = self.phone.detect(frame)
+        detections = [d for d in self.phone.detect(frame)
+                      if d['confidence'] >= PHONE_CONFIDENCE_THRESHOLD]
         confidence = max((x["confidence"] for x in detections), default=0.0)
         return {
             "direction": direction,
@@ -164,7 +179,7 @@ class Camera:
             "detections": [{"label": "phone", "confidence": float(d["confidence"]),
                             "box": [float(v) / (width if i % 2 == 0 else height)
                                     for i, v in enumerate(d["box"])]}
-                           for d in detections if d["confidence"] >= .65],
+                           for d in detections],
         }
 
     def close(self):

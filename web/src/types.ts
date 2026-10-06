@@ -23,6 +23,10 @@ export type Device = {
   capabilities: Record<string, unknown>;
   revoked_at?: number;
 };
+// Historical exam entries are deliberately smaller than live device records.
+export type Participant = Pick<Device, "id" | "name" | "student" | "state" | "simulated"> & {
+  last_seen?: number;
+};
 export function gazeEnabled(device: Device): boolean {
   return Boolean(device.capabilities.camera) && !device.capabilities.camera_fault && (
     device.capabilities.gaze === true ||
@@ -40,7 +44,7 @@ export type Exam = {
   created_at: number;
   simulated: boolean;
   environment: { kind: string; target_id: string; url?: string };
-  participants: Record<string, Device>;
+  participants: Record<string, Participant>;
 };
 export type Incident = {
   id: string;

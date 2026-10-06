@@ -1,0 +1,13 @@
+{
+  "version": "0.4.6",
+  "date": "2026-10-07",
+  "passed": 217,
+  "skipped": 2,
+  "warnings": 1,
+  "seconds": 27.44,
+  "web_command_tests": 6,
+  "ruff": "PASS",
+  "typescript_vite": "PASS",
+  "source_selftest": "PASS",
+  "scope": "Offscreen Qt, mocked Windows protection, API/rules/pause tests. Physical camera and real hooks not run on the user desktop."
+}

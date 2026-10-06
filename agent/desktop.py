@@ -265,6 +265,9 @@ class StudentWindow(QWidget):
         layout.addWidget(self.camera_button)
         self.camera_status = label("Выберите окно и камеру, затем нажмите «Готово», глядя на экран.", "small")
         layout.addWidget(self.camera_status)
+        self.gaze_status = label("", "small")
+        self.gaze_status.setWordWrap(True)
+        layout.addWidget(self.gaze_status)
         self.assignment_title = label("", "small")
         layout.addWidget(self.assignment_title)
         self.runtime_error = label("", "error")
@@ -399,6 +402,26 @@ class StudentWindow(QWidget):
         )
         session = snap.get("session") or {}
         self.assignment_title.setText(session.get("title", ""))
+        gaze = snap.get("gaze_diagnostics") or {}
+        names = {"SCREEN": "на экран", "LEFT": "влево", "RIGHT": "вправо",
+                 "DOWN": "вниз", "UP": "вверх", "UNKNOWN": "не определён"}
+        if snap["state"]["lifecycle"] == "COMPLETED":
+            gaze_text = "Сеанс завершён. Распознавание выключено."
+        elif snap.get("recognition_paused"):
+            gaze_text = "Распознавание приостановлено. Продолжение разрешает преподаватель."
+        elif not snap.get("camera") or snap.get("camera_fault"):
+            gaze_text = ""
+        elif not gaze.get("reference_ready"):
+            gaze_text = "Определяем исходное положение. Посмотрите на экран."
+        else:
+            gaze_text = "Взгляд: " + names.get(gaze.get("direction"), "не определён")
+            if active:
+                gaze_text += f" · {snap.get('gaze_seconds', 0):.1f} / 5 с"
+            else:
+                gaze_text += ". Можно проверить поворот головы до начала сеанса."
+            if (gaze.get("interval_ms") or 0) > 750:
+                gaze_text += " Кадры поступают редко — таймер отвлечения сброшен."
+        self.gaze_status.setText(gaze_text)
 
     def open_exam(self):
         if not self.agent:

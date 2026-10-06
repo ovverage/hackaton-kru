@@ -4,6 +4,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import onnxruntime as ort
+from shared.rules import PHONE_CONFIDENCE_THRESHOLD
 
 
 class YoloDetector:
@@ -41,7 +42,9 @@ class YoloDetector:
         for row in rows:
             cx, cy, w, h = row[:4]
             boxes.append([float((cx - w/2 - xpad) / scale), float((cy - h/2 - ypad) / scale), float(w / scale), float(h / scale)])
-        indices = cv2.dnn.NMSBoxes(boxes, scores.tolist(), self.confidence, .45)
+        # The inclusive score gate was applied above. OpenCV's score gate is
+        # strictly greater-than, so do not let NMS discard a score of exactly .80.
+        indices = cv2.dnn.NMSBoxes(boxes, scores.tolist(), 0.0, .45)
         result = []
         for i in np.asarray(indices).reshape(-1):
             x, y, w, h = boxes[i]
@@ -53,7 +56,7 @@ class YoloDetector:
 
 class PhoneDetector(YoloDetector):
     def __init__(self, path: Path):
-        super().__init__(path, 'cell phone', confidence=.4)
+        super().__init__(path, 'cell phone', confidence=PHONE_CONFIDENCE_THRESHOLD)
 
 
 class FaceDetector(YoloDetector):

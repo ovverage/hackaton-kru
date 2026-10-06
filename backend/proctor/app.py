@@ -71,7 +71,8 @@ class ExamInput(BaseModel):
 
 class ActionInput(BaseModel):
     type: str
-    expected_version: int
+    expected_version: int = Field(ge=0)
+    exam_id: str | None = None
     lock_id: str | None = None
     reason: str = Field(default="", max_length=500)
 
@@ -682,6 +683,8 @@ def create_app(data_dir=None, *, allow_demo=False):
             d = owned(c, "devices", device_id, u["id"])
             if not d.get("exam_id"):
                 raise HTTPException(409, "Сначала создайте сеанс")
+            if body.exam_id is not None and body.exam_id != d["exam_id"]:
+                raise HTTPException(409, "Сеанс компьютера изменился. Откройте его заново.")
             if d.get("revoked_at") or (d["simulated"] and not allow_demo):
                 raise HTTPException(409, "Устройство недоступно")
             if body.type == "START" and not d["simulated"] and time.time() - d.get("last_heartbeat_at", 0) >= 6:
@@ -693,7 +696,10 @@ def create_app(data_dir=None, *, allow_demo=False):
             same_lock = (body.type == "UNLOCK" and d["state"]["access"] == "LOCKED"
                          and body.lock_id == d["state"]["lock_id"]
                          and body.expected_version <= d["state"]["version"])
-            if body.expected_version != d["state"]["version"] and not same_lock:
+            # Ending authorizes the whole current exam, including incidents that
+            # arrive between the teacher's click and command delivery.
+            end_current = body.type == "END_AND_RELEASE" and body.expected_version <= d["state"]["version"]
+            if body.expected_version != d["state"]["version"] and not (same_lock or end_current):
                 raise HTTPException(409, "Состояние изменилось. Обновите карточку.")
             exam = owned(c, "exams", d["exam_id"], u["id"])
             require_camera = exam.get("require_camera", True)
@@ -706,8 +712,8 @@ def create_app(data_dir=None, *, allow_demo=False):
             cmd = {
                 "id": uid(),
                 "device_id": device_id,
-                "exam_id": d["exam_id"],
                 **body.model_dump(),
+                "exam_id": d["exam_id"],
                 "actor": u["name"],
                 "created_at": time.time(),
                 "expires_at": time.time() + 30,
@@ -961,11 +967,9 @@ def create_app(data_dir=None, *, allow_demo=False):
                         valid = (
                             cmd["exam_id"] == d["exam_id"]
                             and cmd["status"] == "PENDING"
-                            and (cmd["expected_version"] == old["version"] or (
-                                cmd["type"] == "UNLOCK"
-                                and cmd["expected_version"] <= old["version"]
-                                and cmd.get("lock_id") == old["lock_id"]
-                            ))
+                            and cmd["expected_version"] <= old["version"]
+                            and (cmd["type"] == "END_AND_RELEASE"
+                                 or cmd.get("lock_id") == old["lock_id"])
                         )
                         if valid and (
                             cmd["type"] == "END_AND_RELEASE"

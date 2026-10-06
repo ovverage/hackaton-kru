@@ -233,7 +233,7 @@ class TargetPicker(QDialog):
         layout = QVBoxLayout(self)
         layout.addWidget(
             text(
-                "Откройте тест и выберите его окно. Остальные окна будут недоступны в режиме ограничения Windows.",
+                "Откройте нужную вкладку теста и выберите её окно. При начале контроля оно развернётся на весь экран; переход в другие окна и инструменты разработчика будут ограничены.",
                 17,
             )
         )
@@ -434,7 +434,7 @@ class ExamController(QObject):
             missing_target = False
             if desktop and not self.guard.hooks:
                 self.guard.start(desktop=True)
-            if not desktop and not self.guard.target:
+            if not desktop and (not self.guard.target or not self.guard.hooks):
                 selected = self.agent.guard_target
                 if selected and "hwnd" in selected:
                     target = WindowTarget(**selected)
@@ -476,9 +476,9 @@ class ExamController(QObject):
             )
             if missing_target:
                 result = "TARGET_CLOSED"
-            self.agent.capabilities["guard_active"] = result != "TARGET_CLOSED"
+            self.agent.capabilities["guard_active"] = len(self.guard.hooks) == 2 and result not in ("TARGET_CLOSED", "GUARD_UNAVAILABLE")
             self.agent.capabilities["guard_fault"] = (
-                result if result in ("TARGET_CLOSED", "REMOTE_SESSION") else None
+                result if result in ("TARGET_CLOSED", "REMOTE_SESSION", "GUARD_UNAVAILABLE") else None
             )
             if result:
                 self.agent.security_event(result, lock=result != "ENVIRONMENT_ATTEMPT")
@@ -494,4 +494,5 @@ class ExamController(QObject):
                     self.guard.u.SetForegroundWindow(self.guard.target.hwnd)
         except (OSError, ValueError):
             self.agent.capabilities["guard_active"] = False
+            self.agent.capabilities["guard_fault"] = "GUARD_UNAVAILABLE"
             self.agent.security_event("GUARD_UNAVAILABLE")

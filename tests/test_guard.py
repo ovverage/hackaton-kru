@@ -158,6 +158,90 @@ def test_website_unlock_never_applies_to_a_new_critical_lock(live_agent):
     assert next(c for c in commands if c['id'] == response.json()['id'])['status'] == 'REJECTED'
 
 
+@pytest.mark.parametrize("change", ["review", "new_lock"])
+def test_website_end_survives_in_flight_state_changes(live_agent, change):
+    agent, server = live_agent
+    device = server.get('/api/snapshot').json()['devices'][0]
+    if change == "review":
+        event = agent.journal['recent_events'][0]
+        assert server.post('/api/events/' + event['id'] + '/review', json={
+            'decision': 'REJECTED', 'reason': 'Checked', 'expected_revision': 0,
+        }).status_code == 200
+    response = server.post('/api/devices/' + device['id'] + '/commands', json={
+        'type': 'END_AND_RELEASE', 'reason': 'Exam finished', 'exam_id': device['exam_id'],
+        'expected_version': device['state']['version'],
+    })
+    assert response.status_code == 200
+    if change == "new_lock":
+        agent.engine.lock('PHONE_DETECTED')
+    agent.sync()  # A review or the new lock can advance the version before END.
+    agent.sync()  # Backend accepts the end acknowledgement against that new version.
+    fresh = server.get('/api/snapshot').json()
+    assert agent.engine.state.lifecycle == fresh['devices'][0]['state']['lifecycle'] == 'COMPLETED'
+    assert agent.engine.state.access == fresh['devices'][0]['state']['access'] == 'OPEN'
+    assert fresh['exams'][0]['status'] == 'COMPLETED'
+    assert next(c for c in fresh['commands'] if c['id'] == response.json()['id'])['status'] == 'APPLIED'
+
+
+@pytest.mark.parametrize("invalid", ["future", "other_exam", "expired"])
+def test_end_still_rejects_future_or_unrelated_authorization(live_agent, invalid):
+    agent, _ = live_agent
+    command = {
+        'id': 'invalid-end', 'type': 'END_AND_RELEASE',
+        'exam_id': agent.journal['exam_id'], 'expected_version': agent.engine.state.version,
+        'expires_at': time.time() + 30,
+    }
+    if invalid == 'future':
+        command['expected_version'] += 1
+    elif invalid == 'other_exam':
+        command['exam_id'] = 'previous-exam'
+    else:
+        command['expires_at'] = time.time() - 1
+    agent.apply(command)
+    assert agent.engine.state.lifecycle == 'RUNNING'
+    assert agent.journal['acks'][-1]['ok'] is False
+
+
+def test_command_post_checks_exam_identity_after_snapshot(live_agent):
+    agent, server = live_agent
+    device = server.get('/api/snapshot').json()['devices'][0]
+    response = server.post('/api/devices/' + device['id'] + '/commands', json={
+        'type': 'END_AND_RELEASE', 'reason': 'End old exam', 'exam_id': 'previous-exam',
+        'expected_version': device['state']['version'],
+    })
+    assert response.status_code == 409 and 'Сеанс компьютера изменился' in response.json()['detail']
+    agent.sync()
+    assert agent.engine.state.lifecycle == 'RUNNING'
+
+
+def test_end_accepts_a_snapshot_before_a_new_incident_reaches_server(live_agent):
+    agent, server = live_agent
+    before = server.get('/api/snapshot').json()['devices'][0]
+    agent.engine.lock('PHONE_DETECTED')
+    agent.sync()
+    response = server.post('/api/devices/' + before['id'] + '/commands', json={
+        'type': 'END_AND_RELEASE', 'reason': 'Exam finished', 'exam_id': before['exam_id'],
+        'expected_version': before['state']['version'],
+    })
+    assert response.status_code == 200
+    agent.sync()
+    agent.sync()
+    assert server.get('/api/snapshot').json()['exams'][0]['status'] == 'COMPLETED'
+
+
+def test_agent_cannot_end_without_a_teacher_command(live_agent):
+    agent, server = live_agent
+    forged = agent.engine.state.public()
+    forged.update(lifecycle='COMPLETED', access='OPEN', lock_id=None,
+                  reason=None, version=forged['version'] + 1)
+    response = agent.http.post('/api/agent/sync', json={
+        'exam_id': agent.journal['exam_id'], 'state': forged,
+        'acknowledgements': [{'id': 'invented-command', 'ok': True}],
+    })
+    assert response.status_code == 409
+    assert server.get('/api/snapshot').json()['devices'][0]['state']['lifecycle'] == 'RUNNING'
+
+
 def test_agent_cannot_clear_a_lock_by_forging_heartbeat(live_agent):
     agent, _ = live_agent
     forged = agent.engine.state.public()

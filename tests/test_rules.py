@@ -156,11 +156,40 @@ def test_absence_three_second_review_ten_second_technical_block():
     assert not f.run(20, faces=0)
 
 
-def test_unknown_short_frame_breaks_continuous_gaze():
+def test_blink_does_not_erase_observed_gaze_but_unknown_time_is_not_counted():
     f = Feed()
     f.run(4.9, "DOWN")
-    f.run(.1, "UNKNOWN")
-    assert not f.run(.5, "DOWN")
+    before = f.e.seconds
+    f.t += .1
+    assert not f.e.observe(f.t, "UNKNOWN")
+    f.t += .1
+    assert not f.e.observe(f.t, "DOWN")
+    assert f.e.seconds == pytest.approx(before)
+    assert any(e['type'] == 'GAZE_DOWN' for e in f.run(.2, 'DOWN'))
+
+
+def test_slow_regular_camera_counts_observed_time_and_long_gap_resets():
+    engine = RuleEngine()
+    engine.start()
+    events = []
+    for i in range(10):
+        events += engine.observe(i*.6, 'LEFT')
+    assert len([e for e in events if e.get('type') == 'GAZE_LEFT']) == 1
+    engine = RuleEngine()
+    engine.start()
+    for i in range(8):
+        engine.observe(i*.6, 'RIGHT')
+    assert not engine.observe(6, 'RIGHT')
+    assert engine.seconds == 0
+
+
+def test_brief_missing_face_never_bridges_gaze_episode():
+    f = Feed()
+    f.run(4.9, 'LEFT')
+    f.t += .1
+    f.e.observe(f.t, 'UNKNOWN', faces=0)
+    assert f.e.seconds == 0
+    assert not f.run(.5, 'LEFT')
 
 
 def test_phone_interval_keeps_recording_until_phone_disappears():

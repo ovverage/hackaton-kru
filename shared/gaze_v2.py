@@ -25,6 +25,20 @@ BLEND_NAMES = (
     "eyeSquintRight",
 )
 FEATURE_VERSION = "iris-head-blend-v2"
+HEAD_YAW_AWAY_DEGREES = 22.0
+HEAD_DOWN_AWAY_DEGREES = 18.0
+
+
+def relative_head_angles(vector, reference):
+    """Forward-axis yaw/pitch after removing the fixed camera-start pose."""
+    # R_current * R_reference.T: only its forward column is needed.
+    forward = [sum(vector[12 + row*3 + col] * reference[18 + col]
+                   for col in range(3)) for row in range(3)]
+    if math.sqrt(sum(value*value for value in forward)) < .5:
+        return None
+    yaw = math.degrees(math.atan2(forward[0], forward[2]))
+    pitch = math.degrees(math.atan2(-forward[1], math.hypot(forward[0], forward[2])))
+    return yaw, pitch
 
 
 def extract_features(points, matrix, blendshapes, width, height):
@@ -176,8 +190,22 @@ class GazeClassifier:
             direction = self.model["classes"][strongest]
         elif off < self.model["threshold"] - 0.15:
             direction = "SCREEN"
+        source = "model"
+        angles = relative_head_angles(vector, self.reference)
+        if angles:
+            yaw, pitch = angles
+            # A clear physical turn must not be vetoed by a forest learned on
+            # only two people. Eye-only departures still use the trained model.
+            if abs(yaw) >= HEAD_YAW_AWAY_DEGREES:
+                direction = "RIGHT" if yaw > 0 else "LEFT"
+                source = "head_pose"
+            elif pitch >= HEAD_DOWN_AWAY_DEGREES:
+                direction, source = "DOWN", "head_pose"
         return {
             "direction": direction,
             "offscreen_probability": off,
             "reference_ready": True,
+            "source": source,
+            "head_yaw": round(angles[0], 2) if angles else None,
+            "head_pitch": round(angles[1], 2) if angles else None,
         }

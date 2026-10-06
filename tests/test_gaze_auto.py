@@ -1,9 +1,36 @@
 import json
+import math
 from types import SimpleNamespace
 
 import pytest
 
 from shared.gaze_v2 import FEATURE_VERSION, GazeClassifier, extract_features
+
+
+def pose_vector(yaw=0, pitch=0):
+    y, p = math.radians(yaw), math.radians(pitch)
+    cy, sy, cp, sp = math.cos(y), math.sin(y), math.cos(p), math.sin(p)
+    vector = [0.] * 33
+    vector[12:21] = [cy, sy*sp, sy*cp, 0, cp, -sp, -sy, cy*sp, cy*cp]
+    return vector
+
+
+@pytest.mark.parametrize('yaw,pitch,direction', [(-30, 0, 'LEFT'), (30, 0, 'RIGHT'), (0, 25, 'DOWN')])
+def test_clear_head_turn_is_detected_even_when_forest_votes_screen(tmp_path, yaw, pitch, direction):
+    gaze = GazeClassifier(write_model(tmp_path))
+    gaze.observe(pose_vector())
+    for _ in range(30):
+        observation = gaze.observe(pose_vector(yaw, pitch))
+        assert observation['direction'] == direction
+        assert observation['source'] == 'head_pose'
+    assert gaze.observe(pose_vector())['direction'] == 'SCREEN'
+
+
+def test_camera_start_pose_is_removed_from_head_angles(tmp_path):
+    gaze = GazeClassifier(write_model(tmp_path))
+    gaze.observe(pose_vector(yaw=12))
+    assert gaze.observe(pose_vector(yaw=25))['direction'] == 'SCREEN'
+    assert gaze.observe(pose_vector(yaw=40))['direction'] == 'RIGHT'
 
 
 def write_model(tmp_path, *, cycle=False):

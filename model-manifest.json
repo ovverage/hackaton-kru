@@ -1,6 +1,6 @@
 {
   "version": "2026.10.06.2",
-  "application_version": "0.4.5",
+  "application_version": "0.4.6",
   "architecture": "YOLO11n phone / YOLOv8n face / MediaPipe Face Mesh + ExtraTrees gaze",
   "runtime": "local CPU; no Torch, training service or recognition API required",
   "model_card": "docs/MODEL_CARD_2026_10_06.md",

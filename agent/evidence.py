@@ -1,6 +1,7 @@
 """Burn detector boxes into the same frames used for thumbnails and video."""
 
 import math
+from shared.rules import PHONE_CONFIDENCE_THRESHOLD
 
 
 def annotate(frame, detections):
@@ -11,6 +12,9 @@ def annotate(frame, detections):
     shown = frame.copy()
     height, width = shown.shape[:2]
     for detection in detections:
+        confidence = detection.get('confidence', 0)
+        if not isinstance(confidence, (int, float)) or not math.isfinite(confidence) or confidence < PHONE_CONFIDENCE_THRESHOLD:
+            continue
         box = detection.get('box', [])
         if len(box) != 4 or not all(isinstance(v, (int, float)) and math.isfinite(v) for v in box):
             continue
@@ -19,7 +23,7 @@ def annotate(frame, detections):
             continue
         color = (65, 80, 245)
         cv2.rectangle(shown, (x1, y1), (x2, y2), color, max(2, width // 320))
-        label = f"PHONE {detection.get('confidence', 0):.0%}"
+        label = f"PHONE {confidence:.0%}"
         cv2.putText(shown, label, (x1, max(22, y1 - 8)), cv2.FONT_HERSHEY_SIMPLEX,
                     max(.5, width / 1500), color, 2, cv2.LINE_AA)
     return shown

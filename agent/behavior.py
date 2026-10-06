@@ -1,6 +1,7 @@
 """Personal gaze calibration and an explicitly heuristic phone-raising signal."""
 from collections import deque
 import numpy as np
+from shared.rules import PHONE_CONFIDENCE_THRESHOLD
 
 POSITIONS = [
     ("SCREEN", "Смотрите в центр экрана"),
@@ -57,7 +58,7 @@ class PhoneRaising:
         self.previous_box = None
 
     def update(self, t, detections, width, height):
-        valid = [x for x in detections if x["confidence"] >= .65]
+        valid = [x for x in detections if x["confidence"] >= PHONE_CONFIDENCE_THRESHOLD]
         if not valid:
             if self.last_seen is not None and t - self.last_seen > 1:
                 self.history.clear()

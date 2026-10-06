@@ -54,7 +54,7 @@ def main():
             frame,
             imgsz=640,
             rect=False,
-            conf=0.4,
+            conf=runtime.confidence,
             iou=0.45,
             device=args.reference_device,
             verbose=False,
@@ -105,7 +105,7 @@ def main():
                         (y + h / 2) * height,
                     ]
                 )
-        accepted = [d for d in onnx if d["confidence"] >= 0.65]
+        accepted = onnx
         counts["positive_images"] += bool(truths)
         counts["negative_images"] += not truths
         counts["image_tp"] += bool(truths) and bool(accepted)
@@ -133,16 +133,16 @@ def main():
         "provider": "CPUExecutionProvider",
         "reference_device": args.reference_device,
         "versions": {"torch": torch.__version__, "onnxruntime": onnxruntime.__version__},
-        "confidence": 0.65,
+        "confidence": runtime.confidence,
         "nms_iou": 0.45,
-        "parity_at_confidence": 0.4,
+        "parity_at_confidence": runtime.confidence,
         "minimum_box_iou": min_iou,
         "maximum_confidence_error": max_error,
         "mismatches": failures,
         "runtime_counts": dict(counts),
         "inference_median_ms": float(np.median(timings)),
         "inference_p95_ms": float(np.percentile(timings, 95)),
-        "note": "CPU timings on training server, not a student laptop; still-image audit, not temporal events.",
+        "note": "Machine-specific CPU inference timings, not end-to-end capture performance; still-image audit, not temporal events.",
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2), encoding="utf-8")

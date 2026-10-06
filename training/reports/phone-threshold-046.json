@@ -1,0 +1,48 @@
+{
+  "status": "passed",
+  "images": 108,
+  "onnx_sha256": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+  "provider": "CPUExecutionProvider",
+  "reference_device": "cpu",
+  "versions": {
+    "torch": "2.6.0+cu124",
+    "onnxruntime": "1.24.3"
+  },
+  "confidence": 0.8,
+  "nms_iou": 0.45,
+  "parity_at_confidence": 0.8,
+  "minimum_box_iou": 0.9999973492285417,
+  "maximum_confidence_error": 5.364418029785156e-07,
+  "mismatches": [],
+  "runtime_counts": {
+    "positive_images": 78,
+    "negative_images": 30,
+    "image_tp": 55,
+    "image_fn": 23,
+    "image_fp": 0,
+    "image_tn": 30,
+    "box_tp": 53,
+    "box_fn": 25,
+    "box_fp": 2
+  },
+  "inference_median_ms": 62.05669999962993,
+  "inference_p95_ms": 74.30727999962983,
+  "note": "Machine-specific CPU inference timings, not end-to-end capture performance; still-image audit, not temporal events.",
+  "evaluated_at": "2026-10-07",
+  "threshold_policy": "User-requested inclusive confidence >= 0.80; not selected or tuned using these test images.",
+  "checkpoint_sha256": "5beb7689c2e6850967a370eafb2a7b226a7eb2c7657f928ce9cc28018ee76c79",
+  "dataset_manifest_sha256": "2a8519d1e0782fb50bfdc9fd605cb3dc5e89c94babe41447f6c8d1453f83f0a5",
+  "test_set": "The same 108 held-out participant-02 images used in phone-export-v2.json; already inspected during model development, not a new independent evaluation.",
+  "reference_report": {
+    "path": "training/reports/phone-export-v2.json",
+    "confidence": 0.65,
+    "sha256": "a1b02ca670aa997bd5a9c9e982997b0e8b37b2a77c4fd30f3d70c1cf99392b52",
+    "note": "Historical 0.4.5 results are unchanged; see that report for previous runtime counts."
+  },
+  "cpu": "AMD Ryzen 7 3800X, 8 cores / 16 logical processors",
+  "limitations": [
+    "A higher threshold reduces recall: not all phones are detected.",
+    "Zero false positives on 30 negative images does not establish zero false positives in production.",
+    "Image-level counts are distinct from IoU-matched box counts and temporal PHONE_DETECTED events."
+  ]
+}

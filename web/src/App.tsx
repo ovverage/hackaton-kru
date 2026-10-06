@@ -1,4 +1,5 @@
 import Classroom from "./Classroom";
+import { endExam, sendDeviceCommand, sendGroupCommand, type CommandType } from "./commands";
 import { useEffect, useState, type ReactNode, type FormEvent } from "react";
 import {
   ShieldCheck,
@@ -230,7 +231,7 @@ export default function App() {
     [newExam, setNewExam] = useState(false),
     [deviceId, setDeviceId] = useState<string | null>(null),
     [eventId, setEventId] = useState<string | null>(null);
-  const [action, setAction] = useState<{ device: Device; type: string } | null>(
+  const [action, setAction] = useState<{ device: Device; type: CommandType | "REVOKE" } | null>(
       null,
     ),
     [reason, setReason] = useState("");
@@ -318,61 +319,18 @@ export default function App() {
       await fn();
       await refresh();
       if (message) setToast(message);
+      return true;
     } catch (e) {
       setToast((e as Error).message);
+      return false;
     } finally {
       setBusy(false);
     }
   }
-  async function command(d: Device, type: string, why = "") {
-    const snapshot = await api<Snapshot>("/snapshot");
-    const current = snapshot.devices.find((x) => x.id === d.id);
-    if (!current || current.exam_id !== d.exam_id)
-      throw new Error("Сеанс компьютера изменился. Откройте его заново.");
-    if (type === "UNLOCK" && current.state.lock_id !== d.state.lock_id)
-      throw new Error("Возникла новая блокировка. Проверьте её причину.");
-    const sent = await api<Snapshot["commands"][number]>(
-      "/devices/" + d.id + "/commands",
-      {
-        type,
-        expected_version: current.state.version,
-        lock_id: current.state.lock_id,
-        reason: why,
-      },
-    );
-    if (sent.status === "APPLIED") return;
-    const failures: Record<string, string> = {
-      PHONE_STILL_PRESENT:
-        "Телефон всё ещё в кадре. Уберите его и повторите продолжение.",
-      FACE_STILL_ABSENT:
-        "Лицо не видно. Вернитесь в кадр и повторите продолжение.",
-      CAMERA_UNAVAILABLE: "Камера недоступна. Восстановите её в приложении.",
-      WINDOW_GUARD_UNAVAILABLE:
-        "Защита окна не готова. Проверьте приложение на компьютере.",
-      TARGET_CLOSED:
-        "Окно теста закрыто. Завершите этот сеанс и выберите окно заново.",
-      STATE_CONFLICT:
-        "Возникла новая блокировка. Обновите карточку и повторите решение.",
-    };
-    for (let attempt = 0; attempt < 32; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      const fresh = await api<Snapshot>("/snapshot");
-      receive(fresh);
-      const ack = fresh.commands.find((c) => c.id === sent.id);
-      if (ack?.status === "APPLIED") return;
-      if (ack && ["REJECTED", "EXPIRED"].includes(ack.status))
-        throw new Error(
-          failures[ack.error || ""] ||
-            (ack.status === "EXPIRED"
-              ? "Компьютер не ответил. Проверьте связь и повторите."
-              : ack.error || "Команда не выполнена"),
-        );
-    }
-    throw new Error(
-      "Компьютер пока не подтвердил команду. Проверьте связь и состояние.",
-    );
+  async function command(d: Device, type: CommandType, why = "") {
+    await sendDeviceCommand(d, type, why, receive);
   }
-  function ask(d: Device, type: string) {
+  function ask(d: Device, type: CommandType | "REVOKE") {
     setAction({ device: d, type });
     setReason("");
   }
@@ -599,44 +557,13 @@ export default function App() {
                   onDevice={setDeviceId}
                   lockedOnly={page === "blocked"}
                   onStart={() =>
-                    run(async () => {
-                      const results = await Promise.allSettled(
-                        devices
-                          .filter(
-                            (d) => d.online && d.state.lifecycle === "READY",
-                          )
-                          .map((d) => command(d, "START")),
-                      );
-                      const failed = results.filter(
-                        (r) => r.status === "rejected",
-                      );
-                      if (failed.length)
-                        throw new Error(
-                          `Не удалось запустить ${failed.length} компьютеров. Проверьте их состояние и повторите.`,
-                        );
-                    }, "Компьютеры подтвердили начало теста")
+                    run(() => sendGroupCommand(
+                      devices.filter((d) => d.online && d.state.lifecycle === "READY"),
+                      "START", "", receive,
+                    ), "Компьютеры подтвердили начало теста")
                   }
                   onEnd={() =>
-                    run(async () => {
-                      const results = await Promise.allSettled(
-                        Object.values(exam.participants)
-                          .filter((d) => d.state.lifecycle !== "COMPLETED")
-                          .map((d) =>
-                            command(
-                              d,
-                              "END_AND_RELEASE",
-                              "Преподаватель завершил сеанс",
-                            ),
-                          ),
-                      );
-                      const failed = results.filter(
-                        (r) => r.status === "rejected",
-                      );
-                      if (failed.length)
-                        throw new Error(
-                          `Не удалось завершить ${failed.length} компьютеров. Проверьте их состояние и повторите.`,
-                        );
-                    }, "Команды завершения отправлены")
+                    run(() => endExam(exam, receive), "Компьютеры подтвердили завершение сеанса")
                   }
                 />
               )}

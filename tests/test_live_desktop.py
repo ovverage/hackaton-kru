@@ -91,6 +91,7 @@ def test_desktop_guard_allows_normal_work_but_only_lock_overlays_when_locked():
     from agent.windows_guard import WindowsGuard
     guard = WindowsGuard.__new__(WindowsGuard)
     guard.desktop, guard.target, guard.locked = True, None, False
+    guard.hooks = [101, 102]  # Fake installed keyboard and mouse hooks; no OS access.
     guard.overlay_handles, guard.attempted = set(), False
     guard.u = SimpleNamespace(GetAncestor=lambda hwnd, _: hwnd, GetSystemMetrics=lambda _: 0,
                               GetForegroundWindow=lambda: 11, OpenClipboard=Mock(),

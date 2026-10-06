@@ -7,6 +7,10 @@ from uuid import uuid4
 from .version import RULE_VERSION
 
 DIRECTIONS = ("DOWN", "LEFT", "RIGHT")
+MAX_OBSERVATION_GAP_SECONDS = 0.75
+GAZE_UNKNOWN_GRACE_SECONDS = 0.35
+# One inclusive threshold for inference, evidence, startup checks and events.
+PHONE_CONFIDENCE_THRESHOLD = 0.80
 
 
 @dataclass
@@ -166,7 +170,7 @@ class RuleEngine:
         dt = 0.0 if self.last_t is None else t - self.last_t
         gap_event = None
         # No extrapolation across a missing capture interval.
-        if dt > 0.5:
+        if dt > MAX_OBSERVATION_GAP_SECONDS:
             if self.active_event:
                 gap_event = {"id": self.active_event, "update": True, "end": self.last_t}
                 self.active_event = None
@@ -181,7 +185,7 @@ class RuleEngine:
             dt = 0.0
         self.last_t = t
         events = [gap_event] if gap_event else []
-        if phone_aiming and phone_confidence >= .65:
+        if phone_aiming and phone_confidence >= PHONE_CONFIDENCE_THRESHOLD:
             events.append(self.event("PHONE_AIM_REVIEW", t, start=max(0, t - 2.5),
                                      confidence=phone_confidence, detail="Подъём и удержание телефона: возможная попытка съёмки; факт фотографии не установлен"))
         def close_interval(key, end):
@@ -194,7 +198,7 @@ class RuleEngine:
             self.duration_events[key] = event["id"]
             events.append(event)
 
-        self.phone_samples.append((t, phone_confidence >= 0.65))
+        self.phone_samples.append((t, phone_confidence >= PHONE_CONFIDENCE_THRESHOLD))
         present = sum(yes and t - ts <= 0.6 for ts, yes in self.phone_samples) >= 2
         if present:
             self.phone_clear_at = None
@@ -203,7 +207,7 @@ class RuleEngine:
                          category="CRITICAL", confidence=phone_confidence)
                 self.lock("PHONE_DETECTED")
                 self.phone_present = True
-        elif phone_confidence < 0.65:
+        elif phone_confidence < PHONE_CONFIDENCE_THRESHOLD:
             if self.phone_clear_at is None:
                 self.phone_clear_at = t
             if t - self.phone_clear_at >= 1:
@@ -287,6 +291,9 @@ class RuleEngine:
             self.screen_start = None
             if self.away_start is None:
                 self.away_start = t
+            if (self.unknown_start is not None
+                    and t - self.unknown_start > GAZE_UNKNOWN_GRACE_SECONDS + 1e-9):
+                self.candidate = None
             if self.candidate != direction:
                 self.candidate = direction
                 self.candidate_start = t
@@ -326,12 +333,12 @@ class RuleEngine:
                     self.lock("GAZE_" + direction)
         else:
             self.screen_start = None
-            # UNKNOWN is never evidence of a continuous, confident departure.
-            self.candidate = None
-            self.seconds = 0
+            # Brief uncertain eye measurements (for example a blink) do not
+            # erase already observed time, but their duration is never added.
+            # Missing/multiple faces and longer uncertainty break the episode.
             if self.unknown_start is None:
-                self.unknown_start = t
-            if t - self.unknown_start > 0.5:
+                self.unknown_start = t - dt
+            if faces != 1 or t - self.unknown_start > GAZE_UNKNOWN_GRACE_SECONDS + 1e-9:
                 self.candidate = None
                 self.seconds = 0
         self.previous = direction
