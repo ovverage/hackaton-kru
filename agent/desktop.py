@@ -344,12 +344,18 @@ class StudentWindow(QWidget):
         row = QHBoxLayout()
         row.addWidget(label("Готовность компьютера", "heading"))
         row.addStretch()
-        self.camera_button = QPushButton("Подготовить камеру")
+        self.camera_button = QPushButton("Включить камеру")
         self.camera_button.clicked.connect(self.prepare_camera)
         row.addWidget(self.camera_button)
         body.addLayout(row)
         self.camera_status = label()
         body.addWidget(self.camera_status)
+        body.addWidget(label("Кнопка включает локальный анализ телефона и лиц, без записи звука. Во время экзамена преподавателю передаются события и видеофрагменты.", "small"))
+        self.gaze_status = label("Контроль взгляда выключен", "small")
+        body.addWidget(self.gaze_status)
+        self.gaze_button = QPushButton("Настроить взгляд (необязательно)")
+        self.gaze_button.clicked.connect(lambda: self.prepare_camera(calibrate=True))
+        body.addWidget(self.gaze_button)
         self.delivery_status = label(
             "События будут передаваться преподавателю", "small"
         )
@@ -359,7 +365,7 @@ class StudentWindow(QWidget):
         layout.addWidget(self.runtime_error)
         layout.addWidget(
             label(
-                "На Windows доступно ограничение выбранного окна и горячих клавиш. Подготовьте камеру и выберите режим «Ограничение Windows» в кабинете преподавателя.",
+                "На Windows доступно ограничение выбранного окна и горячих клавиш. Включите камеру и выберите режим «Ограничение Windows» в кабинете преподавателя.",
                 "notice",
             )
         )
@@ -514,23 +520,30 @@ class StudentWindow(QWidget):
             + (" · " + env["url"] if env.get("url") else "")
         )
         self.camera_button.setEnabled(model["can_calibrate"] and not self.failure)
+        self.gaze_button.setEnabled(model["can_calibrate"] and not self.failure)
         self.target_button.setEnabled(
             state["lifecycle"] != "RUNNING"
             and not snap.get("exam_id")
             or state["lifecycle"] == "COMPLETED"
         )
         self.camera_button.setText(
-            "Повторить калибровку" if snap.get("camera") else "Подготовить камеру"
+            "Перезапустить камеру" if snap.get("camera") else "Включить камеру"
         )
         self.camera_status.setText(
             "Камера недоступна — сообщите преподавателю"
             if snap.get("camera_fault")
-            else "Подготовка камеры…"
+            else "Включаем камеру…"
             if snap.get("camera_preparing")
             else "● Камера включена · локальный буфер; преподавателю отправляются события экзамена"
             if snap.get("camera")
             else "○ Камера выключена · анализ взгляда и телефона не выполняется"
         )
+        self.gaze_status.setText(
+            "● Контроль взгляда включён: используется персональная настройка."
+            if snap.get("gaze")
+            else "○ Контроль взгляда выключен: отвлечения не считаются. Телефон и лица распознаются после включения камеры."
+        )
+        self.counter_frame.setVisible(bool(snap.get("gaze") or any(state["counts"].values())))
         pending = snap.get("pending", 0)
         media = snap.get("pending_media", 0)
         self.delivery_status.setText(
@@ -556,12 +569,12 @@ class StudentWindow(QWidget):
                     "Проверьте, что выбранный браузер или приложение установлен. Обратитесь к преподавателю.",
                 )
 
-    def prepare_camera(self):
+    def prepare_camera(self, checked=False, *, calibrate=False):
         if not self.agent or not present(self.agent.snapshot())["can_calibrate"]:
             return
         from .camera_setup import CameraSetup
 
-        self.calibration = CameraSetup(self.agent, self)
+        self.calibration = CameraSetup(self.agent, self, calibrate=calibrate)
         self.calibration.exec()
         self.calibration = None
         self.refresh()

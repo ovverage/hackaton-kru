@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import {
   api,
+  gazeEnabled,
   clock,
   eventNames,
   decisionNames,
@@ -760,7 +761,7 @@ export default function App() {
                             {d.simulated
                               ? "Тренировочный стенд"
                               : d.capabilities.camera
-                                ? "Камера · наблюдение"
+                                ? (gazeEnabled(d) ? "Телефон · лица · взгляд" : "Телефон · лица. Взгляд выключен")
                                 : "Наблюдение без камеры"}
                           </td>
                           <td>
@@ -906,6 +907,9 @@ export default function App() {
                 </span>
               )}
             </div>
+            {!selectedDevice.simulated && !gazeEnabled(selectedDevice) && (
+              <div className="notice">Контроль взгляда выключен. Отвлечения не считаются; телефон и лица распознаются при включённой камере.</div>
+            )}
             <Counters d={selectedDevice} />
             <div className="button-row">
               {selectedDevice.exam_id === exam?.id &&
@@ -1123,6 +1127,9 @@ export default function App() {
   );
 }
 function Counters({ d }: { d: Device }) {
+  if (!d.simulated && !gazeEnabled(d) && !Object.values(d.state.counts).some(Boolean)) {
+    return <div className="notice">Счётчики отвлечений недоступны без настройки взгляда.</div>;
+  }
   return (
     <div className="counters">
       {directions.map(([id, label]) => (
@@ -1441,10 +1448,15 @@ function NewExam({
         <div className="notice">
           <Eye size={17} />
           <span>
-            Для режима ограничения подготовьте камеру в Windows-агенте. Для сайта
+            Для режима ограничения включите камеру в Windows-агенте. Для сайта
             выберите Qorgau Browser, для приложения — главное окно в агенте.
           </span>
         </div>
+        {chosen.some((d) => !d.simulated && !gazeEnabled(d)) && (
+          <div className="notice">
+            У части выбранных ПК контроль взгляда выключен: отвлечения вниз и в стороны не будут считаться. Телефон и лица распознаются при включённой камере. Настройка взгляда доступна отдельно в приложении ученика.
+          </div>
+        )}
         <label>
           Режим контроля
           <select value={mode} onChange={(e) => setMode(e.target.value)}>

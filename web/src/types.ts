@@ -23,6 +23,13 @@ export type Device = {
   capabilities: Record<string, unknown>;
   revoked_at?: number;
 };
+export function gazeEnabled(device: Device): boolean {
+  return Boolean(device.capabilities.camera) && !device.capabilities.camera_fault && (
+    device.capabilities.gaze === true ||
+    (device.capabilities.gaze === undefined &&
+      ["yolo11n-onnx/mediapipe-personal-calibration", "experimental-calibrated-iris"].includes(String(device.capabilities.vision)))
+  );
+}
 export type Exam = {
   id: string;
   title: string;

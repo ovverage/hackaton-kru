@@ -2,7 +2,7 @@
 
 from pathlib import Path
 import threading
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QDialog,
@@ -17,6 +17,51 @@ from PySide6.QtWidgets import (
 )
 from .client import atomic_json
 from .behavior import POSITIONS
+
+
+class CameraStartWorker(QThread):
+    """Open and verify capture/inference without collecting gaze calibration."""
+
+    frame = Signal(QImage)
+    message = Signal(str)
+
+    def __init__(self, index, phone, face, folder):
+        super().__init__()
+        self.index, self.phone, self.face, self.folder = index, phone, face, folder
+        self.stop = threading.Event()
+        self.result = None
+        self.error = ""
+
+    def run(self):
+        camera = None
+        try:
+            from .vision import Camera
+
+            self.message.emit("Включаем камеру и распознавание…")
+            if self.stop.is_set():
+                return
+            camera = Camera(self.index, self.phone, self.face, calibrate=False)
+            frame, _ = camera.read()
+            if self.stop.is_set():
+                return
+            rgb = camera.cv2.cvtColor(frame, camera.cv2.COLOR_BGR2RGB)
+            height, width = rgb.shape[:2]
+            self.frame.emit(
+                QImage(
+                    rgb.data,
+                    width,
+                    height,
+                    int(rgb.strides[0]),
+                    QImage.Format.Format_RGB888,
+                ).copy()
+            )
+            self.result, camera = camera, None
+        except Exception as error:
+            self.error = str(error)
+        finally:
+            if camera:
+                camera.close()
+
 
 class CalibrationWorker(QThread):
     frame = Signal(QImage)
@@ -86,13 +131,16 @@ class CalibrationWorker(QThread):
 
 
 class CameraSetup(QDialog):
-    def __init__(self, agent, parent=None):
+    def __init__(self, agent, parent=None, *, calibrate=False):
         super().__init__(parent)
         self.agent = agent
+        self.calibrate = calibrate
         self.worker = None
         self.cancelled = False
         self.preparing = False
-        self.setWindowTitle("Qorgau — подготовка камеры")
+        self.setWindowTitle(
+            "Qorgau — настройка взгляда" if calibrate else "Qorgau — включение камеры"
+        )
         self.resize(720, 720)
         self.setMinimumWidth(620)
         from .desktop import STYLE, label
@@ -102,10 +150,17 @@ class CameraSetup(QDialog):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(28, 24, 28, 24)
         layout.setSpacing(12)
-        layout.addWidget(label("Подготовка камеры", "title"))
+        layout.addWidget(
+            label("Настройка взгляда" if calibrate else "Включение камеры", "title")
+        )
         layout.addWidget(
             label(
-                "Камера включится после нажатия кнопки. Сначала посмотрим в центр и на края экрана, затем за его пределы. Анализ выполняется на этом ПК, без записи звука. Преподаватель получает события и видеофрагменты для проверки экзамена. Видео хранится 7 дней; преподаватель может продлить разбор инцидента. Локальная копия удаляется после отправки. Резервные копии сервера хранятся ещё до 7 дней.",
+                (
+                    "Дополнительная настройка контроля взгляда: центр, края и пространство за экраном. "
+                    if calibrate
+                    else "Телефон и лица распознаются без калибровки. Смотреть по точкам не нужно. "
+                )
+                + "Анализ выполняется на этом ПК, без записи звука. Преподаватель получает события и видеофрагменты экзамена. Видео хранится 7 дней; преподаватель может продлить разбор. Локальная копия удаляется после отправки. Резервные копии сервера хранятся ещё до 7 дней.",
                 "body",
             )
         )
@@ -119,6 +174,7 @@ class CameraSetup(QDialog):
         row.addStretch()
         layout.addLayout(row)
         from .resources import verified_models
+
         self.model_error = ""
         try:
             phone, face = verified_models()
@@ -131,7 +187,8 @@ class CameraSetup(QDialog):
         self.face.hide()
         layout.addWidget(
             label(
-                self.model_error or "Модели проверены. Анализ выполняется на этом компьютере без внешнего сервиса распознавания.",
+                self.model_error
+                or "Модели проверены. Анализ выполняется на этом компьютере без внешнего сервиса распознавания.",
                 "small",
             )
         )
@@ -143,7 +200,9 @@ class CameraSetup(QDialog):
         )
         layout.addWidget(self.preview, 1)
         self.instruction = label(
-            "Перед началом уберите телефон и убедитесь, что в кадре только вы.",
+            "Перед началом уберите телефон и убедитесь, что в кадре только вы."
+            if calibrate
+            else "Просто работайте как обычно. Контроль взгляда настраивается отдельно и сейчас выключен.",
             "heading",
         )
         layout.addWidget(self.instruction)
@@ -151,6 +210,7 @@ class CameraSetup(QDialog):
         self.progress.setRange(0, 100)
         self.progress.setValue(0)
         self.progress.setFormat("%p%")
+        self.progress.setVisible(calibrate)
         layout.addWidget(self.progress)
         self.feedback = label("Распознавание пока выключено", "small")
         layout.addWidget(self.feedback)
@@ -168,6 +228,8 @@ class CameraSetup(QDialog):
         self.start_button.clicked.connect(self.start)
         buttons.addWidget(self.start_button)
         layout.addLayout(buttons)
+        if not calibrate:
+            QTimer.singleShot(0, self.start)
 
     def path_field(self, layout, title, value, pattern):
         from .desktop import label
@@ -191,18 +253,24 @@ class CameraSetup(QDialog):
             field.setText(file)
 
     def start(self):
+        if self.cancelled:
+            return
         if self.worker and self.worker.isRunning():
             return
         phone = Path(self.phone.text().strip())
         face = Path(self.face.text().strip())
         if not phone.is_file() or not face.is_file():
             self.feedback.setText(
-                self.model_error or "Не найден комплект моделей. Повторно скачайте полную сборку."
+                self.model_error
+                or "Не найден комплект моделей. Повторно скачайте полную сборку."
             )
             return
         with self.agent.mutex:
             state = self.agent.engine.state
-            recoverable = state.access == "LOCKED" and state.reason in ("AGENT_RESTARTED", "CAMERA_UNAVAILABLE")
+            recoverable = state.access == "LOCKED" and state.reason in (
+                "AGENT_RESTARTED",
+                "CAMERA_UNAVAILABLE",
+            )
             if state.lifecycle == "RUNNING" and not recoverable:
                 self.feedback.setText(
                     "Сеанс уже начался. Подготовку камеры нужно выполнить до старта."
@@ -216,16 +284,18 @@ class CameraSetup(QDialog):
             if self.agent.camera:
                 self.agent.camera.close()
                 self.agent.camera = None
-            self.agent.capabilities.update(camera=False, recording=False)
+            self.agent.capabilities.update(camera=False, recording=False, gaze=False)
         self.start_button.setEnabled(False)
         self.phone.setEnabled(False)
         self.face.setEnabled(False)
         self.index.setEnabled(False)
-        self.worker = CalibrationWorker(
+        worker_type = CalibrationWorker if self.calibrate else CameraStartWorker
+        self.worker = worker_type(
             self.index.value(), phone.resolve(), face.resolve(), self.agent.folder
         )
         self.worker.frame.connect(self.show_frame)
-        self.worker.phase.connect(self.phase)
+        if self.calibrate:
+            self.worker.phase.connect(self.phase)
         self.worker.message.connect(self.feedback.setText)
         self.worker.finished.connect(self.finished_calibration)
         self.worker.start()
@@ -240,7 +310,9 @@ class CameraSetup(QDialog):
         )
 
     def phase(self, index, n, valid):
-        self.instruction.setText(f"Шаг {index + 1} из {len(POSITIONS)}. {POSITIONS[index][1]}")
+        self.instruction.setText(
+            f"Шаг {index + 1} из {len(POSITIONS)}. {POSITIONS[index][1]}"
+        )
         self.progress.setValue(round((index * 25 + n) / (len(POSITIONS) * 25) * 100))
         self.capture.show()
         self.capture.setEnabled(valid and not self.worker.collect.is_set())
@@ -263,12 +335,18 @@ class CameraSetup(QDialog):
             self.preparing = False
             if self.worker.result:
                 camera = self.worker.result
-                if self.cancelled or (self.agent.engine.state.lifecycle == "RUNNING" and self.agent.engine.state.access != "LOCKED"):
+                if self.cancelled or (
+                    self.agent.engine.state.lifecycle == "RUNNING"
+                    and self.agent.engine.state.access != "LOCKED"
+                ):
                     camera.close()
                 else:
                     from .recording import ClipRecorder
+
                     try:
-                        recorder = self.agent.recorder or ClipRecorder(self.agent.folder / "clips")
+                        recorder = self.agent.recorder or ClipRecorder(
+                            self.agent.folder / "clips"
+                        )
                     except (OSError, ValueError) as error:
                         camera.close()
                         self.worker.error = str(error)
@@ -281,12 +359,18 @@ class CameraSetup(QDialog):
                     recorder.reset_session(self.agent.journal.get("exam_id"))
                     if recorder.last_t is not None:
                         import time
-                        self.agent.origin = min(self.agent.origin, time.monotonic() - recorder.last_t - .1)
+
+                        self.agent.origin = min(
+                            self.agent.origin, time.monotonic() - recorder.last_t - 0.1
+                        )
                     self.agent.camera_fault = False
                     self.agent.capabilities.update(
                         camera=True,
                         recording=True,
-                        vision="yolo11n-onnx/mediapipe-personal-calibration",
+                        gaze=bool(camera.centres),
+                        vision="yolo11n-onnx/mediapipe-personal-calibration"
+                        if camera.centres
+                        else "yolo11n-onnx/mediapipe-phone-face",
                     )
                     self.agent.config["camera_settings"] = {
                         "index": self.index.value(),
@@ -316,6 +400,7 @@ class CameraSetup(QDialog):
         self.capture.hide()
 
     def reject(self):
+        self.cancelled = True
         if self.worker and self.worker.isRunning():
             self.cancelled = True
             self.worker.stop.set()
@@ -330,4 +415,5 @@ class CameraSetup(QDialog):
             self.reject()
             event.ignore()
         else:
+            self.cancelled = True
             event.accept()

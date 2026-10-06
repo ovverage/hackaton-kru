@@ -6,7 +6,7 @@ import time
 
 
 class Camera:
-    def __init__(self, index, phone_model: Path, face_model: Path, *, calibrate=True):
+    def __init__(self, index, phone_model: Path, face_model: Path, *, calibrate=False):
         import cv2
         import numpy as np
         import mediapipe as mp

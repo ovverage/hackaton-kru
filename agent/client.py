@@ -118,6 +118,7 @@ class Agent:
             "strict": False,
             "camera": False,
             "recording": False,
+            "gaze": False,
             "platform": os.name,
         }
         self.camera = None
@@ -548,6 +549,7 @@ class Agent:
                 "environment": self.environment,
                 "pending": len(self.journal["events"]),
                 "camera": self.capabilities["camera"],
+                "gaze": self.capabilities.get("gaze", False) and self.capabilities["camera"] and not self.camera_fault,
                 "camera_fault": self.camera_fault,
                 "camera_preparing": self.camera_preparing,
                 "connected": self.last_synced_at is not None
@@ -676,7 +678,7 @@ class Agent:
                         if self.camera:
                             self.camera.close()
                             self.camera = None
-                        self.capabilities.update(camera=False, recording=False)
+                        self.capabilities.update(camera=False, recording=False, gaze=False)
             with self.mutex:
                 if self.recorder:
                     self.collect_media(float("inf"))
@@ -710,6 +712,7 @@ def main():
     parser.add_argument(
         "--camera", type=int, default=None, help="Явно включить указанную камеру"
     )
+    parser.add_argument("--calibrate-gaze", action="store_true", help="Дополнительно настроить контроль взгляда при --camera")
     parser.add_argument("--phone-model", type=Path)
     parser.add_argument("--face-model", type=Path)
     parser.add_argument("--self-test", type=Path, help="Write a hardware-free model/video diagnostic report")
@@ -787,10 +790,11 @@ def main():
             args.phone_model, args.face_model = verified_models()
         from .vision import Camera, ClipRecorder
 
-        agent.camera = Camera(args.camera, args.phone_model, args.face_model)
+        agent.camera = Camera(args.camera, args.phone_model, args.face_model, calibrate=args.calibrate_gaze)
         agent.recorder = ClipRecorder(args.data / "clips")
         agent.capabilities.update(
-            camera=True, recording=True, vision="experimental-calibrated-iris"
+            camera=True, recording=True, gaze=bool(agent.camera.centres),
+            vision="experimental-calibrated-iris" if agent.camera.centres else "yolo11n-onnx/mediapipe-phone-face"
         )
     stop = threading.Event()
     if args.headless:

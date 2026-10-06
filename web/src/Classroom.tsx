@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import {
   api,
+  gazeEnabled,
   clock,
   eventNames,
   type Device,
@@ -258,6 +259,7 @@ export default function Classroom(p: Props) {
                             <i className={`status-dot ${tone}`} />
                             {status}
                           </span>
+                          {!d.simulated && !gazeEnabled(d) && <small>Контроль взгляда выключен</small>}
                         </td>
                         {(["DOWN", "LEFT", "RIGHT"] as const).map(
                           (direction) => (
@@ -265,8 +267,9 @@ export default function Classroom(p: Props) {
                               key={direction}
                               className={`roster-count ${d.state.counts[direction] >= 3 ? "limit" : ""}`}
                             >
-                              {d.state.counts[direction]}
-                              <span>/3</span>
+                              {d.simulated || gazeEnabled(d) || d.state.counts[direction] > 0
+                                ? <>{d.state.counts[direction]}<span>/3</span></>
+                                : <span title="Контроль взгляда выключен">—</span>}
                             </td>
                           ),
                         )}
