@@ -111,6 +111,7 @@ export const eventNames: Record<string, string> = {
   DISPLAY_CHANGED: "Изменилось число экранов",
   CAMERA_FROZEN: "Зависшее изображение камеры",
   AGENT_RESTARTED: "Перезапуск агента",
+  AGENT_FAILURE: "Ошибка агента",
 };
 export const decisionNames = {
   PENDING: "На проверке",

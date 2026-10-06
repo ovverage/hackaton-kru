@@ -4,6 +4,7 @@ from pathlib import Path
 import argparse
 import subprocess
 import sys
+import importlib.util
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -47,6 +48,16 @@ else:
     command.extend(
         ["--collect-binaries", "mediapipe", "--collect-all", "imageio_ffmpeg"]
     )
+    # torchvision >=0.29 uses _C_stable/image_stable instead of the old _C module.
+    # Current upstream hooks still name _C, so include the actual native libraries.
+    vision_spec = importlib.util.find_spec("torchvision")
+    for folder in vision_spec.submodule_search_locations:
+        for binary in Path(folder).rglob("*"):
+            if binary.suffix.lower() in (".so", ".pyd", ".dll", ".dylib"):
+                destination = "torchvision/" + str(
+                    binary.parent.relative_to(folder)
+                ).replace("\\", "/")
+                command.extend(["--add-binary", str(binary) + ":" + destination])
     # Do not import every training/tracking module while building the inference client.
     for module in (
         "pytest",

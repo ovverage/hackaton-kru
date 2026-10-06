@@ -369,6 +369,10 @@ class ExamController(QObject):
             self.active_exam = snap["exam_id"]
             self.displays = len(screens)
             self.parent().hide()
+        last_sync = self.agent.last_synced_at or self.agent.guard_started_at
+        if last_sync is None or time.monotonic() - last_sync > 10:
+            self.agent.security_event("SERVER_UNAVAILABLE")
+            snap = self.agent.snapshot()
         if len(screens) != self.displays:
             self.agent.security_event("DISPLAY_CHANGED")
             self.displays = len(screens)

@@ -136,6 +136,25 @@ def test_desktop_first_run_and_locked_actions(application, tmp_path):
     agent.http.close()
 
 
+def test_worker_failure_locks_an_active_session(application, tmp_path):
+    from agent.desktop import StudentWindow
+
+    atomic_json(
+        tmp_path / "config.json",
+        {"server": "http://localhost:8000", "token": "fixture"},
+    )
+    agent = Agent(tmp_path)
+    window = StudentWindow(tmp_path, agent=agent, run_worker=False)
+    agent.engine.start()
+    with patch.object(window, "show_status"):
+        window.agent_failed("Тестовая техническая ошибка")
+    assert agent.engine.state.access == "LOCKED"
+    assert agent.engine.state.reason == "AGENT_FAILURE" and agent.camera_fault
+    window.hide()
+    agent.engine.end()
+    agent.http.close()
+
+
 def test_start_during_calibration_is_rejected_without_launching_exam(tmp_path):
     atomic_json(
         tmp_path / "config.json",

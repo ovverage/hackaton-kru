@@ -438,6 +438,9 @@ class StudentWindow(QWidget):
 
     def agent_failed(self, message):
         self.failure = message
+        if self.agent:
+            self.agent.camera_fault = True
+            self.agent.security_event("AGENT_FAILURE")
         self.runtime_error.setText(message)
         self.runtime_error.show()
         self.show_status()

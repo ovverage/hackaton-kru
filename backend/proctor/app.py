@@ -259,6 +259,7 @@ def create_app(data_dir=None):
                 "DISPLAY_CHANGED",
                 "CAMERA_FROZEN",
                 "AGENT_RESTARTED",
+                "AGENT_FAILURE",
             }
             if event.get("type") not in allowed:
                 raise HTTPException(422, "Неизвестный тип события")
