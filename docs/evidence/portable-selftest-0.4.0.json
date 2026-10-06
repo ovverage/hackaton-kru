@@ -6,9 +6,10 @@
   "frozen": true,
   "browser_renderer": true,
   "kind": "synthetic packaging test; no webcam or accuracy claim",
+  "installer_mutex": true,
   "models_verified": true,
   "onnx_inference": true,
   "face_landmarker": true,
   "h264_encode_decode": true,
-  "phone_cpu_median_ms": 49.08
+  "phone_cpu_median_ms": 48.43
 }
