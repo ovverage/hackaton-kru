@@ -16,9 +16,21 @@ class EnrollmentUnavailable(ValueError):
 
 
 def bootstrap_data_dir(bootstrap, home=None):
+    base = (home or Path.home()) / ".qorgau"
+    # Preserve an existing manual installation when upgrading from <= 0.4.0.
+    if bootstrap["version"] == 2 and (base / "config.json").is_file():
+        try:
+            legacy = json.loads((base / "config.json").read_text(encoding="utf-8"))
+            if legacy.get("server") == bootstrap["server"] and all(
+                isinstance(legacy.get(key), str) and legacy[key]
+                for key in ("device_id", "token")
+            ):
+                return base
+        except (ValueError, OSError):
+            pass
     identity = bootstrap["server"] + "\n" + bootstrap["account_id"]
     scope = hashlib.sha256(identity.encode()).hexdigest()[:24]
-    return (home or Path.home()) / ".qorgau" / "accounts" / scope
+    return base / "accounts" / scope
 
 
 def auto_enroll(folder: Path, bootstrap, *, transport=None):
@@ -43,17 +55,17 @@ def auto_enroll(folder: Path, bootstrap, *, transport=None):
         identity = {"secret": secrets.token_urlsafe(32)}
         atomic_json(identity_path, identity)
     name = socket.gethostname()[:80] or "Компьютер"
+    public = bootstrap["version"] == 2
+    payload = {"installation_secret": identity["secret"], "name": name}
+    if not public:
+        payload["token"] = bootstrap["token"]
     try:
         with httpx.Client(
             base_url=bootstrap["server"], timeout=8, transport=transport
         ) as client:
             response = client.post(
-                "/api/agent/auto-enroll",
-                json={
-                    "token": bootstrap["token"],
-                    "installation_secret": identity["secret"],
-                    "name": name,
-                },
+                "/api/agent/register" if public else "/api/agent/auto-enroll",
+                json=payload,
             )
         if response.status_code >= 500 or response.status_code == 429:
             raise EnrollmentUnavailable(
@@ -64,7 +76,7 @@ def auto_enroll(folder: Path, bootstrap, *, transport=None):
             raise ValueError(
                 detail
                 if isinstance(detail, str)
-                else "Получите новый EXE у преподавателя."
+                else "Доступ к подключению закрыт. Обратитесь к преподавателю."
             )
         if response.status_code >= 400:
             raise ValueError(
@@ -89,7 +101,7 @@ def auto_enroll(folder: Path, bootstrap, *, transport=None):
         **result,
         "server": bootstrap["server"],
         "account_id": bootstrap["account_id"],
-        "name": f"{bootstrap['room']} · {name}"[:80],
+        "name": name if public else f"{bootstrap['room']} · {name}"[:80],
         "room": bootstrap["room"],
         "targets": [],
     }

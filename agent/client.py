@@ -723,7 +723,7 @@ def main():
         run(args.self_test)
         return
     from .provision import auto_enroll, bootstrap_data_dir
-    from shared.bootstrap import read_bootstrap
+    from shared.bootstrap import default_bootstrap, read_bootstrap
 
     try:
         bootstrap = (
@@ -731,6 +731,8 @@ def main():
             if getattr(sys, "frozen", False)
             else None
         )
+        if bootstrap is None and not args.enroll:
+            bootstrap = default_bootstrap(args.server)
     except ValueError as error:
         if args.headless:
             parser.error(str(error))

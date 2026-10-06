@@ -7,6 +7,17 @@ from urllib.parse import urlparse
 
 MAGIC = b"QORGAU-BOOTSTRAP-V1\x00"
 MAX_PAYLOAD = 8192
+DEFAULT_SERVER = "https://212.19.134.23"
+
+
+def default_bootstrap(server=None):
+    """Public deployment address, not an enrollment credential or teacher secret."""
+    return {
+        "version": 2,
+        "account_id": "qorgau-default",
+        "server": server_address(server or DEFAULT_SERVER),
+        "room": "Новые компьютеры",
+    }
 
 
 def server_address(value: str, *, testing=False):
@@ -39,15 +50,14 @@ def server_address(value: str, *, testing=False):
 
 
 def validate_bootstrap(value):
-    if not isinstance(value, dict) or value.get("version") != 1:
+    if not isinstance(value, dict) or value.get("version") not in (1, 2):
         raise ValueError("Повреждены настройки EXE. Скачайте приложение заново.")
-    for key, limit in (
-        ("package_id", 80),
-        ("account_id", 80),
-        ("token", 128),
-        ("room", 80),
-        ("server", 2048),
-    ):
+    fields = [("account_id", 80), ("room", 80), ("server", 2048)]
+    if value["version"] == 1:
+        fields.extend([("package_id", 80), ("token", 128)])
+    elif value.get("account_id") != "qorgau-default":
+        raise ValueError("Повреждены настройки подключения. Скачайте приложение заново.")
+    for key, limit in fields:
         if not isinstance(value.get(key), str) or not 1 <= len(value[key]) <= limit:
             raise ValueError("Повреждены настройки EXE. Скачайте приложение заново.")
     return {**value, "server": server_address(value["server"])}

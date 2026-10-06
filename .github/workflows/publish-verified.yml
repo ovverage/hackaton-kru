@@ -66,7 +66,7 @@ jobs:
                   assert hashlib.file_digest(binary, 'sha256').hexdigest() == digest
               checked.add(name)
           assert checked == expected
-          for name in ('packaged-selftest.json', 'portable-selftest.json', 'installer-selftest.json'):
+          for name in ('packaged-selftest.json', 'portable-selftest.json', 'installer-selftest.json', 'plain-first-run.json'):
               report = json.load(open('artifacts/' + name))
               assert report['status'] == 'passed' and report['version'] == version
           PY

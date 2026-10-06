@@ -54,8 +54,12 @@ def main():
     parser.add_argument(
         "--exe", type=Path, default=ROOT / "dist" / "Qorgau-Student.exe"
     )
+    parser.add_argument("--plain", action="store_true", help="Test the ordinary installer/EXE without any enrollment trailer")
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     os.environ["PROCTOR_STUDENT_EXE"] = str(args.exe.resolve())
+    if args.plain:
+        os.environ["PROCTOR_PUBLIC_ENROLLMENT_OWNER"] = "Smoke Teacher"
     processes = []
     with tempfile.TemporaryDirectory(prefix="qorgau-exe-smoke-") as directory:
         folder = Path(directory)
@@ -82,23 +86,25 @@ def main():
                         "password": "isolated-test-password",
                     },
                 ).raise_for_status()
-                response = client.post(
-                    "/api/student-packages",
-                    json={"room": "Smoke", "server": address, "max_devices": 2},
-                )
-                response.raise_for_status()
-                package = response.json()
-                downloaded = folder / "Qorgau-Classroom.exe"
-                with client.stream("GET", package["download_path"]) as response:
+                downloaded = args.exe.resolve()
+                if not args.plain:
+                    response = client.post(
+                        "/api/student-packages",
+                        json={"room": "Smoke", "server": address, "max_devices": 2},
+                    )
                     response.raise_for_status()
-                    with downloaded.open("wb") as output:
-                        for chunk in response.iter_bytes():
-                            output.write(chunk)
+                    package = response.json()
+                    downloaded = folder / "Qorgau-Classroom.exe"
+                    with client.stream("GET", package["download_path"]) as response:
+                        response.raise_for_status()
+                        with downloaded.open("wb") as output:
+                            for chunk in response.iter_bytes():
+                                output.write(chunk)
 
                 def launch(name):
                     print("Launching " + name, flush=True)
                     process = subprocess.Popen(
-                        [str(downloaded), "--data", str(folder / name)],
+                        [str(downloaded), "--data", str(folder / name)] + (["--server", address] if args.plain else []),
                         env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
                         stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT,
@@ -145,15 +151,25 @@ def main():
                 _, restarted = launch("pc1")
                 assert restarted == config1
                 assert len(client.get("/api/snapshot").json()["devices"]) == 2
-                assert (
-                    client.get("/api/student-packages").json()["packages"][0][
-                        "used_devices"
-                    ]
-                    == 2
-                )
+                packages = client.get("/api/student-packages").json()["packages"]
+                if args.plain:
+                    assert packages == []
+                else:
+                    assert packages[0]["used_devices"] == 2
                 print(
                     "PASS: downloaded EXE, automatic GUI enrollment for two profiles, individual tokens, live sync, restart without duplicate registration"
                 )
+                if args.output:
+                    from shared.version import APP_VERSION
+                    from shared.bootstrap import DEFAULT_SERVER
+                    args.output.write_text(json.dumps({
+                        "status": "passed", "version": APP_VERSION,
+                        "mode": "ordinary executable without bootstrap trailer" if args.plain else "classroom package",
+                        "default_server": DEFAULT_SERVER,
+                        "profiles": 2, "distinct_tokens": True, "live_sync": True,
+                        "restart_without_duplicate": True,
+                        "scope": "isolated HTTP fixture via CLI server override; no webcam or input hooks",
+                    }, indent=2), encoding="utf-8")
         finally:
             for process in processes:
                 stop_process(process)

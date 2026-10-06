@@ -21,6 +21,8 @@ class Database:
             CREATE TABLE IF NOT EXISTS pairings(code TEXT PRIMARY KEY,user_id TEXT NOT NULL,expires REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS student_packages(id TEXT PRIMARY KEY,owner TEXT NOT NULL,token_hash TEXT UNIQUE NOT NULL,body TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS package_devices(package_id TEXT NOT NULL,installation_hash TEXT NOT NULL,device_id TEXT NOT NULL,PRIMARY KEY(package_id,installation_hash));
+            CREATE TABLE IF NOT EXISTS public_devices(owner TEXT NOT NULL,installation_hash TEXT NOT NULL,device_id TEXT NOT NULL,PRIMARY KEY(owner,installation_hash));
+            CREATE TABLE IF NOT EXISTS public_registration_attempts(client TEXT PRIMARY KEY,count INTEGER NOT NULL,until REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS devices(id TEXT PRIMARY KEY,owner TEXT NOT NULL,token TEXT UNIQUE,body TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS exams(id TEXT PRIMARY KEY,owner TEXT NOT NULL,body TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY,exam_id TEXT NOT NULL,device_id TEXT NOT NULL,body TEXT NOT NULL);

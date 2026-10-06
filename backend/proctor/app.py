@@ -34,6 +34,7 @@ from shared.version import APP_VERSION, RULE_VERSION
 
 from .db import Database, decode, encode
 from .packages import register_package_routes
+from .registration import register_public_registration
 
 ROOT = Path(__file__).resolve().parents[2]
 PH = PasswordHasher()
@@ -1177,6 +1178,7 @@ def create_app(data_dir=None):
         )
 
     register_package_routes(app, db, user, audit, ROOT)
+    register_public_registration(app, db, audit, ROOT)
     dist = ROOT / "web" / "dist"
     if dist.exists():
         app.mount("/", StaticFiles(directory=dist, html=True), name="web")

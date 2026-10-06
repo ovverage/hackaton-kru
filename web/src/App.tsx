@@ -25,7 +25,6 @@ import {
   LogOut,
   FlaskConical,
   Video,
-  Link2,
   LoaderCircle,
   CheckCheck,
 } from "lucide-react";
@@ -233,8 +232,7 @@ export default function App() {
     [studentPackagesOpen, setStudentPackagesOpen] = useState(false),
     [newExam, setNewExam] = useState(false),
     [deviceId, setDeviceId] = useState<string | null>(null),
-    [eventId, setEventId] = useState<string | null>(null),
-    [pairCode, setPairCode] = useState("");
+    [eventId, setEventId] = useState<string | null>(null);
   const [action, setAction] = useState<{ device: Device; type: string } | null>(
       null,
     ),
@@ -453,13 +451,9 @@ export default function App() {
               </button>
             )}
             {page === "devices" && (
-              <button
-                className="btn primary"
-                disabled={busy}
-                onClick={() => setStudentPackagesOpen(true)}
-              >
-                <Download size={18} /> EXE для аудитории
-              </button>
+              <a className="btn primary" href="/api/student/download">
+                <Download size={18} /> Скачать приложение
+              </a>
             )}
           </div>
           {page === "room" && (
@@ -724,8 +718,8 @@ export default function App() {
               <div className="notice">
                 <Monitor size={18} />
                 <span>
-                  Подготовьте EXE для аудитории и передайте его студентам. После
-                  запуска компьютер подключится автоматически, без ввода кода.
+                  Студент устанавливает Qorgau или открывает EXE. Компьютер
+                  автоматически появляется здесь — адрес и код вводить не нужно.
                 </span>
               </div>
               {data.devices.length === 0 ? (
@@ -783,13 +777,9 @@ export default function App() {
               <button
                 className="btn demo-add"
                 disabled={busy}
-                onClick={() =>
-                  run(async () =>
-                    setPairCode((await api("/pairings", {})).code),
-                  )
-                }
+                onClick={() => setStudentPackagesOpen(true)}
               >
-                <Link2 size={16} /> Подключить вручную по коду
+                <Settings2 size={16} /> Дополнительные пакеты аудитории
               </button>
               <button
                 className="btn demo-add"
@@ -1059,42 +1049,6 @@ export default function App() {
           onClose={() => setStudentPackagesOpen(false)}
         >
           <StudentPackages />
-        </Modal>
-      )}
-      {pairCode && (
-        <Modal
-          title="Подключение компьютера"
-          subtitle="Одноразовый код · действует 5 минут"
-          onClose={() => setPairCode("")}
-        >
-          <div className="modal-body">
-            <label>
-              Адрес этого сервера
-              <input readOnly value={location.origin} />
-            </label>
-            <div className="pair-code">{pairCode}</div>
-            <p>
-              Администратор вводит адрес сервера, название компьютера и этот код
-              один раз. После регистрации агент работает в трее и получает
-              сеансы автоматически. Для каждого компьютера нужен отдельный код.
-            </p>
-            <p className="fine">
-              Ученику не нужны логин и код. Имя ученика назначается в новом
-              сеансе. Для компьютеров аудитории используйте доступный им
-              HTTPS-адрес сервера.
-            </p>
-            <button
-              className="btn full"
-              onClick={() =>
-                navigator.clipboard
-                  .writeText(pairCode)
-                  .then(() => setToast("Код скопирован"))
-                  .catch(() => setToast("Выделите и скопируйте код вручную"))
-              }
-            >
-              Скопировать код
-            </button>
-          </div>
         </Modal>
       )}
       {action && (

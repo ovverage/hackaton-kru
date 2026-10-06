@@ -2,16 +2,18 @@
 import hashlib
 import json
 import subprocess
+import tomllib
 from pathlib import Path
 import zipfile
 
 ROOT=Path(__file__).resolve().parents[1]
+VERSION=tomllib.loads((ROOT/'pyproject.toml').read_text(encoding='utf-8'))['project']['version']
 DOC_SUFFIXES = {'.md', '.png', '.jpg', '.jpeg', '.webp', '.svg', '.json'}
 
 
 def main():
     dist=ROOT/'dist'
-    source=dist/'Qorgau-Source-0.4.0.zip'
+    source=dist/f'Qorgau-Source-{VERSION}.zip'
     paths=[]
     for name in ('agent','backend','shared','scripts','tests','extension','deploy','training','packaging','.github','web/src','web/public'):
         folder=ROOT/name
@@ -23,7 +25,7 @@ def main():
     with zipfile.ZipFile(source,'w',zipfile.ZIP_DEFLATED) as archive:
         for path in sorted(set(paths)):
             archive.write(path,path.relative_to(ROOT).as_posix())
-    staff=dist/'Qorgau-Admin-0.4.0.zip'
+    staff=dist/f'Qorgau-Admin-{VERSION}.zip'
     with zipfile.ZipFile(staff,'w',zipfile.ZIP_DEFLATED) as archive:
         for file in (dist/'Qorgau-SecurityBridge.exe',ROOT/'deploy/Prepare-Qorgau-Exam.ps1',source,ROOT/'README.md',ROOT/'THIRD_PARTY_NOTICES.md',ROOT/'model-manifest.json'):
             archive.write(file,file.name)
@@ -46,7 +48,7 @@ def main():
         source_state={'commit':revision,'working_tree_dirty':dirty}
     except (OSError, subprocess.CalledProcessError):
         source_state={'commit':None,'working_tree_dirty':None}
-    manifest={'version':'0.4.0','model_version':'2026.10.06.1','rule_version':'3.0','windows':'x64, Python 3.12 build',
+    manifest={'version':VERSION,'model_version':'2026.10.06.1','rule_version':'3.0','windows':'x64, Python 3.12 build',
               'mode':'OBSERVE / GUARDED; STRICT unavailable',
               'source':source_state,'files':files}
     (dist/'release-manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')

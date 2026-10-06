@@ -103,7 +103,9 @@ def test_desktop_first_run_and_locked_actions(application, tmp_path):
     window = StudentWindow(tmp_path, run_worker=False)
     assert window.pages.currentIndex() == 0
     assert not (tmp_path / "config.json").exists()
-    assert window.code_input.text() == ""
+    assert not hasattr(window, "code_input") and not hasattr(window, "server_input")
+    assert window.bootstrap["server"] == "https://212.19.134.23"
+    assert window.retry_timer.isActive()
     window.close()
     atomic_json(
         tmp_path / "config.json",
@@ -251,8 +253,9 @@ def test_no_tray_fallback_and_first_setup_stay_accessible(application, tmp_path)
     agent.http.close()
 
 
-def test_preconfigured_desktop_enrolls_without_fields_and_reuses_credentials(
-    application, tmp_path
+@pytest.mark.parametrize("prepared", [False, True])
+def test_desktop_enrolls_without_fields_and_reuses_credentials(
+    application, tmp_path, prepared
 ):
     from PySide6.QtTest import QTest
     from agent.desktop import StudentWindow
@@ -274,7 +277,7 @@ def test_preconfigured_desktop_enrolls_without_fields_and_reuses_credentials(
         return config
 
     with patch("agent.desktop.auto_enroll", side_effect=register) as enroll_mock:
-        window = StudentWindow(tmp_path, bootstrap=bootstrap, run_worker=False)
+        window = StudentWindow(tmp_path, bootstrap=bootstrap if prepared else None, run_worker=False)
         assert not hasattr(window, "code_input") and not hasattr(window, "server_input")
         for _ in range(100):
             QTest.qWait(10)
@@ -282,10 +285,13 @@ def test_preconfigured_desktop_enrolls_without_fields_and_reuses_credentials(
                 break
         assert window.agent is not None and window.pages.currentIndex() == 1
         assert enroll_mock.call_count == 1
+        if not prepared:
+            assert enroll_mock.call_args.args[1]["server"] == "https://212.19.134.23"
+            assert "token" not in enroll_mock.call_args.args[1]
         window.enrollment.wait(1000)
         window.request_exit()
         window.agent.http.close()
-        reopened = StudentWindow(tmp_path, bootstrap=bootstrap, run_worker=False)
+        reopened = StudentWindow(tmp_path, bootstrap=bootstrap if prepared else None, run_worker=False)
         assert reopened.agent is not None and not reopened.retry_timer.isActive()
         assert enroll_mock.call_count == 1
         reopened.request_exit()

@@ -1,4 +1,4 @@
-"""Classroom tray agent with one-time administrator enrollment."""
+"""Classroom tray agent with automatic first-run registration."""
 
 from __future__ import annotations
 
@@ -15,7 +15,6 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
     QMenu,
     QMessageBox,
     QPushButton,
@@ -27,8 +26,9 @@ from PySide6.QtWidgets import (
 )
 
 from .client import Agent
-from .provision import EnrollmentUnavailable, auto_enroll, enroll
+from .provision import EnrollmentUnavailable, auto_enroll
 from .student_state import present
+from shared.bootstrap import default_bootstrap
 
 STYLE = """
 QWidget {font-family: "Segoe UI", "DejaVu Sans";font-size:13px;color:#34415a;}
@@ -103,19 +103,15 @@ class EnrollmentWorker(QThread):
     succeeded = Signal(object)
     failed = Signal(str)
 
-    def __init__(self, folder, server=None, code=None, name=None, *, bootstrap=None):
+    def __init__(self, folder, *, bootstrap):
         super().__init__()
-        self.arguments = (folder, server, code, name)
+        self.folder = folder
         self.bootstrap = bootstrap
         self.retryable = False
 
     def run(self):
         try:
-            self.succeeded.emit(
-                auto_enroll(self.arguments[0], self.bootstrap)
-                if self.bootstrap
-                else enroll(*self.arguments)
-            )
+            self.succeeded.emit(auto_enroll(self.folder, self.bootstrap))
         except Exception as error:  # noqa: BLE001 - report worker failures through Qt signals
             self.retryable = isinstance(error, EnrollmentUnavailable)
             self.failed.emit(str(error))
@@ -151,7 +147,7 @@ class StudentWindow(QWidget):
     ):
         super().__init__()
         self.folder = folder
-        self.bootstrap = bootstrap
+        self.bootstrap = bootstrap or default_bootstrap(server)
         self.server_override = server
         self.agent = None
         self.stop = stop or threading.Event()
@@ -203,9 +199,7 @@ class StudentWindow(QWidget):
         side.hide()
         self.pages = QStackedWidget()
         root.addWidget(self.pages, 1)
-        self.pages.addWidget(
-            self.build_auto_setup() if bootstrap else self.build_setup(server)
-        )
+        self.pages.addWidget(self.build_auto_setup())
         self.pages.addWidget(self.build_dashboard())
         self.create_tray()
         self.timer = QTimer(self)
@@ -225,7 +219,7 @@ class StudentWindow(QWidget):
                 )
                 self.setup_error.show()
                 self.connect_button.setEnabled(False)
-        elif bootstrap:
+        else:
             self.retry_timer.start(0)
 
     def build_auto_setup(self):
@@ -236,14 +230,13 @@ class StudentWindow(QWidget):
         layout.addWidget(label("QORGAU / ПОДКЛЮЧЕНИЕ", "eyebrow"))
         layout.addWidget(label("Подключаем компьютер", "title"))
         layout.addWidget(
-            label(f"Аудитория {self.bootstrap['room']} · {socket.gethostname()}")
+            label(f"Компьютер · {socket.gethostname()}")
         )
         layout.addWidget(
             label(
-                "Настройки уже в приложении. Дождитесь подключения — преподаватель увидит этот компьютер и сможет назначить тест."
+                "Подключение произойдёт автоматически. Преподаватель увидит этот компьютер в списке и сможет назначить тест."
             )
         )
-        layout.addWidget(label("Сервер: " + self.bootstrap["server"], "small"))
         self.setup_error = label("", "error")
         self.setup_error.hide()
         layout.addWidget(self.setup_error)
@@ -259,68 +252,6 @@ class StudentWindow(QWidget):
             )
         )
         layout.addStretch()
-        return page
-
-    def build_setup(self, server):
-        page = QWidget()
-        layout = QVBoxLayout(page)
-        layout.setContentsMargins(38, 30, 38, 28)
-        layout.setSpacing(17)
-        layout.addWidget(label("QORGAU / НАСТРОЙКА АДМИНИСТРАТОРОМ", "eyebrow"))
-        layout.addWidget(label("Подключение компьютера", "title"))
-        layout.addWidget(
-            label(
-                "Зарегистрируйте компьютер один раз. Затем агент работает в трее и автоматически получает сеансы от преподавателя. Ученику ничего вводить не нужно."
-            )
-        )
-        frame, form = card()
-        layout.addWidget(frame)
-        form.addWidget(label("Адрес сервера преподавателя", "field"))
-        self.server_input = QLineEdit(server or "http://127.0.0.1:8000")
-        self.server_input.setAccessibleName("Адрес сервера преподавателя")
-        form.addWidget(self.server_input)
-        form.addWidget(
-            label(
-                "На этом компьютере можно использовать localhost.\nДля другого компьютера в аудитории получите HTTPS-адрес.",
-                "small",
-            )
-        )
-        form.addWidget(label("Название компьютера", "field"))
-        self.name_input = QLineEdit(socket.gethostname())
-        self.name_input.setMaxLength(80)
-        self.name_input.setPlaceholderText("Аудитория 301 · ПК-01")
-        self.name_input.setAccessibleName("Рабочее место")
-        form.addWidget(self.name_input)
-        form.addWidget(label("Одноразовый код подключения", "field"))
-        self.code_input = QLineEdit()
-        self.code_input.setMaxLength(8)
-        self.code_input.setPlaceholderText("Например, A12B34CD")
-        self.code_input.setAccessibleName("Код подключения")
-        form.addWidget(self.code_input)
-        form.addWidget(
-            label(
-                "Код создаётся на сайте: «Компьютеры → Подключить вручную по коду». Срок — 5 минут. Имя ученика назначит преподаватель перед тестом.",
-                "small",
-            )
-        )
-        self.setup_error = label("", "error")
-        self.setup_error.hide()
-        form.addWidget(self.setup_error)
-        self.connect_button = QPushButton("Подключить компьютер  →")
-        self.connect_button.setObjectName("primary")
-        self.connect_button.clicked.connect(self.register)
-        form.addWidget(self.connect_button)
-        self.code_input.returnPressed.connect(self.register)
-        layout.addWidget(
-            label(
-                "Камера сейчас выключена. Подключение к серверу не включает запись и не запускает тест.",
-                "notice",
-            )
-        )
-        layout.addStretch()
-        layout.addWidget(
-            label("Данные остаются в локальной установке учебного заведения.", "small")
-        )
         return page
 
     def build_dashboard(self):
@@ -444,17 +375,7 @@ class StudentWindow(QWidget):
         self.setup_error.hide()
         self.connect_button.setEnabled(False)
         self.connect_button.setText("Подключаем компьютер…")
-        if self.bootstrap:
-            self.enrollment = EnrollmentWorker(self.folder, bootstrap=self.bootstrap)
-        else:
-            for field in (self.server_input, self.name_input, self.code_input):
-                field.setEnabled(False)
-            self.enrollment = EnrollmentWorker(
-                self.folder,
-                self.server_input.text(),
-                self.code_input.text(),
-                self.name_input.text(),
-            )
+        self.enrollment = EnrollmentWorker(self.folder, bootstrap=self.bootstrap)
         self.enrollment.failed.connect(self.registration_failed)
         self.enrollment.succeeded.connect(self.registration_succeeded)
         self.enrollment.start()
@@ -463,24 +384,15 @@ class StudentWindow(QWidget):
         self.setup_error.setText(message)
         self.setup_error.show()
         self.connect_button.setEnabled(True)
-        self.connect_button.setText(
-            "Повторить подключение" if self.bootstrap else "Подключить компьютер  →"
-        )
-        if self.bootstrap:
-            if self.enrollment and self.enrollment.retryable:
-                self.retry_timer.start(10000)
-        else:
-            for field in (self.server_input, self.name_input, self.code_input):
-                field.setEnabled(True)
+        self.connect_button.setText("Повторить подключение")
+        if self.enrollment and self.enrollment.retryable:
+            self.retry_timer.start(10000)
 
     def registration_succeeded(self, _config):
         self.retry_timer.stop()
-        if not self.bootstrap:
-            self.code_input.clear()
         try:
             self.attach(Agent(self.folder))
             if self.tray:
-                self.hide()
                 self.tray.showMessage(
                     "Компьютер подключён",
                     "Qorgau работает в трее. Сеансы назначаются на сайте преподавателя.",

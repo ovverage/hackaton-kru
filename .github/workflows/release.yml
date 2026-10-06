@@ -81,6 +81,8 @@ jobs:
         run: |
           Copy-Item packaged-selftest.json dist/Qorgau-Student/selftest.json
           python scripts/build_installer.py
+      - name: Verify ordinary EXE first run without a classroom package
+        run: python scripts/smoke_student_exe.py --plain --exe dist/Qorgau-Student.exe --output plain-first-run.json
       - name: Test installation, installed runtime, repair and removal
         shell: pwsh
         run: |
@@ -96,7 +98,7 @@ jobs:
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
             "$hash  $($_.Name)"
           } | Set-Content SHA256SUMS.txt
-          Copy-Item Qorgau-Student-Windows-x64.zip,SHA256SUMS.txt,packaged-selftest.json,portable-selftest.json,installer-selftest.json artifacts/
+          Copy-Item Qorgau-Student-Windows-x64.zip,SHA256SUMS.txt,packaged-selftest.json,portable-selftest.json,installer-selftest.json,plain-first-run.json artifacts/
       - uses: actions/upload-artifact@v4
         with:
           name: Qorgau-Student-Windows-x64
@@ -110,6 +112,7 @@ jobs:
             source-selftest.json
             packaged-selftest.json
             installer-selftest.json
+            plain-first-run.json
             build/Qorgau-Student/warn-Qorgau-Student.txt
 
   release:

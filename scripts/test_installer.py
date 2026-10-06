@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import platform
 import subprocess
+import sys
 import tempfile
 import traceback
 import uuid
@@ -110,6 +111,12 @@ def smoke(installer, output):
             )
             report["runtime"] = runtime
             report["checks"].append("installed browser, CV models and H264 runtime")
+            registration_report = sandbox / "installed first run.json"
+            run([sys.executable, root / "scripts/smoke_student_exe.py", "--plain", "--exe", executable, "--output", registration_report])
+            registration = json.loads(registration_report.read_text(encoding="utf-8"))
+            assert registration["status"] == "passed" and registration["profiles"] == 2
+            report["registration"] = registration
+            report["checks"].append("ordinary installed app auto-registers two profiles and restarts without a code or enrollment trailer")
             run([uninstaller, *flags])
             assert (
                 not executable.exists()

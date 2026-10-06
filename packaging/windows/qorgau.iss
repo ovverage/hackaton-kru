@@ -52,6 +52,6 @@ Name: "{group}\Qorgau Student"; Filename: "{app}\Qorgau-Student.exe"; Parameters
 Name: "{autodesktop}\Qorgau Student"; Filename: "{app}\Qorgau-Student.exe"; Parameters: "--show"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\Qorgau-Student.exe"; Parameters: "--show"; Description: "{cm:LaunchProgram,Qorgau Student}"; Flags: nowait postinstall skipifsilent unchecked
+Filename: "{app}\Qorgau-Student.exe"; Parameters: "--show"; Description: "{cm:LaunchProgram,Qorgau Student}"; Flags: nowait postinstall skipifsilent
 
 ; No [UninstallDelete]: ~/.qorgau contains credentials/evidence and must survive removal.
