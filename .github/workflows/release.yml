@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+env:
+  PYTHONUTF8: '1'
+  YOLO_AUTOINSTALL: 'false'
+
 jobs:
   verify:
     runs-on: ubuntu-latest

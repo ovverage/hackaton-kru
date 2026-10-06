@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import argparse
+import os
 import subprocess
 import sys
 import importlib.util
@@ -72,10 +73,15 @@ else:
 # QWebEngine resources and helpers are collected by PyInstaller's Qt hook.
 command.extend(["--hidden-import", "PySide6.QtWebEngineWidgets"])
 command.append(str(root / "agent" / "student_entry.py"))
-subprocess.run(command, cwd=root, check=True)
-print("Приложение собрано:", root / "dist" / "Qorgau-Student")
+subprocess.run(
+    command,
+    cwd=root,
+    check=True,
+    env={**os.environ, "YOLO_AUTOINSTALL": "false", "PYTHONUTF8": "1"},
+)
+print("Application built:", root / "dist" / "Qorgau-Student")
 print(
-    "CV включён в сборку."
+    "CV included."
     if args.with_cv
-    else "Сборка интерфейса и связи: CV-модули не включены."
+    else "Interface and connection only: CV modules are not included."
 )
