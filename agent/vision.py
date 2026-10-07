@@ -127,7 +127,7 @@ class Camera:
         from .behavior import validate_centres
         validate_centres(self.centres)
 
-    def read(self, *, analyze=True):
+    def read(self, *, analyze=True, phone_review=False, phone_review_until=None):
         # Request 720p/15fps for recording; inference uses a smaller image.
         delay = 1/15 - (time.monotonic() - self.last_frame)
         if delay > 0:
@@ -146,13 +146,24 @@ class Camera:
             raise OSError("CAMERA_FROZEN: изображение не меняется более 5 секунд")
         if not analyze:
             self.recognition_was_paused = True
+            if phone_review and (phone_review_until is None or captured_at <= phone_review_until):
+                # A finite evidence-only continuation keeps the pre-lock phone
+                # trajectory, without evaluating faces, gaze, or penalty rules.
+                observation = self.phone_observation(frame, captured_at)
+                # The pump keeps only the newest frame; retain a detected rise
+                # until the agent consumes it and cancels the finite window.
+                observation["phone_aiming"] = observation["phone_aiming"] or self.raising.fired
+                observation.update(phone_review_only=True, captured_at=captured_at,
+                                   phone_episode_id=self.raising.episode_id)
+                return frame, observation
             return frame, None
         if self.recognition_was_paused:
             from .behavior import PhoneRaising
             self.raising = PhoneRaising()
             self.recognition_was_paused = False
-        observation = self.analyze(frame)
+        observation = self.analyze(frame, at=captured_at)
         observation['captured_at'] = captured_at
+        observation['phone_episode_id'] = self.raising.episode_id
         observation['gaze_diagnostics'] = self.gaze_diagnostics
         return frame, observation
 
@@ -168,13 +179,16 @@ class Camera:
         gaze = self.gaze.observe(self.gaze_vector if faces == 1 else None)
         self.gaze_diagnostics = gaze
         direction = classify_gaze(feature, self.centres) if self.centres else gaze['direction']
+        return {"direction": direction, "faces": faces, **self.phone_observation(frame, at)}
+
+    def phone_observation(self, frame, at=None):
+        """Phone boxes/raising only; no face or gaze model and no rule state."""
+        height, width = frame.shape[:2]
         detections = [d for d in self.phone.detect(frame)
                       if d['confidence'] >= PHONE_CONFIDENCE_THRESHOLD]
         confidence = max((x["confidence"] for x in detections), default=0.0)
         return {
-            "direction": direction,
             "phone_confidence": confidence,
-            "faces": faces,
             "phone_aiming": self.raising.update(time.monotonic() if at is None else at, detections, width, height),
             "detections": [{"label": "phone", "confidence": float(d["confidence"]),
                             "box": [float(v) / (width if i % 2 == 0 else height)

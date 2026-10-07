@@ -95,6 +95,25 @@ With torch/torchvision/onnx/onnxruntime installed:
 python -m training.public_gaze_train --data data/public-gaze --output training/runs/public-gaze-v1 --device cuda:0 --batch 128 --workers 6 --epochs 40 --patience 8
 ```
 
+For the 2026-10-07 training window, bounded execution can use:
+
+```powershell
+python -m training.public_gaze_train --data data/public-gaze --output training/runs/public-gaze-v1 --device cuda:0 --batch 256 --workers 12 --epochs 40 --patience 8 --max-hours 2 --deadline-utc 2026-10-07T18:47:54Z --finalize-reserve-minutes 15
+```
+
+`--max-hours` starts at this training run's first invocation, after the separate
+CPU dataset preparation. Resume retains that original clock. The earlier of
+this allocation and the absolute UTC deadline wins. At least 15 minutes are
+reserved for checkpoint validation, final test, and ONNX export; the reserve
+grows when measured validation throughput requires more time. Training checks
+the cutoff every batch. A partial trained epoch may be validated for selection,
+but it is explicitly marked incomplete and cannot later resume as a completed
+epoch. `training-stop.json`, checkpoint metadata, evaluation, and ONNX metadata
+report whether time, validation patience, or the epoch limit ended training.
+Final evaluation/export also check the hard deadline. Unexpected stalls can
+still exhaust the reserve; they leave checkpoints intact and fail explicitly,
+without fabricating test results or silently extending the deadline.
+
 Resume an interrupted run before final evaluation with `--resume` pointing to
 its `last.pt` and the same output directory. Keep epochs/data unchanged.
 An OS file lock rejects concurrent writers, and a fresh launch refuses existing

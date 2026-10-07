@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from training.public_detection import check_resume, dev_members, normalized_box, prepare_coco, prepare_wider, read_wider, run_lock, sha256, write_json
+from training.public_detection import BatchBenchmark, BenchmarkComplete, INITIAL_SHA256, TimedRun, check_resume, dev_members, fit_settings, label_scan_threads, normalized_box, prepare_coco, prepare_wider, read_wider, resumed_budget, run_lock, runtime_budget, select_stage_checkpoint, sha256, stage_initialization, stage_parent_fitness, write_json
 from training.public_detection_eval import MIN_AP50, MIN_PRECISION, MIN_RECALL, THRESHOLDS, evaluate, image_gate_failures, load_heldout_receipt, official_coco, operating_audit, operating_counts, recover_export, select_parity_images
 
 
@@ -13,6 +13,107 @@ def tiny_image(path):
     Image = pytest.importorskip("PIL.Image")
     path.parent.mkdir(parents=True, exist_ok=True)
     Image.new("RGB", (20, 10)).save(path)
+
+
+def test_scan_pool_is_bounded_versioned_and_restored_after_failure():
+    module = SimpleNamespace(NUM_THREADS=8, DATASET_CACHE_VERSION="1.0.3")
+    with pytest.raises(RuntimeError, match="simulated"):
+        with label_scan_threads(32, module, "8.3.221") as receipt:
+            assert module.NUM_THREADS == 32
+            assert receipt["cache_version"] == "1.0.3"
+            raise RuntimeError("simulated scan failure")
+    assert module.NUM_THREADS == 8
+    for count in (0, 49, -1, 3.5, True):
+        with pytest.raises(ValueError, match="between 1 and 48"):
+            with label_scan_threads(count, module, "8.3.221"):
+                pytest.fail("Invalid pool bound accepted")
+    for version, cache in (("8.3.222", "1.0.3"), ("8.3.221", "1.0.4")):
+        module.DATASET_CACHE_VERSION = cache
+        with pytest.raises(ValueError, match="requires Ultralytics"):
+            with label_scan_threads(32, module, version):
+                pytest.fail("Unvalidated library contract accepted")
+    assert module.NUM_THREADS == 8
+
+
+def test_parallel_native_label_cache_matches_original_verification(tmp_path):
+    ultralytics = pytest.importorskip("ultralytics")
+    if ultralytics.__version__ != "8.3.221":
+        pytest.skip("Native cache contract is pinned to Ultralytics 8.3.221")
+    from PIL import Image
+    import numpy as np
+    from ultralytics.data import dataset
+    from ultralytics.utils.metrics import Metric
+
+    metric = Metric()
+    metric.mean_results = lambda: [0.91, 0.72, 0.63, 0.48]
+    assert metric.fitness() == 0.48  # Exact 8.3.221 selection contract.
+
+    files, labels = [], []
+    # Includes a negative image, duplicate, tiny valid box and rejected bad class.
+    content = ["", "0 .5 .5 .2 .2\n0 .5 .5 .2 .2\n", "1 .4 .4 .0001 .0001\n", "2 .5 .5 .2 .2\n"]
+    for index, value in enumerate(content):
+        image, label = tmp_path / f"{index}.jpg", tmp_path / f"{index}.txt"
+        Image.new("RGB", (32, 24), (index, 0, 0)).save(image)
+        label.write_text(value)
+        files.append(str(image))
+        labels.append(str(label))
+    source = SimpleNamespace(im_files=files[::-1], label_files=labels[::-1], prefix="parity: ",
+                             use_keypoints=False, data={"names": {0: "phone", 1: "person"}}, single_cls=False)
+    original = dataset.NUM_THREADS
+    with label_scan_threads(8):
+        baseline = dataset.YOLODataset.cache_labels(source, tmp_path / "baseline.cache")
+    with label_scan_threads(32):
+        parallel = dataset.YOLODataset.cache_labels(source, tmp_path / "parallel.cache")
+    assert dataset.NUM_THREADS == original
+    assert {k: v for k, v in baseline.items() if k != "labels"} == {k: v for k, v in parallel.items() if k != "labels"}
+    assert baseline["results"] == (4, 0, 1, 1, 4)
+    assert [row["im_file"] for row in parallel["labels"]] == files[-2::-1]
+    for before, after in zip(baseline["labels"], parallel["labels"], strict=True):
+        for key in before:
+            if isinstance(before[key], np.ndarray):
+                np.testing.assert_array_equal(before[key], after[key])
+            else:
+                assert before[key] == after[key]
+
+
+def test_parent_stage_fitness_requires_preserved_matching_dev_metric_and_version():
+    checkpoint = {"version": "8.3.221", "best_fitness": 0.48076,
+                  "train_metrics": {"fitness": 0.48076, "metrics/mAP50-95(B)": 0.48076}}
+    versions = {"ultralytics": "8.3.221"}
+    assert stage_parent_fitness(checkpoint, versions, "8.3.221") == 0.48076
+    for value in (None, float("nan"), float("inf"), -0.1, 0.5):
+        with pytest.raises(ValueError):
+            stage_parent_fitness({**checkpoint, "best_fitness": value}, versions, "8.3.221")
+    with pytest.raises(ValueError, match="8.3.221"):
+        stage_parent_fitness(checkpoint, {"ultralytics": "8.3.220"}, "8.3.221")
+
+
+@pytest.mark.parametrize("child_fitness,selected", [(0.4, "parent"), (0.48076, "parent"), (0.48077, "child")])
+def test_stage_selection_preserves_child_and_never_replaces_parent_with_worse_dev(tmp_path, child_fitness, selected):
+    parent, child = tmp_path / "parent.pt", tmp_path / "best.pt"
+    parent.write_bytes(b"frozen unstripped parent")
+    child.write_bytes(b"new child candidate")
+    original_parent_sha = sha256(parent)
+    result = select_stage_checkpoint(parent, child, original_parent_sha, 0.48076, child_fitness, tmp_path)
+    assert result["selected_source"] == selected
+    assert result["status"] == "selected_before_final_evaluation"
+    assert (tmp_path / "child-best.pt").read_bytes() == b"new child candidate"
+    assert child.read_bytes() == (b"frozen unstripped parent" if selected == "parent" else b"new child candidate")
+    assert sha256(parent) == original_parent_sha
+    assert result["selected_sha256"] == sha256(child)
+    assert json.loads((tmp_path / "stage-selection.json").read_text()) == result
+
+
+def test_stage_selection_rejects_changed_parent_and_missing_child_metric_before_mutation(tmp_path):
+    parent, child = tmp_path / "parent.pt", tmp_path / "best.pt"
+    parent.write_bytes(b"parent")
+    child.write_bytes(b"child")
+    with pytest.raises(ValueError, match="identity changed"):
+        select_stage_checkpoint(parent, child, "wrong hash", 0.48, 0.45, tmp_path)
+    with pytest.raises(ValueError, match="finite"):
+        select_stage_checkpoint(parent, child, sha256(parent), 0.48, None, tmp_path)
+    assert child.read_bytes() == b"child"
+    assert not (tmp_path / "child-best.pt").exists()
 
 
 def test_split_hash_is_order_independent_and_group_exclusive():
@@ -281,3 +382,140 @@ def test_missing_prediction_artifact_never_claims_completed_metrics_or_pass(tmp_
     assert report["status"] == "failed"
     assert "export" not in report
     assert not (output / "heldout-metrics.json").exists()
+
+
+def test_timed_budget_reserves_evaluation_and_includes_setup(tmp_path):
+    budget = runtime_budget(time_hours=4, deadline_utc="1970-01-01T03:00:00Z", reserve_minutes=60, now=0)
+    assert budget["training_cutoff_timestamp"] == 7200
+    trainer = SimpleNamespace(args=SimpleNamespace(workers=8, time=None))
+    timer = TimedRun(budget, 16, tmp_path)
+    timer.clock = lambda: 1800
+    timer.before_setup(trainer)
+    timer.start(trainer)
+    assert trainer.args.workers == 16
+    assert trainer.args.time == 1.5
+    assert budget["setup_seconds_this_invocation"] == 1800
+    assert runtime_budget(now=0) is None
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"time_hours": -1}, {"time_hours": float("inf")},
+    {"deadline_utc": "1970-01-01T00:00:00"},
+    {"time_hours": 1, "reserve_minutes": -1},
+])
+def test_timing_rejects_ambiguous_or_invalid_constraints(kwargs):
+    with pytest.raises(ValueError):
+        runtime_budget(now=0, **kwargs)
+
+
+def test_setup_exhaustion_stops_before_training_and_resume_cannot_extend_budget(tmp_path):
+    previous = runtime_budget(time_hours=1, deadline_utc="1970-01-01T02:00:00Z", now=0)
+    newer = runtime_budget(time_hours=5, deadline_utc="1970-01-01T08:00:00Z", now=1200)
+    merged = resumed_budget(previous, newer)
+    assert merged["training_cutoff_timestamp"] == previous["training_cutoff_timestamp"]
+    assert merged["deadline_timestamp"] == previous["deadline_timestamp"]
+    assert resumed_budget(previous, None) == previous
+    timer = TimedRun(merged, 16, tmp_path)
+    timer.clock = lambda: 3601
+    with pytest.raises(TimeoutError, match="exhausted"):
+        timer.start(SimpleNamespace(args=SimpleNamespace(time=None)))
+    with pytest.raises(TimeoutError):
+        runtime_budget(deadline_utc="1970-01-01T01:00:00Z", reserve_minutes=60, now=0)
+
+
+def test_timed_stop_does_not_count_a_partial_epoch_as_complete(tmp_path):
+    timer = TimedRun(None, 8, tmp_path)
+    trainer = SimpleNamespace(epoch=2, train_loader=range(5))
+    timer.epoch_start(trainer)
+    timer.batch_start(trainer)
+    timer.batch_start(trainer)
+    timer.epoch_end(trainer)
+    assert timer.epochs[-1] == {"epoch": 3, "training_batches": 2, "expected_batches": 5, "full_epoch": False}
+    trainer.epoch = 3
+    timer.epoch_start(trainer)
+    for _ in range(5):
+        timer.batch_start(trainer)
+    timer.epoch_end(trainer)
+    assert timer.epochs[-1]["full_epoch"] is True
+
+
+def test_timed_mosaic_closes_once_after_dynamic_horizon_skips_equality(tmp_path):
+    calls = []
+    trainer = SimpleNamespace(epoch=10, epochs=25, args=SimpleNamespace(close_mosaic=10),
+                              train_loader=SimpleNamespace(reset=lambda: calls.append("reset")),
+                              _close_dataloader_mosaic=lambda: calls.append("close"))
+    budget = runtime_budget(time_hours=1, now=0)
+    timer = TimedRun(budget, 8, tmp_path)
+    timer.epoch_start(trainer)
+    assert calls == []
+    # The estimate moves 25 -> 20, while epoch moves 10 -> 11; equality was missed.
+    trainer.epoch, trainer.epochs = 11, 20
+    timer.epoch_start(trainer)
+    assert calls == ["close", "reset"]
+    assert trainer.args.close_mosaic == 0
+    assert budget["mosaic_closed_epoch"] == 12
+    timer.epoch_start(trainer)
+    assert len(calls) == 2
+    # A fresh loader in resumed training must not re-enable Mosaic.
+    resumed = TimedRun(dict(budget), 8, tmp_path)
+    trainer.epoch, trainer.epochs = 12, 100
+    resumed.epoch_start(trainer)
+    assert calls == ["close", "reset", "close", "reset"]
+    assert resumed.budget["mosaic_close_restored_on_resume"] is True
+
+
+def test_untimed_mosaic_remains_under_native_control(tmp_path):
+    timer = TimedRun(None, 8, tmp_path)
+    timer.epoch_start(SimpleNamespace(epoch=90, epochs=100))
+    assert timer.mosaic_closed is False
+
+
+def test_benchmark_stops_at_batch_boundary_without_an_epoch_and_discards_warmup():
+    timer = BatchBenchmark(steps=4, warmup_steps=2, batch_size=8)
+    ticks = iter(range(8))
+    timer.clock = lambda: next(ticks)
+    for _ in range(3):
+        timer.start(None)
+        timer.end(None)
+    timer.start(None)
+    with pytest.raises(BenchmarkComplete):
+        timer.end(None)
+    report = timer.report()
+    assert report["completed_batches"] == 4
+    assert report["measured_batches"] == 2
+    assert report["measured_images"] == 16
+    assert report["images_per_second"] == 4
+
+
+def test_declared_stage_requires_new_run_same_data_parent_unopened_final_test(tmp_path):
+    parent = tmp_path / "parent"
+    weights = parent / "fit" / "weights" / "best.pt"
+    weights.parent.mkdir(parents=True)
+    weights.write_bytes(b"parent dev checkpoint")
+    source = {"dataset_manifest_sha256": "dataset-sha", "initialization": {"sha256": INITIAL_SHA256}, "settings": {"batch": 16}}
+    write_json(parent / "training.json", source)
+    new = tmp_path / "stage2"
+    result = stage_initialization(parent, weights, "dataset-sha", new)
+    assert result["kind"] == "new_optimizer_continuation_stage"
+    assert result["sha256"] == sha256(weights)
+    assert result["original_pretraining_sha256"] == INITIAL_SHA256
+    assert result["parent_requested_settings"] == {"batch": 16}
+    with pytest.raises(ValueError, match="new output"):
+        stage_initialization(parent, weights, "dataset-sha", parent)
+    with pytest.raises(ValueError, match="switch"):
+        stage_initialization(parent, weights, "changed-sha", new)
+    with run_lock(parent):
+        with pytest.raises(RuntimeError, match="Another process"):
+            stage_initialization(parent, weights, "dataset-sha", new)
+    (parent / "final-evaluation.json").write_text("{}")
+    with pytest.raises(ValueError, match="final test"):
+        stage_initialization(parent, weights, "dataset-sha", new)
+
+
+def test_default_fit_settings_keep_untimed_protocol_and_cache_is_explicit():
+    kwargs = dict(epochs=80, batch=16, workers=8, device="0", seed=20261007, patience=20)
+    old = fit_settings(Path("data.yaml"), Path("run"), cache="none", **kwargs)
+    assert old["cache"] is False and "time" not in old
+    assert old["lr0"] == .001 and old["imgsz"] == 640 and old["mosaic"] == .75
+    cached = fit_settings(Path("data.yaml"), Path("run"), cache="disk", **kwargs)
+    assert cached == {**old, "cache": "disk"}

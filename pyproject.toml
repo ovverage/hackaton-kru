@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "qostanai-proctor"
-version = "0.4.7"
+version = "0.4.8"
 description = "Local proctoring agent and teacher control room"
 requires-python = ">=3.11"
 dependencies = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.30,<1", "httpx>=0.27,<1", "python-multipart>=0.0.20", "argon2-cffi>=23"]
@@ -18,7 +18,7 @@ package = ["pyinstaller>=6.15,<7"]
 test = ["pytest>=8,<10"]
 cv = ["opencv-contrib-python==4.13.0.92", "onnxruntime==1.24.3", "mediapipe==0.10.32", "imageio-ffmpeg==0.6.0"]
 
-training = ["scikit-learn>=1.5,<2", "ultralytics>=8.3,<9", "onnx>=1.17,<2"]
+training = ["scikit-learn>=1.5,<2", "ultralytics==8.3.221", "onnx>=1.17,<2", "pycocotools>=2.0.10,<3", "psutil>=7,<8", "requests>=2.32,<3"]
 datasets = ["requests>=2.32,<3", "numpy>=1.26,<3", "scipy>=1.11,<2", "Pillow>=10,<13"]
 
 [tool.setuptools.packages.find]

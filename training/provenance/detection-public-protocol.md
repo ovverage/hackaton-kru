@@ -144,3 +144,121 @@ Image-model metrics cannot prove behavior over time, photographing intent, secur
 browser enforcement, or performance on this hackathon's particular webcam.
 Dataset source/license notices remain authoritative; retraining does not create
 an unrestricted right to redistribute images or weights.
+
+## User-imposed ten-hour limit, 2026-10-07
+
+The user imposed a total deadline of **2026-10-07 18:47:54 UTC**, starting at
+08:47:54 UTC. This changes resource planning before the final test is opened;
+it does not relax any image-quality, provenance or ONNX acceptance gate.
+
+First measure training throughput without touching the final test:
+
+```powershell
+python -m training.public_detection benchmark --data C:/QorgauTraining/20261007/prepared/coco/data.yaml --weights C:/QorgauTraining/20261007/yolo11n.pt --output C:/QorgauTraining/20261007/pilots/coco-b64-w16 --batch 64 --workers 16 --steps 64 --warmup-steps 16 --cache none
+```
+
+Use a new pilot directory for each batch/worker combination. The pilot uses the
+same train split and augmentations, discards the first 16 batch timings, and
+raises/catches a dedicated completion exception at batch 64. It exits before
+epoch-end validation, saving a checkpoint, or exporting a candidate. It records
+images per second, synchronized batch time, time between batches (loader/logging),
+peak allocated/reserved GPU memory, and total startup/cache wall time in
+`benchmark.json`. Internal development loader setup may occur, but neither
+development scores nor final-test data select the hardware configuration.
+
+Batch 32/64 preserve nominal batch 64 through Ultralytics gradient accumulation;
+batch 128 changes effective optimizer batch size. Batch changes can change batch
+normalization and sample ordering even with the same seed. Select hardware from
+throughput and memory measurements, record a fresh statistical run or stage, and
+retain the final quality gates. Do not describe a faster pilot as higher accuracy.
+
+For this dataset, 112,372 train images at 50 images/s need roughly 37.5 minutes
+per epoch before development validation. A five-hour allowance cannot credibly
+promise 80 complete epochs at that speed. Twelve full epochs require at least
+approximately 80–90 images/s including development overhead; twenty require
+approximately 135–150 images/s. These are planning estimates, not measurements.
+
+The optional `--cache disk` creates original-resolution decoded `.npy` images.
+It is useful only when decode cost exceeds the extra disk I/O and sufficient SSD
+space is available. Existing `.npy` files are read even under `--cache none` in
+Ultralytics 8.3.221. RAM cache is deliberately not offered: Windows worker spawn
+can duplicate it, and upstream warns about determinism. Cache creation time is
+part of the training wall budget below. All images, labels and split membership
+remain unchanged.
+
+```powershell
+python -m training.public_detection train --data C:/QorgauTraining/20261007/prepared/coco/data.yaml --weights C:/QorgauTraining/20261007/yolo11n.pt --output C:/QorgauTraining/20261007/runs/person-phone-timed --epochs 80 --batch 64 --workers 16 --cache disk --time-hours 4.5 --deadline-utc 2026-10-07T18:47:54Z --evaluation-reserve-minutes 75 --device 0
+```
+
+`--time-hours` limits training wall time **including** setup/cache generation.
+The training cutoff is the earlier of that limit and the overall deadline minus
+the evaluation reserve. At `on_train_start`, after loader setup, the remaining
+hours arm the native Ultralytics `time` mechanism. If setup exhausts the budget,
+the run fails before the first training batch. `timing.json` and `training.json`
+record the cutoff, setup cost, epoch batch coverage, and whether the final epoch
+was partial; a partial epoch is not counted as a complete pass through the data.
+Early stopping still uses only the development set.
+
+The exact 8.3.221 trainer source checks its timer after optimizer updates and
+development validation, then dynamically estimates remaining epochs and adjusts
+the LR schedule. It also performs an internal final development validation.
+Consequently this is a timed schedule, not an unchanged 80-epoch schedule. The
+reserve covers that work and the separate final-test/export/parity stages.
+The native Mosaic-close equality can be skipped when that estimated horizon
+moves. A timed-only guard closes Mosaic once when the current epoch reaches or
+passes `estimated_epochs - 10`, records the closure in `timing.json`, and suppresses
+a duplicate native loader reset. Resume restores the closed state on its fresh
+loader. Untimed training keeps native augmentation behavior unchanged.
+Cooperative library timers cannot interrupt blocked setup/I/O or an ongoing
+export; the queue supervisor must enforce the user's absolute deadline with a
+process-tree watchdog. The pipeline refuses to start final evaluation if the
+overall deadline has already elapsed. Deadline expiry never creates a passing
+metric report.
+
+Untimed CLI calls and their old resume contracts retain the same default settings.
+`train` and `benchmark` accept `--scan-threads 32` (default 8, bounded 1–48).
+Ultralytics 8.3.221 otherwise caps the initial image/label verifier at eight
+threads independently of `--workers`. This scheduling option changes only
+`ultralytics.data.dataset.NUM_THREADS` for the run and restores it afterward.
+The original ordered verifier, corrupt-image/label checks, duplicate handling,
+cache version 1.0.3 and file hash validation remain intact. The selected thread
+count is recorded under `loader_setup`; training and internal-development caches
+are both covered. No final-test image scan or metric evaluation is introduced by
+this option, and completed native caches are reused by later pilots/stages.
+It does not create a cache from unchecked annotations or bypass image checks.
+A resumed timed run cannot extend its recorded cutoff/deadline. An explicitly
+added shorter budget is recorded; workers are applied before loader setup because
+8.3.221 otherwise ignores a workers override during resume. Native timed resume
+can stop earlier than expected: its estimated epoch horizon is relative to
+remaining runtime but compared to the absolute resumed epoch number. Prefer a
+declared fresh stage when changing both hardware settings and the time schedule.
+
+To keep learned weights while changing batch/cache, first stop the old run at a
+safe checkpoint, then use a new output and an explicit parent declaration:
+
+```powershell
+python -m training.public_detection train --data C:/QorgauTraining/20261007/prepared/wider/data.yaml --weights C:/QorgauTraining/20261007/runs/face/fit/weights/best.pt --stage-from-run C:/QorgauTraining/20261007/runs/face --output C:/QorgauTraining/20261007/runs/face-timed-stage2 --epochs 30 --batch 64 --workers 16 --time-hours 0.75 --deadline-utc 2026-10-07T18:47:54Z --evaluation-reserve-minutes 75 --device 0
+```
+
+A continuation stage starts a new optimizer; it is not presented as resume.
+The parent must be stopped, must use the same prepared data manifest and pinned
+initializer lineage, and must not have opened its final test. Only its development-
+selected `best.pt` is accepted. Parent checkpoint and receipt hashes, original
+pretraining hash and both stages' settings are recorded. The old run is preserved.
+
+Continuation stages retain the parent unless the child **strictly improves** the
+same internal-development fitness. For the pinned Ultralytics 8.3.221 detector,
+fitness is mAP50–95(B), with weights `[0, 0, 0, 1]` on P/R/AP50/AP50–95. The raw
+parent checkpoint must preserve finite matching `best_fitness`, development
+`train_metrics.fitness`, and `metrics/mAP50-95(B)`; parent receipt, checkpoint and
+runtime versions must all be 8.3.221. Missing or inconsistent evidence fails
+before training. No final-test metrics enter this comparison.
+
+After training, `fit/weights/child-best.pt` preserves the child candidate bytes.
+For a tie or regression, the unchanged parent's bytes are copied atomically to
+the queue's expected `fit/weights/best.pt`; otherwise that path retains the child.
+`stage-selection.json` and `training.json` record both paths, SHA256 hashes,
+development fitness values and the selected source before final evaluation.
+Child completed/partial epoch counts still describe the actual new training,
+even when the older parent checkpoint wins. Final evaluation runs once on the
+selected checkpoint only.

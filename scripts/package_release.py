@@ -6,6 +6,8 @@ import tomllib
 from pathlib import Path
 import zipfile
 
+from shared.version import RULE_VERSION
+
 ROOT=Path(__file__).resolve().parents[1]
 VERSION=tomllib.loads((ROOT/'pyproject.toml').read_text(encoding='utf-8'))['project']['version']
 DOC_SUFFIXES = {'.md', '.png', '.jpg', '.jpeg', '.webp', '.svg', '.json'}
@@ -61,7 +63,7 @@ def main():
     except (OSError, subprocess.CalledProcessError):
         source_state={'commit':None,'working_tree_dirty':None}
     model_version=json.loads((ROOT/'model-manifest.json').read_text(encoding='utf-8'))['version']
-    manifest={'version':VERSION,'model_version':model_version,'rule_version':'3.0','windows':'x64, Python 3.12 build',
+    manifest={'version':VERSION,'model_version':model_version,'rule_version':RULE_VERSION,'windows':'x64, Python 3.12 build',
               'mode':'OBSERVE / GUARDED; STRICT unavailable',
               'source':source_state,'files':files}
     (dist/'release-manifest.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')

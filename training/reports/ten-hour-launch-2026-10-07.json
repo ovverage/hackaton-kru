@@ -1,0 +1,135 @@
+{
+  "schema": 1,
+  "kind": "Intermediate training execution evidence, not final accuracy or deployment approval",
+  "observed_utc": "2026-10-07T09:43:17.807224+00:00",
+  "status": "running",
+  "user_budget": {
+    "started_utc": "2026-10-07T08:47:54Z",
+    "deadline_utc": "2026-10-07T18:47:54Z",
+    "deadline_local": "2026-10-07T23:47:54+05:00"
+  },
+  "queue_started_utc": "2026-10-07T09:27:12.959933+00:00",
+  "jobs": {
+    "extract-gaze": {
+      "status": "running",
+      "started_utc": "2026-10-07T09:27:12.981172+00:00",
+      "hard_deadline": "2026-10-07T17:47:54Z"
+    },
+    "pilot-coco32": {
+      "status": "running",
+      "started_utc": "2026-10-07T09:27:13.005358+00:00",
+      "hard_deadline": "2026-10-07T10:05:00Z",
+      "max_seconds": 2400
+    },
+    "pilot-coco64": {
+      "status": "pending",
+      "hard_deadline": "2026-10-07T10:05:00Z",
+      "max_seconds": 900
+    },
+    "pilot-coco128": {
+      "status": "pending",
+      "hard_deadline": "2026-10-07T10:05:00Z",
+      "max_seconds": 900
+    },
+    "pilot-wider64": {
+      "status": "pending",
+      "hard_deadline": "2026-10-07T10:05:00Z",
+      "max_seconds": 900
+    },
+    "select-hardware": {
+      "status": "pending"
+    },
+    "train-wider": {
+      "status": "pending",
+      "hard_deadline": "2026-10-07T10:05:00Z"
+    },
+    "evaluate-wider": {
+      "status": "pending",
+      "hard_deadline": "2026-10-07T17:47:54Z"
+    },
+    "train-coco": {
+      "status": "pending",
+      "hard_deadline": "2026-10-07T15:45:00Z"
+    },
+    "evaluate-coco": {
+      "status": "pending",
+      "hard_deadline": "2026-10-07T17:47:54Z"
+    },
+    "train-gaze": {
+      "status": "pending",
+      "hard_deadline": "2026-10-07T17:47:54Z"
+    }
+  },
+  "source_sha256_at_queue_start": {
+    "public_budget_pipeline.py": "0f91b583c7cf25ee5f938fc9104c10eb8ac9cafa33cb7a63359e527cc0f1a9ad",
+    "public_cache.py": "37f1a1bc6c4450f5948369e4edcc775697d5cee913eb073d87f323e0a82566ee",
+    "public_detection.py": "3e11aebdec7b349bdfd1a9d45ee8d5486beb8d0b4d7ea3241748d7a460c15a62",
+    "public_detection_eval.py": "43b83c41cc6daff6008faf71c33e3f48fe70c8359d8beafe034476bb6ffab073",
+    "public_gaze_prepare.py": "7ad2a4fbaac30c2c0a920887156d330926f27e4b53062843d9df042351c06b49",
+    "public_gaze_train.py": "7f214d7d04ad681e2b44ff7c0cf19eab963eabc0b0a171767728ad2e5f679968",
+    "public_pipeline.py": "e1002da1415aa3c727a2028bce245b1f76aff1e73619787e61359cc0e1207092",
+    "public_resource_guard.py": "0374b9a9888c74c6937924bc40a3f71c9b909b9042cce521feae17213c72fe57"
+  },
+  "later_source_amendment": {
+    "updated_utc": "2026-10-07T09:37:50.1842551Z",
+    "reason": "Native32threadlabelscan and conservativeparentvschilddevselection; applies to processes started after this update; currentpilot remains original loaded code",
+    "sha256": "bc6049265fb252b9a695634ec1d84878f5398a09e124de29b8c5e40e89ac0a94",
+    "file": "C:\\QorgauTraining\\20261007\\training\\public_detection.py"
+  },
+  "hardware": {
+    "cuda_gpus": 1,
+    "training_gpu": "NVIDIA L40S 46 GiB",
+    "other_adapter": "Matrox G200eW3 16 MiB, display-only"
+  },
+  "parent_wider": {
+    "completed_epochs": 11,
+    "checkpoint_sha256": "5f8658a4344ea33bda13825cace151f6272d7865709c14fd642abcd3cd720a40",
+    "internal_dev_AP50_95": 0.48076,
+    "internal_dev_AP50": 0.83824,
+    "final_test_opened": false
+  },
+  "ollama_restoration_preflight": {
+    "status": "restored",
+    "restore_verified": true,
+    "restored_utc": "2026-10-07T09:12:18.369821+00:00",
+    "expected_model": {
+      "name": "qwen3.6:35b-a3b-q4_K_M",
+      "digest": "07d35212591fc27746f0a317c975a6d68754fb38e9053d82e25f06057af28522",
+      "context_length": 32768,
+      "size_vram": 23301571213,
+      "keep_alive": -1
+    },
+    "restored_model": {
+      "name": "qwen3.6:35b-a3b-q4_K_M",
+      "model": "qwen3.6:35b-a3b-q4_K_M",
+      "size": 23301571213,
+      "digest": "07d35212591fc27746f0a317c975a6d68754fb38e9053d82e25f06057af28522",
+      "details": {
+        "parent_model": "",
+        "format": "gguf",
+        "family": "qwen35moe",
+        "families": [
+          "qwen35moe"
+        ],
+        "parameter_size": "36.0B",
+        "quantization_level": "Q4_K_M"
+      },
+      "expires_at": "2319-01-17T11:59:35.218366007+03:00",
+      "size_vram": 23301571213,
+      "context_length": 32768
+    }
+  },
+  "final_restore_after_training_verified": false,
+  "service_preservation": "ai-mektep and WSL remain running; Qorgau children use BELOW_NORMAL CPU priority; no WSL/service changes",
+  "publication": {
+    "latest_verified_app": "0.4.7",
+    "models": "2026.10.06.2",
+    "new_training_weights_published": false
+  },
+  "limitations": [
+    "Hardware pilots measure throughput, not quality.",
+    "Full prepared data retained; original documented filtering and gaze extraction exclusions remain.",
+    "ai-mektep HTTP200 confirmed separately during preparation; no WSL or container changes.",
+    "Final evaluation, CPU ONNX parity, video-event acceptance and dataset rights remain prerequisites for model promotion."
+  ]
+}

@@ -16,7 +16,7 @@ if HAS_TORCH:
     import torch
     from training.public_gaze_train import (
         capture_rng, export_only, guard_existing_run, make_loader, restore_rng,
-        validate_resume,
+        validate_resume, TrainingBudget,
     )
     from training.datasets.common import process_lock
     from training.public_gaze_prepare import digest
@@ -25,6 +25,37 @@ if HAS_TORCH:
 
 @unittest.skipUnless(HAS_TORCH, "Training torch environment required")
 class LifecycleTests(unittest.TestCase):
+    def test_budget_resume_keeps_original_start_and_absolute_deadline(self):
+        args = argparse.Namespace(max_hours=2,deadline_utc="2026-10-07T10:30:00Z",finalize_reserve_minutes=15)
+        start = TrainingBudget.parse_utc("2026-10-07T08:47:54Z").timestamp()
+        clock = [50.]
+        budget = TrainingBudget(args,"2026-10-07T08:47:54Z",wall_clock=lambda:start+3600,
+                                monotonic_clock=lambda:clock[0])
+        self.assertEqual(budget.reason,"absolute_deadline")
+        self.assertAlmostEqual(budget.remaining(),2526.)
+        clock[0] += 1650
+        self.assertTrue(budget.stop_training())
+        self.assertGreater(budget.remaining(),0)
+        clock[0] += 900
+        with self.assertRaisesRegex(TimeoutError,"BUDGET_EXHAUSTED"):
+            budget.check("final_test")
+
+    def test_budget_expands_reserve_from_observed_validation_cost(self):
+        args = argparse.Namespace(max_hours=2,deadline_utc=None,finalize_reserve_minutes=15)
+        start = TrainingBudget.parse_utc("2026-10-07T08:47:54Z").timestamp()
+        budget = TrainingBudget(args,"2026-10-07T08:47:54Z",wall_clock=lambda:start,
+                                monotonic_clock=lambda:0.)
+        self.assertEqual(budget.effective_reserve(0,100,200),900.)
+        self.assertEqual(budget.effective_reserve(300,100,200),1860.)
+        self.assertFalse(budget.stop_training(300,100,200))
+
+    def test_budget_rejects_naive_deadline_or_impossible_reserve(self):
+        with self.assertRaisesRegex(ValueError,"TIMEZONE"):
+            TrainingBudget.parse_utc("2026-10-07T18:47:54")
+        args = argparse.Namespace(max_hours=.1,deadline_utc=None,finalize_reserve_minutes=15)
+        with self.assertRaisesRegex(ValueError,"EXCEED_FINALIZATION_RESERVE"):
+            TrainingBudget(args,"2026-10-07T08:47:54Z")
+
     def test_existing_artifacts_require_resume_without_mutation(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

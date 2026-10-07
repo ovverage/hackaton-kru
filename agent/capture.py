@@ -5,12 +5,13 @@ import time
 
 
 class CapturePump:
-    def __init__(self, camera, *, recognize=True):
+    def __init__(self, camera, *, recognize=True, phone_review=None):
         self.camera = camera
         self.stop = threading.Event()
         self.queue = queue.Queue(maxsize=1)
         self.mode_lock = threading.Lock()
         self.recognize = recognize
+        self.phone_review = phone_review if not recognize else None
         self.generation = 0
         self.started = time.monotonic()
         self.last_frame = self.started
@@ -18,12 +19,14 @@ class CapturePump:
         self.thread = threading.Thread(target=self.run, daemon=True, name="qorgau-camera")
         self.thread.start()
 
-    def set_recognition(self, enabled):
+    def set_recognition(self, enabled, *, phone_review=None):
         """Invalidate queued and in-flight inference on either mode transition."""
         with self.mode_lock:
-            if self.recognize == enabled:
+            phone_review = phone_review if not enabled else None
+            if self.recognize == enabled and self.phone_review == phone_review:
                 return
             self.recognize = enabled
+            self.phone_review = phone_review
             self.generation += 1
             try:
                 self.queue.get_nowait()
@@ -34,9 +37,15 @@ class CapturePump:
         while not self.stop.is_set():
             with self.mode_lock:
                 recognize, generation = self.recognize, self.generation
+                phone_review = self.phone_review
             captured_at = time.monotonic()
             try:
-                item = self.camera.read(analyze=recognize)
+                if not recognize and phone_review and captured_at <= phone_review[1]:
+                    item = self.camera.read(analyze=False, phone_review=True, phone_review_until=phone_review[1])
+                    if item[1] is not None:
+                        item[1]["phone_review_lock_id"] = phone_review[0]
+                else:
+                    item = self.camera.read(analyze=recognize)
                 if item[1] is not None:
                     captured_at = item[1].get("captured_at", captured_at)
             except Exception as error:
@@ -59,7 +68,12 @@ class CapturePump:
                 frame, observation = item
                 # A completed inference cannot cross LOCK/UNLOCK, even if both
                 # transitions occurred while the model was processing a frame.
-                if generation != self.generation or not self.recognize:
+                review_allowed = (self.phone_review is not None
+                                  and time.monotonic() <= self.phone_review[1]
+                                  and observation is not None
+                                  and observation.get("phone_review_only") is True
+                                  and observation.get("phone_review_lock_id") == self.phone_review[0])
+                if generation != self.generation or (not self.recognize and not review_allowed):
                     observation = None
                 self.last_captured_at = captured_at
                 item = frame, observation

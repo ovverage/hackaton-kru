@@ -135,6 +135,8 @@ class Agent:
         self.recognition_paused = False
         self._paused_camera = None
         self._recognition_after = self.origin
+        self._phone_review = None
+        self._last_phone_aim = None
         self.browser_seen = None
         self.bridge_binding = secrets.token_urlsafe(32)
         self.last_browser_event = {}
@@ -178,8 +180,16 @@ class Agent:
         """Caller holds mutex; pausing inference must not stop evidence capture."""
         paused = self.engine.state.access == "LOCKED" or self.engine.state.lifecycle == "COMPLETED"
         changed = paused != self.recognition_paused
+        review = self._phone_review
+        if review and (self.engine.state.lifecycle != "RUNNING"
+                       or self.engine.state.access != "LOCKED"
+                       or self.engine.state.reason != "PHONE_DETECTED"
+                       or self.engine.state.lock_id != review["lock_id"]
+                       or time.monotonic() > review["until"]):
+            self._phone_review = None
+            changed = True
         if self.capture_pump:
-            self.capture_pump.set_recognition(not paused)
+            self.capture_pump.set_recognition(not paused, phone_review=self.phone_review_mode())
         if paused and self.camera is not None and self._paused_camera is not self.camera:
             changed = True
             # We no longer measure incident duration after the final analyzed
@@ -204,6 +214,20 @@ class Agent:
             self._paused_camera = None
         self.recognition_paused = paused
         return changed
+
+    def phone_review_mode(self):
+        review = self._phone_review
+        return (review["lock_id"], review["until"]) if review else None
+
+    def phone_aim_consumed(self, episode_id, at):
+        previous = self._last_phone_aim
+        if previous is None:
+            return False
+        if episode_id is not None:
+            return episode_id == previous["episode_id"]
+        # Compatibility for observations without a tracker identity. Live
+        # Camera.read always supplies one, including before a rise is detected.
+        return 0 <= at - previous["at"] <= 2.5
 
     def apply(self, command, now=None):
         now = time.time() if now is None else now
@@ -547,11 +571,17 @@ class Agent:
             if changed:
                 self.save()
 
-    def observe(self, direction="UNKNOWN", phone_confidence=0.0, faces=1, frame=None, phone_aiming=False, detections=(), captured_at=None, gaze_diagnostics=None):
+    def observe(self, direction="UNKNOWN", phone_confidence=0.0, faces=1, frame=None, phone_aiming=False, detections=(), captured_at=None, gaze_diagnostics=None, phone_review_only=False, phone_review_lock_id=None, phone_episode_id=None):
         with self.mutex:
             mode_changed = self.update_recognition_mode()
             now = time.monotonic()
             at = now if captured_at is None else captured_at
+            if phone_review_only:
+                self.observe_phone_review(frame, at, phone_confidence, phone_aiming, detections,
+                                          phone_review_lock_id, phone_episode_id)
+                if mode_changed:
+                    self.save()
+                return
             if (self.recognition_paused or not math.isfinite(at)
                     or at < max(self.origin, self._recognition_after)
                     or at > now + .1 or now - at > 2
@@ -578,9 +608,58 @@ class Agent:
             detections = [d for d in detections if d.get("label") != "phone"
                           or d.get("confidence", 0) >= PHONE_CONFIDENCE_THRESHOLD]
             before = self.engine.state.version
-            events = self.engine.observe(t, direction, phone_confidence, faces, phone_aiming)
+            aiming = phone_aiming and not self.phone_aim_consumed(phone_episode_id, at)
+            events = self.engine.observe(t, direction, phone_confidence, faces, aiming)
+            for event in events:
+                if event.get("type") == "PHONE_AIM_REVIEW":
+                    event["phone_episode_id"] = phone_episode_id
+                    self._last_phone_aim = {"episode_id": phone_episode_id, "at": at}
+            phone_event = next((event for event in events if event.get("type") == "PHONE_DETECTED"), None)
+            if (phone_event and not self.phone_aim_consumed(phone_episode_id, at)
+                    and self.engine.state.reason == "PHONE_DETECTED"):
+                self._phone_review = {"lock_id": self.engine.state.lock_id, "until": at + 2.5,
+                                      "started": at, "last_at": at, "event_id": phone_event["id"]}
             if self.capture_pump and self.engine.state.access == "LOCKED":
-                self.capture_pump.set_recognition(False)
+                self.capture_pump.set_recognition(False, phone_review=self.phone_review_mode())
+            self.persist_observation_evidence(events, t, frame, detections)
+            if events or before != self.engine.state.version or mode_changed:
+                self.save()
+
+    def observe_phone_review(self, frame, at, confidence, aiming, detections, lock_id, episode_id=None):
+        """Caller holds mutex. Evidence-only observations never enter RuleEngine.observe."""
+        now = time.monotonic()
+        review = self._phone_review
+        valid = (review is not None and lock_id == review["lock_id"]
+                 and self.engine.state.lifecycle == "RUNNING"
+                 and self.engine.state.access == "LOCKED"
+                 and self.engine.state.reason == "PHONE_DETECTED"
+                 and self.engine.state.lock_id == lock_id
+                 and math.isfinite(at) and review["last_at"] < at <= review["until"]
+                 and now <= review["until"] and at <= now + .1 and now - at <= 2)
+        if not valid:
+            self.record_frame(frame, captured_at=at)
+            return
+        review["last_at"] = at
+        detections = [d for d in detections if d.get("label") == "phone"
+                      and d.get("confidence", 0) >= PHONE_CONFIDENCE_THRESHOLD]
+        events = []
+        consumed = self.phone_aim_consumed(episode_id, at)
+        if aiming and not consumed and confidence >= PHONE_CONFIDENCE_THRESHOLD and detections:
+            events.append(self.engine.event(
+                "PHONE_AIM_REVIEW", at - self.origin,
+                start=max(0, review["started"] - self.origin - 2.5), confidence=confidence,
+                related_event_id=review["event_id"], evidence_lock_id=lock_id, phone_episode_id=episode_id,
+                detail="Подъём и удержание телефона: возможная попытка съёмки; факт фотографии не установлен"))
+            self._last_phone_aim = {"episode_id": episode_id, "at": at}
+        if events or consumed:
+            self._phone_review = None  # One review per raising episode, including pre-lock evidence.
+        self.persist_observation_evidence(events, at - self.origin, frame, detections)
+        if events or consumed:
+            self.save()
+
+    def persist_observation_evidence(self, events, t, frame, detections):
+        """Store/encode an observation without changing access or violation counters."""
+        with self.mutex:
             if frame is not None:
                 from .evidence import annotate
                 frame = annotate(frame, detections)
@@ -610,8 +689,6 @@ class Agent:
                 for event in events:
                     self.recorder.mark(event)
                 self.collect_media(t)
-            if events or before != self.engine.state.version or mode_changed:
-                self.save()
 
     def read_browser(self):
         if (self.environment or {}).get("target_id") == "qorgau-browser":
@@ -768,7 +845,8 @@ class Agent:
                                 self.save()
                             if self.capture_pump is None:
                                 from .capture import CapturePump
-                                self.capture_pump = CapturePump(self.camera, recognize=not self.recognition_paused)
+                                self.capture_pump = CapturePump(self.camera, recognize=not self.recognition_paused,
+                                                                phone_review=self.phone_review_mode())
                             captured = self.capture_pump.poll()
                             if captured:
                                 frame, observation = captured

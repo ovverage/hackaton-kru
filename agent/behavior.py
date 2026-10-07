@@ -1,5 +1,6 @@
 """Personal gaze calibration and an explicitly heuristic phone-raising signal."""
 from collections import deque
+from uuid import uuid4
 import numpy as np
 from shared.rules import PHONE_CONFIDENCE_THRESHOLD
 
@@ -54,6 +55,7 @@ class PhoneRaising:
         self.history = deque()
         self.raised_at = None
         self.fired = False
+        self.episode_id = uuid4().hex
         self.last_seen = None
         self.previous_box = None
 
@@ -61,6 +63,8 @@ class PhoneRaising:
         valid = [x for x in detections if x["confidence"] >= PHONE_CONFIDENCE_THRESHOLD]
         if not valid:
             if self.last_seen is not None and t - self.last_seen > 1:
+                if self.history or self.fired:
+                    self.episode_id = uuid4().hex
                 self.history.clear()
                 self.raised_at = None
                 self.fired = False

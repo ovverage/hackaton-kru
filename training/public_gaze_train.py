@@ -26,6 +26,61 @@ from training.public_gaze_prepare import digest, json_write, validate_splits
 from training.datasets.common import process_lock
 
 
+class TrainingBudget:
+    """Persistent wall deadline, with monotonic accounting within one process.
+
+    The original run start survives resume. CPU preparation is a separate CLI
+    and does not consume this run's --max-hours allocation. The absolute user
+    deadline remains authoritative across both fresh and resumed invocations.
+    """
+    def __init__(self, args, started_utc, *, wall_clock=time.time, monotonic_clock=time.monotonic):
+        self.clock = monotonic_clock
+        self.start_monotonic = monotonic_clock()
+        self.reserve_seconds = getattr(args,"finalize_reserve_minutes",15)*60
+        if not math.isfinite(self.reserve_seconds) or self.reserve_seconds <= 0:
+            raise ValueError("FINALIZATION_RESERVE_MUST_BE_POSITIVE")
+        limits = []
+        if getattr(args,"max_hours",None) is not None:
+            if not math.isfinite(args.max_hours) or args.max_hours <= 0:
+                raise ValueError("MAX_HOURS_MUST_BE_POSITIVE")
+            if args.max_hours*3600 <= self.reserve_seconds:
+                raise ValueError("MAX_HOURS_MUST_EXCEED_FINALIZATION_RESERVE")
+            limits.append((self.parse_utc(started_utc).timestamp()+args.max_hours*3600, "max_hours"))
+        if getattr(args,"deadline_utc",None):
+            limits.append((self.parse_utc(args.deadline_utc).timestamp(), "absolute_deadline"))
+        self.expires_at, self.reason = min(limits) if limits else (math.inf, None)
+        self.initial_remaining = self.expires_at-wall_clock()
+
+    @staticmethod
+    def parse_utc(value):
+        timestamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if timestamp.tzinfo is None:
+            raise ValueError("DEADLINE_REQUIRES_TIMEZONE: use YYYY-MM-DDTHH:MM:SSZ")
+        return timestamp.astimezone(timezone.utc)
+
+    def remaining(self):
+        return self.initial_remaining-(self.clock()-self.start_monotonic)
+
+    def effective_reserve(self, validation_seconds=0, validation_rows=1, test_rows=1):
+        # Budget for finishing the current checkpoint validation, repeating
+        # validation on best for calibration, final test, and export. The 50%
+        # buffer covers variable CPU/disk load and fresh Windows worker startup.
+        measured = validation_seconds*(2+test_rows/max(validation_rows,1))*1.5+60
+        return max(self.reserve_seconds, measured)
+
+    def stop_training(self, validation_seconds=0, validation_rows=1, test_rows=1):
+        return self.remaining() <= self.effective_reserve(validation_seconds, validation_rows, test_rows)
+
+    def check(self, phase):
+        if self.remaining() <= 0:
+            raise TimeoutError(f"GAZE_BUDGET_EXHAUSTED:{phase}: checkpoint artifacts are preserved")
+
+    def describe(self):
+        return dict(reason=self.reason, remaining_seconds=self.remaining() if self.reason else None,
+                    expires_utc=datetime.fromtimestamp(self.expires_at,timezone.utc).isoformat() if self.reason else None,
+                    minimum_finalization_reserve_seconds=self.reserve_seconds)
+
+
 class GazeNet(nn.Module):
     def __init__(self, pretrained=True):
         super().__init__()
@@ -134,11 +189,13 @@ def summarize(errors, rows):
     return result
 
 
-def evaluate(model, loader, device):
+def evaluate(model, loader, device, budget=None):
     model.eval()
     outputs, targets = np.empty((len(loader.dataset),4), np.float32), np.empty((len(loader.dataset),3), np.float32)
     with torch.inference_mode():
         for images, gaze, indices in loader:
+            if budget is not None:
+                budget.check("evaluation")
             result = model(images.to(device, non_blocking=True)).cpu().numpy()
             outputs[indices.numpy()] = result
             targets[indices.numpy()] = gaze.numpy()
@@ -210,10 +267,16 @@ def train(args):
         if args.export_only:
             export_only(args.output)
         else:
+            original_start = json.loads((args.output/"run.json").read_text("utf-8"))["started_utc"] if args.resume else datetime.now(timezone.utc).isoformat()
+            initial_budget = TrainingBudget(args, original_start)
+            initial_budget.check("startup")
+            if not args.resume and initial_budget.stop_training():
+                raise TimeoutError("GAZE_INSUFFICIENT_TRAINING_BUDGET: only finalization reserve remains")
             _train_locked(args)
 
 
 def _train_locked(args):
+    invocation_started_utc = datetime.now(timezone.utc).isoformat()
     torch.set_num_threads(args.cpu_threads)
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -244,7 +307,7 @@ def _train_locked(args):
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=args.learning_rate*.03)
     scaler = torch.amp.GradScaler("cuda", enabled=args.device.startswith("cuda"))
     start_epoch, best, stale = 0, math.inf, 0
-    run = dict(schema=SCHEMA, started_utc=datetime.now(timezone.utc).isoformat(),
+    run = dict(schema=SCHEMA, started_utc=invocation_started_utc,
                args={k:str(v) if isinstance(v,Path) else v for k,v in vars(args).items()},
                initialization="random" if args.from_scratch else "torchvision MobileNet_V3_Small_Weights.IMAGENET1K_V1",
                torch_version=torch.__version__, cuda_version=torch.version.cuda,
@@ -287,6 +350,8 @@ def _train_locked(args):
                                    next_epoch=start_epoch+1, last_sha256=digest(args.resume)))+"\n")
     else:
         json_write(output/"run.json", run)
+    budget = TrainingBudget(args, run["started_utc"])
+    budget.check("startup")
     # A crash after checkpoint lock may re-evaluate only that selected model;
     # it cannot train a further epoch or select a different checkpoint.
     if (output/"checkpoint-lock.json").exists():
@@ -296,11 +361,31 @@ def _train_locked(args):
         start_epoch = args.epochs
     if stale >= args.patience:
         start_epoch = args.epochs
+    if args.resume and checkpoint.get("training_stop") == "time_budget":
+        # A partial epoch stopped for time is final, not an epoch-boundary
+        # checkpoint that may silently skip its remaining training batches.
+        start_epoch = args.epochs
     start = time.monotonic()
+    validation_seconds = float(checkpoint.get("validation_seconds",0)) if args.resume else 0.
+    stopping = json.loads((output/"training-stop.json").read_text("utf-8")) if (output/"training-stop.json").exists() else {
+        "reason":"time_budget" if args.resume and checkpoint.get("training_stop") == "time_budget" else "epoch_limit",
+        "partial_epoch":bool(args.resume and not checkpoint.get("epoch_completed",True)),
+        "budget":budget.describe()}
     for epoch in range(start_epoch, args.epochs):
+        if budget.stop_training(validation_seconds, len(subsets["val"]), len(subsets["test"])):
+            if not (output/"best.pt").exists():
+                raise TimeoutError("GAZE_INSUFFICIENT_TRAINING_BUDGET: no trained checkpoint exists")
+            stopping = dict(reason="time_budget", partial_epoch=False, epoch=epoch,
+                            completed_batches=0, budget=budget.describe())
+            break
         model.train()
         accumulated, count = 0., 0
+        budget_stop = False
+        completed_batches = 0
         for step, (images, gaze, _) in enumerate(train_loader):
+            if budget.stop_training(validation_seconds, len(subsets["val"]), len(subsets["test"])):
+                budget_stop = True
+                break
             images, gaze = images.to(args.device, non_blocking=True), gaze.to(args.device, non_blocking=True)
             optimizer.zero_grad(set_to_none=True)
             with torch.autocast(device_type="cuda", enabled=args.device.startswith("cuda")):
@@ -315,10 +400,19 @@ def _train_locked(args):
             scaler.update()
             accumulated += loss.item()*len(images)
             count += len(images)
+            completed_batches += 1
             if (step+1) % 100 == 0:
                 print(json.dumps(dict(event="batch", epoch=epoch+1, step=step+1,
                                       steps=len(train_loader), nll=accumulated/count)), flush=True)
-        metrics, _, _, _ = evaluate(model, val_loader, args.device)
+        if count == 0:
+            if not (output/"best.pt").exists():
+                raise TimeoutError("GAZE_INSUFFICIENT_TRAINING_BUDGET: no training batch completed")
+            stopping = dict(reason="time_budget", partial_epoch=False, epoch=epoch,
+                            completed_batches=0, budget=budget.describe())
+            break
+        validation_start = time.monotonic()
+        metrics, _, _, _ = evaluate(model, val_loader, args.device, budget=budget)
+        validation_seconds = time.monotonic()-validation_start
         score = metrics["domain_macro_mean_degrees"]
         improved = score < best-.02
         if improved:
@@ -329,24 +423,35 @@ def _train_locked(args):
         checkpoint = dict(model=model.state_dict(), optimizer=optimizer.state_dict(),
                           scheduler=scheduler.state_dict(), scaler=scaler.state_dict(), epoch=epoch,
                           best=best, stale=stale, run=run, validation=metrics,
-                          rng=capture_rng(train_loader, val_loader))
+                          rng=capture_rng(train_loader, val_loader), validation_seconds=validation_seconds,
+                          epoch_completed=not budget_stop, completed_batches=completed_batches,
+                          training_stop="time_budget" if budget_stop else None)
         save_checkpoint(output/"last.pt", checkpoint)
         if improved:
             save_checkpoint(output/"best.pt", checkpoint)
         entry = dict(event="epoch", epoch=epoch+1, nll=accumulated/max(count,1), validation=metrics,
-                     best=best, stale=stale, seconds=time.monotonic()-start)
+                     best=best, stale=stale, seconds=time.monotonic()-start,
+                     epoch_completed=not budget_stop, completed_batches=completed_batches,
+                     validation_seconds=validation_seconds, budget=budget.describe())
         with (output/"history.jsonl").open("a", encoding="utf-8") as f:
             f.write(json.dumps(entry)+"\n")
         print(json.dumps(entry), flush=True)
-        if stale >= args.patience:
+        if budget_stop:
+            stopping = dict(reason="time_budget", partial_epoch=True, epoch=epoch+1,
+                            completed_batches=completed_batches, budget=budget.describe())
             break
+        if stale >= args.patience:
+            stopping = dict(reason="validation_patience", partial_epoch=False, epoch=epoch+1,
+                            completed_batches=completed_batches, budget=budget.describe())
+            break
+    json_write(output/"training-stop.json", stopping)
     checkpoint = torch.load(output/"best.pt", map_location=args.device, weights_only=False)
     model.load_state_dict(checkpoint["model"])
     best_hash = digest(output/"best.pt")
     if not (output/"checkpoint-lock.json").exists():
         json_write(output/"checkpoint-lock.json", dict(best_sha256=best_hash, epoch=checkpoint["epoch"]+1,
                    locked_utc=datetime.now(timezone.utc).isoformat(), purpose="Final test begins after this immutable selection"))
-    validation, val_prediction, _, val_errors = evaluate(model, val_loader, args.device)
+    validation, val_prediction, _, val_errors = evaluate(model, val_loader, args.device, budget=budget)
     scales = np.degrees(np.sqrt(2/np.clip(val_prediction[:,3], 1, 200)))
     # Conservative domain-wise 90th quantile calibration. This is an empirical
     # validation interval; domain shift and adjacent frames break iid coverage.
@@ -356,7 +461,7 @@ def _train_locked(args):
                        source="validation only", caveat="Empirical interval, not an individual guarantee under domain shift")
     # The test loader is deliberately constructed only after checkpoint lock.
     test_loader = make_loader(root, subsets["test"], args)
-    test, prediction, targets, errors = evaluate(model, test_loader, args.device)
+    test, prediction, targets, errors = evaluate(model, test_loader, args.device, budget=budget)
     acceptance = {}
     calibrated_error90 = np.degrees(np.sqrt(2/np.clip(prediction[:,3],1,200)))*calibration["q90_scale_multiplier"]
     for dataset in ("mpiifacegaze", "gaze360"):
@@ -379,6 +484,7 @@ def _train_locked(args):
         all_frames = sum(count for key,count in audit["coverage_counts"].items() if key.startswith(dataset+"/test/"))
         retained_coverage[dataset] = audit["coverage_counts"].get(dataset+"/test/ok",0)/max(all_frames,1)
     report = dict(schema=SCHEMA, best_sha256=best_hash, validation=validation, test=test,
+                  training_stop=stopping,
                   validation_calibration=calibration, extraction_coverage=audit["coverage_counts"],
                   runtime_confidence_coverage=acceptance,
                   test_retained_coverage=retained_coverage,
@@ -386,12 +492,14 @@ def _train_locked(args):
                   mpii_protocol="Two held-out subjects, not the published 15-fold leave-one-person-out benchmark",
                   gaze360_protocol="Official grouped splits, Face Mesh visible-face subset, single-frame model; not full Gaze360 benchmark")
     json_write(output/"evaluation.json", report)
-    export(model, output, report, args, checkpoint["run"])
+    export(model, output, report, args, checkpoint["run"], budget=budget)
     print(json.dumps(dict(event="complete", test=test, output=str(output))), flush=True)
 
 
-def export(model, output, report, args, run):
+def export(model, output, report, args, run, budget=None):
     import onnxruntime as ort
+    if budget is not None:
+        budget.check("export")
     model = model.cpu().eval()
     dummy = torch.randn(1,3,INPUT_SIZE,INPUT_SIZE)
     target = output/"gaze-public.onnx"
@@ -409,6 +517,8 @@ def export(model, output, report, args, run):
         raise RuntimeError(f"ONNX_PARITY_FAILED:{difference}")
     samples = []
     for iteration in range(110):
+        if budget is not None:
+            budget.check("export_cpu_benchmark")
         start = time.perf_counter()
         session.run(None, {"face":dummy.numpy()})
         if iteration >= 10:
@@ -436,6 +546,7 @@ def export(model, output, report, args, run):
                     baseline_metrics=test["training_mean_vector_baseline"],
                     runtime_confidence_coverage=report["runtime_confidence_coverage"],
                     test_retained_coverage=report["test_retained_coverage"],
+                    training_stop=report.get("training_stop"),
                     release_checks=checks, deployment_eligible=all(checks.values()),
                     usage="Private noncommercial research prototype; retain both dataset licenses. No public model distribution authorized.",
                     limitations=["Not screen geometry or cheating intent", "Explicit neutral calibration required",
@@ -456,10 +567,12 @@ def export_only(output):
     if checkpoint["epoch"]+1 != locked["epoch"]:
         raise ValueError("EXPORT_RECOVERY_EPOCH_MISMATCH")
     args = argparse.Namespace(**checkpoint["run"]["args"])
+    budget = TrainingBudget(args, checkpoint["run"].get("started_utc",datetime.now(timezone.utc).isoformat()))
+    budget.check("export_recovery")
     torch.set_num_threads(args.cpu_threads)
     model = GazeNet(pretrained=False).cpu()
     model.load_state_dict(checkpoint["model"])
-    export(model, output, report, args, checkpoint["run"])
+    export(model, output, report, args, checkpoint["run"], budget=budget)
     json_write(output/"export-recovery.json", dict(recovered_utc=datetime.now(timezone.utc).isoformat(),
                best_sha256=checkpoint_hash, evaluation_sha256=digest(output/"evaluation.json"),
                export_source_sha256=digest(Path(__file__)), test_reevaluated=False))
@@ -480,6 +593,10 @@ def main():
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--resume", type=Path)
     parser.add_argument("--export-only", action="store_true", help="Recover export from locked best.pt and saved evaluation; never rerun test")
+    parser.add_argument("--max-hours", type=float, help="Total run hours including final evaluation/export; resume retains the original start")
+    parser.add_argument("--deadline-utc", help="Absolute end time, for example 2026-10-07T18:47:54Z")
+    parser.add_argument("--finalize-reserve-minutes", type=float, default=15,
+                        help="Minimum time reserved for best validation, final test, and export (expanded from measured validation speed)")
     parser.add_argument("--from-scratch", action="store_true", help="Random initialization; default uses documented ImageNet transfer")
     parser.add_argument("--allow-smoke", action="store_true", help="Functional test only; resulting artifact is never release eligible")
     train(parser.parse_args())
