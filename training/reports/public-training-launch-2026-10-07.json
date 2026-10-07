@@ -1,0 +1,360 @@
+{
+  "schema_version": 1,
+  "snapshot_utc": "2026-10-07T08:40:07.159805+00:00",
+  "status": "training_in_progress",
+  "source_commit": "d16a140a53a7c3e2e7a055c6cc7744a69132c20a",
+  "training_directory": "C:\\QorgauTraining\\20261007",
+  "datasets": {
+    "mpiifacegaze": {
+      "status": "ready",
+      "status_sha256": "223dce2e88a5daeb5ed3b52a0e39c3887b74d059df58589f5e0e58a7d67ddd94",
+      "verification_summary": {
+        "status": "passed",
+        "image_count": 37667,
+        "annotation_rows": 37667,
+        "all_annotation_image_references_exist": true
+      }
+    },
+    "gaze360": {
+      "status": "importing_verified_raw",
+      "status_sha256": "07f8f17e85b8dd31baa826445b34c1d49545cb7a72cf4449fb7c3c4f8be3520c",
+      "verification_summary": {}
+    },
+    "widerface": {
+      "status": "ready",
+      "status_sha256": "c0a219ecb0fa477457e1e82679bff35379384116f2640a0821f3f835844fee8b",
+      "verification_summary": {
+        "status": "verified",
+        "original_splits_retained": true
+      }
+    },
+    "coco2017": {
+      "status": "ready",
+      "status_sha256": "369e8f6c99bbbb6a6fc2a4be4f4d5e06fc1e0fc1caa7d3476fd8870251f2b3d8",
+      "verification_summary": {
+        "status": "verified"
+      }
+    }
+  },
+  "gaze_raw_transfer": {
+    "status": "archive_downloaded_and_sha256_verified; extraction_and_per_file_crc_in_progress",
+    "sha256": "2697cc6e4e085b1c6fae218fffc8a0c84453f22971bda385c1989acda18bb7c5",
+    "bytes": 4903883864,
+    "expected_files": 235348,
+    "contents": "Previously verified local MPIIFaceGaze + Gaze360 raw images and original metadata",
+    "remote_log": "gaze-transfer.log",
+    "remote_status": "gaze-transfer-status.json",
+    "local_transfer_service": "closed_after_verified_download"
+  },
+  "pipeline": {
+    "status": "running",
+    "pid": 142992,
+    "started_utc": "2026-10-07T08:04:57.235610+00:00",
+    "purpose": "Research training and final evaluation; no automatic publication or production promotion",
+    "source_sha256": {
+      "public_detection.py": "1255ec614b9d3ec3ce4838603410005d142308453bdaa5234b0e2c1baf9f71b1",
+      "public_detection_eval.py": "43b83c41cc6daff6008faf71c33e3f48fe70c8359d8beafe034476bb6ffab073",
+      "public_gaze_prepare.py": "7ad2a4fbaac30c2c0a920887156d330926f27e4b53062843d9df042351c06b49",
+      "public_gaze_train.py": "c5c322952c12f19d952830d7975bce7eddb95dd6b0d016443bd07f1103ffebb3",
+      "public_pipeline.py": "e1002da1415aa3c727a2028bce245b1f76aff1e73619787e61359cc0e1207092"
+    },
+    "jobs": {
+      "prepare-wider": {
+        "name": "prepare-wider",
+        "resource": "cpu",
+        "datasets": [
+          "widerface"
+        ],
+        "depends": [],
+        "command": [
+          "-m",
+          "training.public_detection",
+          "prepare",
+          "--datasets",
+          "C:\\QorgauTraining\\20261007\\data\\datasets",
+          "--output",
+          "C:\\QorgauTraining\\20261007\\data\\public-detection",
+          "--only",
+          "wider"
+        ],
+        "status": "complete",
+        "pid": 25604,
+        "log": "C:\\QorgauTraining\\20261007\\logs\\public-training\\prepare-wider.log",
+        "started_utc": "2026-10-07T08:05:27.292808+00:00",
+        "exit_code": 0,
+        "finished_utc": "2026-10-07T08:09:27.382154+00:00"
+      },
+      "train-wider": {
+        "name": "train-wider",
+        "resource": "gpu",
+        "datasets": [],
+        "depends": [
+          "prepare-wider"
+        ],
+        "command": [
+          "-m",
+          "training.public_detection",
+          "train",
+          "--data",
+          "C:\\QorgauTraining\\20261007\\data\\public-detection\\wider\\data.yaml",
+          "--weights",
+          "C:\\QorgauTraining\\20261007\\models\\yolo11n.pt",
+          "--output",
+          "C:\\QorgauTraining\\20261007\\training\\runs\\public-wider-v1",
+          "--epochs",
+          "100",
+          "--patience",
+          "20",
+          "--batch",
+          "16",
+          "--workers",
+          "8",
+          "--device",
+          "0"
+        ],
+        "status": "running",
+        "pid": 137236,
+        "log": "C:\\QorgauTraining\\20261007\\logs\\public-training\\train-wider.log",
+        "started_utc": "2026-10-07T08:09:27.395917+00:00"
+      },
+      "prepare-coco": {
+        "name": "prepare-coco",
+        "resource": "cpu",
+        "datasets": [
+          "coco2017"
+        ],
+        "depends": [],
+        "command": [
+          "-m",
+          "training.public_detection",
+          "prepare",
+          "--datasets",
+          "C:\\QorgauTraining\\20261007\\data\\datasets",
+          "--output",
+          "C:\\QorgauTraining\\20261007\\data\\public-detection",
+          "--only",
+          "coco"
+        ],
+        "status": "running",
+        "pid": 113888,
+        "log": "C:\\QorgauTraining\\20261007\\logs\\public-training\\prepare-coco.log",
+        "started_utc": "2026-10-07T08:37:58.445844+00:00"
+      },
+      "train-coco": {
+        "name": "train-coco",
+        "resource": "gpu",
+        "datasets": [],
+        "depends": [
+          "prepare-coco"
+        ],
+        "command": [
+          "-m",
+          "training.public_detection",
+          "train",
+          "--data",
+          "C:\\QorgauTraining\\20261007\\data\\public-detection\\coco\\data.yaml",
+          "--weights",
+          "C:\\QorgauTraining\\20261007\\models\\yolo11n.pt",
+          "--output",
+          "C:\\QorgauTraining\\20261007\\training\\runs\\public-coco-v1",
+          "--epochs",
+          "80",
+          "--patience",
+          "20",
+          "--batch",
+          "16",
+          "--workers",
+          "8",
+          "--device",
+          "0"
+        ],
+        "status": "pending"
+      },
+      "index-gaze": {
+        "name": "index-gaze",
+        "resource": "cpu",
+        "datasets": [
+          "mpiifacegaze",
+          "gaze360"
+        ],
+        "depends": [],
+        "command": [
+          "-m",
+          "training.public_gaze_prepare",
+          "index",
+          "--data",
+          "C:\\QorgauTraining\\20261007\\data\\datasets",
+          "--output",
+          "C:\\QorgauTraining\\20261007\\data\\public-gaze"
+        ],
+        "status": "pending"
+      },
+      "extract-gaze": {
+        "name": "extract-gaze",
+        "resource": "cpu",
+        "datasets": [],
+        "depends": [
+          "index-gaze"
+        ],
+        "command": [
+          "-m",
+          "training.public_gaze_prepare",
+          "extract",
+          "--output",
+          "C:\\QorgauTraining\\20261007\\data\\public-gaze",
+          "--model",
+          "C:\\QorgauTraining\\20261007\\models\\face_landmarker.task",
+          "--workers",
+          "8",
+          "--disable-audio"
+        ],
+        "status": "pending"
+      },
+      "train-gaze": {
+        "name": "train-gaze",
+        "resource": "gpu",
+        "datasets": [],
+        "depends": [
+          "extract-gaze"
+        ],
+        "command": [
+          "-m",
+          "training.public_gaze_train",
+          "--data",
+          "C:\\QorgauTraining\\20261007\\data\\public-gaze",
+          "--output",
+          "C:\\QorgauTraining\\20261007\\training\\runs\\public-gaze-v1",
+          "--device",
+          "cuda:0",
+          "--batch",
+          "128",
+          "--workers",
+          "6",
+          "--epochs",
+          "40",
+          "--patience",
+          "8"
+        ],
+        "status": "pending"
+      }
+    },
+    "updated_utc": "2026-10-07T08:39:58.498882+00:00"
+  },
+  "installed_versions": {
+    "torch": "2.6.0+cu124",
+    "torchvision": "0.21.0+cu124",
+    "ultralytics": "8.3.221",
+    "onnx": "1.17.0",
+    "onnxruntime": "1.24.3",
+    "pycocotools": "2.0.10",
+    "mediapipe": "0.10.32",
+    "requests": "2.34.2",
+    "numpy": "2.2.6",
+    "scipy": "1.17.1"
+  },
+  "gpu": {
+    "snapshot": "NVIDIA L40S, 46068, 33683, 55",
+    "fields": [
+      "name",
+      "memory_total_MiB",
+      "memory_used_MiB",
+      "utilization_percent"
+    ],
+    "scope": "Shared server total; existing unrelated GPU applications were left running."
+  },
+  "wider_training_settings": {
+    "data": "C:\\QorgauTraining\\20261007\\data\\public-detection\\wider\\data.yaml",
+    "epochs": 100,
+    "imgsz": 640,
+    "batch": 16,
+    "workers": 8,
+    "device": "0",
+    "seed": 20261007,
+    "deterministic": true,
+    "amp": true,
+    "optimizer": "AdamW",
+    "lr0": 0.001,
+    "lrf": 0.01,
+    "cos_lr": true,
+    "weight_decay": 0.0005,
+    "warmup_epochs": 3,
+    "patience": 20,
+    "hsv_h": 0.015,
+    "hsv_s": 0.4,
+    "hsv_v": 0.4,
+    "degrees": 5,
+    "translate": 0.1,
+    "scale": 0.5,
+    "fliplr": 0.5,
+    "flipud": 0.0,
+    "mosaic": 0.75,
+    "close_mosaic": 10,
+    "mixup": 0.0,
+    "project": "C:\\QorgauTraining\\20261007\\training\\runs\\public-wider-v1",
+    "name": "fit",
+    "exist_ok": false,
+    "plots": true,
+    "cache": false,
+    "save": true,
+    "save_period": 10,
+    "val": true
+  },
+  "wider_dataset_manifest_sha256": "2266968bf72608ef96e72c3f25566f7fccb7dcf6bc4893aa763c6026110e2578",
+  "wider_initialization": {
+    "sha256": "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1",
+    "path": "C:\\QorgauTraining\\20261007\\models\\yolo11n.pt",
+    "source": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt",
+    "training_data": "COCO train2017 (official pretrained weights)"
+  },
+  "gaze_initialization": {
+    "initializer": "IMAGENET1K_V1",
+    "url": "https://download.pytorch.org/models/mobilenet_v3_small-047dcff4.pth",
+    "sha256": "047dcff4addef86ea5bc2eff13c9614dc11f47ab1160d0a71a25e7db994f4e1f",
+    "bytes": 10306551
+  },
+  "wider_last_completed_development_epoch": {
+    "epoch": "7",
+    "time": "1622.11",
+    "train/box_loss": "1.53854",
+    "train/cls_loss": "0.87518",
+    "train/dfl_loss": "1.05292",
+    "metrics/precision(B)": "0.91972",
+    "metrics/recall(B)": "0.72603",
+    "metrics/mAP50(B)": "0.81389",
+    "metrics/mAP50-95(B)": "0.44798",
+    "val/box_loss": "1.44576",
+    "val/cls_loss": "0.68968",
+    "val/dfl_loss": "1.04914",
+    "lr/pg0": "0.000991232",
+    "lr/pg1": "0.000991232",
+    "lr/pg2": "0.000991232"
+  },
+  "wider_checkpoints": {
+    "best.pt": {
+      "bytes": 16057428,
+      "modified_utc": "2026-10-07T08:32:14.753785+00:00"
+    },
+    "last.pt": {
+      "bytes": 16057684,
+      "modified_utc": "2026-10-07T08:40:02.161726+00:00"
+    }
+  },
+  "operations": {
+    "pipeline_journal": "public-training-status.json",
+    "logs": "logs/public-training",
+    "final_dataset_handoff": "acquisition-handoff.json",
+    "current_read_only_snapshot": "collect_training_status.py",
+    "automatic_steps": "After verified dataset readiness, prepare remaining inputs, train models one at a time, perform locked final evaluations and CPU ONNX checks.",
+    "deployment": "No automatic publication/promotion of new weights; application 0.4.7 retains models 2026.10.06.2.",
+    "restart": "SSH disconnect is supported. OS restart requires explicit audited recovery; an existing pipeline journal prevents accidental duplicate training."
+  },
+  "interpretation": [
+    "Training launch snapshot, not final accuracy or completion evidence.",
+    "Epoch metrics are development-set metrics. Official held-out evaluation follows checkpoint selection.",
+    "Production app 0.4.7 retains model manifest 2026.10.06.2; no new weight promotion or public distribution.",
+    "Queue is detached from SSH, but an OS restart requires explicit audited resume.",
+    "COCO and gaze are queued, not yet trained at this snapshot.",
+    "Gaze360 research license requires private research use; a public model release is not authorized by this training run.",
+    "Image-model scores do not establish phone camera aiming, photography intent, webcam event accuracy or complete technical-spec compliance."
+  ]
+}

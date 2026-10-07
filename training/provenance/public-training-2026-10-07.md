@@ -41,6 +41,34 @@ exit codes. Logs are in `logs/public-training`. Dataset readiness unlocks each
 stage; training does not run against a partial extraction. The operator must
 inspect failed runs and use the documented explicit recovery commands.
 
+### Actual launch record
+
+The 2026-10-07 run uses source commit
+`d16a140a53a7c3e2e7a055c6cc7744a69132c20a`, root
+`C:\QorgauTraining\20261007`, and the existing verified CUDA interpreter at
+`C:\QorgauTraining\20261006\.venv\Scripts\python.exe`.
+[Launch evidence](../reports/public-training-launch-2026-10-07.json) records
+the remote journal, live development epoch, saved checkpoints, versions and
+initialization hashes. It is a timestamped progress snapshot, not final scores.
+
+COCO and WIDER use the same pinned archives as the local acquisition.
+The already verified local MPIIFaceGaze/Gaze360 raw files were transferred in
+a 4,903,883,864-byte ZIP; remote SHA-256 matched
+`2697cc6e4e085b1c6fae218fffc8a0c84453f22971bda385c1989acda18bb7c5`.
+Per-file CRC and annotation checks gate readiness on the training host.
+`gaze-transfer-status.json` tracks this import and `acquisition-handoff.json`
+consolidates readiness. The original Gaze360 archive-download process was
+intentionally stopped after switching to this verified copy; its historical
+exit code does not describe the replacement import. The temporary transfer
+service was closed after the remote archive hash passed.
+
+On the training host, `collect_training_status.py` writes a current read-only
+snapshot to `operator-status.json`. Use `public-training-status.json` and
+`logs/public-training` for stage status. These processes survive SSH disconnect;
+an OS restart requires explicit recovery. Do not erase the journal or start a
+second queue over an active run. No later deployment of trained weights is
+scheduled by this queue.
+
 ## Deployment boundary
 
 The application release 0.4.7 updates browser policy, camera preparation and
