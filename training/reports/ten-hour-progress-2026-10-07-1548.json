@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "kind": "Intermediate execution evidence; not model promotion approval",
+  "observed_utc": "2026-10-07T15:48:39.723508+00:00",
+  "deadline_utc": "2026-10-07T18:47:54Z",
+  "deadline_user_local": "2026-10-07T23:47:54+05:00",
+  "queue_status": "running",
+  "jobs": {
+    "train-coco": {
+      "status": "complete",
+      "started_utc": "2026-10-07T10:27:46.939638+00:00",
+      "finished_utc": "2026-10-07T15:31:33.170508+00:00",
+      "exit_code": 0
+    },
+    "evaluate-coco": {
+      "status": "running",
+      "started_utc": "2026-10-07T15:31:33.202390+00:00",
+      "finished_utc": null,
+      "exit_code": null
+    },
+    "train-gaze": {
+      "status": "running",
+      "started_utc": "2026-10-07T15:31:33.234254+00:00",
+      "finished_utc": null,
+      "exit_code": null
+    }
+  },
+  "coco": {
+    "completed_epochs": 10,
+    "epochs_reached": 11,
+    "last_epoch_partial": true,
+    "last_epoch_coverage": {
+      "epoch": 11,
+      "training_batches": 292,
+      "expected_batches": 3512,
+      "full_epoch": false
+    },
+    "elapsed_wall_seconds": 18214.355650663376,
+    "best_checkpoint_sha256": "faa3746bed959118cf324e160700d15924f54e2bf691bc1ebcad39c005c3cd94",
+    "dataset_manifest_sha256": "d161ab98dba7e31b5484040da01c7677afc9381d07199ac5e1033c82e39a1e91",
+    "final_evaluation": "in progress; native diagnostic evaluation reached batch313/625 at15:48UTC",
+    "checkpoint_reselection_or_threshold_tuning_after_final_test": false,
+    "promotion": "not performed; final original-annotation metrics, CPU ONNX checks and distribution review pending",
+    "baseline_comparison_limitation": "All214 COCO val phone-positive images were previously used as development by the old phone model. Clean4686-image comparison supports phone false positives only, not independent phone recall/AP/superiority."
+  },
+  "gaze": {
+    "epoch": 1,
+    "logged_batch": 200,
+    "batches_per_epoch": 489,
+    "batch_size": 256,
+    "sample_draws_processed_at_least": 51200,
+    "sample_draws_are_unique_images": false,
+    "diagnostic_utc": "2026-10-07T15:47:25.063675+00:00",
+    "diagnostic": "All12 loader workers had increasing CPU and I/O counters over20s. Sampled stacks showed image decoding/augmentation; main waits for loader. Batch logs confirm progress; no restart or runtime change needed.",
+    "final_test": "not opened",
+    "candidate_distribution": "private research candidate; Gaze360 redistribution/commercial rights unresolved"
+  },
+  "hardware_selection": {
+    "selected_pilot": "pilot-coco32",
+    "coco_batch": 32,
+    "coco_workers": 4,
+    "wider_batch": 64,
+    "wider_workers": 16,
+    "gaze_batch": 256,
+    "gaze_workers": 12,
+    "reason": "Train-only measured throughput with <=39 GiB allocator peak; WIDER falls back to conservative batch32 if its batch64 pilot fails.",
+    "data_fraction": 1.0,
+    "image_size": 640,
+    "test_used_for_selection": false
+  },
+  "resources": {
+    "service_observed_utc": "2026-10-07T15:47:41.738586+00:00",
+    "available_ram_gib": 91.0,
+    "cpu_percent": 26.3,
+    "guard_status": "monitoring",
+    "guard_updated_utc": "2026-10-07T15:48:33.944955+00:00",
+    "non_qorgau_service_changes": false,
+    "protected_service_http_status": 200,
+    "borrowed_resources_unload_verified": true,
+    "resources_restore_required": true
+  },
+  "wider": {
+    "promotion": "rejected previously; recall gate failure",
+    "final_test_repeated": false
+  },
+  "deployment": {
+    "version": "0.4.8",
+    "commit": "65125c5b6d65743869289a18e6a575e70d7dad8b",
+    "new_weights_promoted_this_check": false,
+    "windows_rebuilt": false,
+    "physical_webcam_acceptance": "pending"
+  },
+  "evidence_sha256": {
+    "1548-budget-training-status.json": "cd8e892a4c93ef283c4e2755257d29474df662ef1080840d0890e10b948148dd",
+    "1548-resource-guard-status.json": "059eb93b12f48a2d89c37ff2a5dd0930bb8594b7b7a0a681a58732dbffad484a",
+    "1548-hardware-selection.json": "8c214d08b6b435905481ebc0ac20c740819f6798d588dc547a813df9fcc32e5f",
+    "coco-training-1547.json": "30d295c80cecdc200df5b3efb90ea33ceb408c55b4f21fd05870f2dd992b9776",
+    "coco-evaluate-1548.log": "8f7962ed6807055bea07eacf27a10fcbf16b5781304e851c7c990272b17e058e",
+    "gaze-runtime-probe-1547.json": "19c20daeaa455d7c5970a88b83f3e89d6ba4be6364b26e749ef2ee06d5fa4e6c"
+  },
+  "publication_redaction": {
+    "host_paths": "replaced_with_logical_artifact_identifiers",
+    "artifact_identifiers_are_download_urls": false,
+    "historical_release_status_preserved": true,
+    "unrelated_service_details_omitted": true,
+    "original_report_sha256": "89ceec1f93db34d0f6d208a9b68bd4ea6d7976e7aba7b2f6cb32fd5df4e14515",
+    "embedded_evidence_hashes_scope": "historical original artifacts; a redacted report copy has a different file hash"
+  }
+}

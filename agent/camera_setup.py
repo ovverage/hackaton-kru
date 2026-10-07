@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import threading
+import time
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
@@ -18,13 +19,22 @@ from PySide6.QtWidgets import (
 from .client import atomic_json
 from .behavior import POSITIONS
 
+REFERENCE_SETTLE_SECONDS = 2
+REFERENCE_TIMEOUT_SECONDS = 45
+
 
 class CameraStartWorker(QThread):
-    """Open and verify capture/inference without collecting gaze calibration."""
+    """Preview first; collect a demo reference only after explicit confirmation."""
 
     frame = Signal(QImage)
     message = Signal(str)
     ready = Signal()
+    reference_required = Signal()
+    reference_progress = Signal(object)
+    screen_reference_required = Signal()
+    screen_target = Signal(int, str, object, int, int)
+    screen_progress = Signal(int, int, str)
+    screen_result = Signal(object)
 
     def __init__(self, index, phone, face, folder):
         super().__init__()
@@ -33,6 +43,9 @@ class CameraStartWorker(QThread):
         self.confirm = threading.Event()
         self.result = None
         self.error = ""
+        self.preview_source = None
+        from .screen_capture import ScreenCaptureSession
+        self.screen_session = ScreenCaptureSession()
 
     def run(self):
         camera = None
@@ -43,35 +56,93 @@ class CameraStartWorker(QThread):
             if self.stop.is_set():
                 return
             camera = Camera(self.index, self.phone, self.face, calibrate=False)
+            if callable(getattr(camera, 'latest_preview', None)):
+                self.preview_source = camera
+            public_reference = getattr(camera, "public_gaze", None) is not None
             first = True
+            collecting_reference = False
+            reference_started = 0
+            screen_reference = public_reference and getattr(camera, 'screen_calibration_required', False)
+
+            def read_screen_frame():
+                _, observation = camera.read()
+                # The fullscreen target remains the focus; no preview of the
+                # face or recording distracts from the labelled gaze location.
+                return observation
+
             while not self.stop.is_set():
                 frame, _ = camera.read()
-                rgb = camera.cv2.cvtColor(frame, camera.cv2.COLOR_BGR2RGB)
-                height, width = rgb.shape[:2]
-                self.frame.emit(
-                    QImage(
-                        rgb.data,
-                        width,
-                        height,
-                        int(rgb.strides[0]),
-                        QImage.Format.Format_RGB888,
-                    ).copy()
-                )
+                # The live GUI pulls the newest raw slot independently of
+                # these unchanged full-model passes. No queued image backlog.
+                if self.preview_source is None:
+                    rgb = camera.cv2.cvtColor(frame, camera.cv2.COLOR_BGR2RGB)
+                    height, width = rgb.shape[:2]
+                    self.frame.emit(QImage(rgb.data, width, height, int(rgb.strides[0]),
+                                           QImage.Format.Format_RGB888).copy())
                 if first:
                     first = False
+                    if screen_reference:
+                        self.screen_reference_required.emit()
+                    elif public_reference:
+                        self.reference_required.emit()
                     self.ready.emit()
-                if self.confirm.wait(0.08):
+                if screen_reference:
+                    signature = self.screen_session.next_start()
+                    if signature is not None:
+                        result = self.screen_session.run(camera, signature, self.stop,
+                            target=self.screen_target.emit, progress=self.screen_progress.emit,
+                            read=read_screen_frame)
+                        from .calibration_diagnostics import save_calibration_report
+                        from shared.version import APP_VERSION
+                        try:
+                            save_calibration_report(self.folder, result, version=APP_VERSION)
+                        except (OSError, ValueError):
+                            # Diagnostics must not change acceptance or interrupt a retry.
+                            self.message.emit('Не удалось сохранить диагностику настройки.')
+                        self.screen_result.emit(result)
+                        if result['ready']:
+                            break
+                    self.stop.wait(.01)
+                    continue
+                if public_reference:
+                    if collecting_reference:
+                        progress = dict(camera.gaze_reference_progress)
+                        if (
+                            not progress["ready"]
+                            and time.monotonic() - reference_started >= REFERENCE_TIMEOUT_SECONDS
+                        ):
+                            camera.cancel_gaze_reference()
+                            progress = dict(camera.gaze_reference_progress)
+                            progress["error"] = "GAZE_REFERENCE_TIMEOUT"
+                        self.reference_progress.emit(progress)
+                        if progress["ready"]:
+                            break
+                        if progress.get("error"):
+                            collecting_reference = False
+                            self.confirm.clear()
+                    if not collecting_reference and self.confirm.is_set():
+                        self.confirm.clear()
+                        # Allow the student to move their eyes from the button
+                        # to the screen centre before any observations count.
+                        if self.stop.wait(REFERENCE_SETTLE_SECONDS):
+                            return
+                        camera.begin_gaze_reference()
+                        reference_started = time.monotonic()
+                        collecting_reference = True
+                    self.stop.wait(0.08)
+                elif self.confirm.wait(0.08):
                     break
             if self.stop.is_set():
                 return
             # The first frame after confirmation establishes the automatic
             # reference while the student is looking at the monitor.
-            if getattr(camera, "gaze", None):
+            if not public_reference and getattr(camera, "gaze", None):
                 camera.gaze.reference = None
             self.result, camera = camera, None
         except Exception as error:
             self.error = str(error)
         finally:
+            self.preview_source = None
             if camera:
                 camera.close()
 
@@ -99,16 +170,17 @@ class CalibrationWorker(QThread):
 
             self.message.emit("Загружаем локальные модели и открываем камеру…")
             camera = Camera(self.index, self.phone, self.face, calibrate=False)
+            if getattr(camera, "public_gaze", None) is not None:
+                raise ValueError(
+                    "Для этой сборки настройте взгляд при обычном включении камеры: "
+                    "закройте это окно и нажмите «Готово» рядом с выбранной камерой."
+                )
             for index, (key, prompt) in enumerate(POSITIONS):
                 self.collect.clear()
                 samples = []
                 self.phase.emit(index, 0, False)
                 while len(samples) < 25 and not self.stop.is_set():
-                    ok, frame = camera.capture.read()
-                    if not ok:
-                        raise OSError(
-                            "Камера не передаёт изображение. Проверьте подключение и разрешения."
-                        )
+                    frame, _ = camera.read(analyze=False)
                     frame = camera.cv2.resize(frame, (640, 480))
                     faces, feature = camera.face_features(frame)
                     rgb = camera.cv2.cvtColor(frame, camera.cv2.COLOR_BGR2RGB)
@@ -152,6 +224,14 @@ class CameraSetup(QDialog):
         self.cancelled = False
         self.preparing = False
         self.preview_ready = False
+        self.public_reference = False
+        self.screen_reference = False
+        self.screen_dialog = None
+        self._handled_worker = None
+        self._preview_sequence = None
+        self.preview_timer = QTimer(self)
+        self.preview_timer.setInterval(67)
+        self.preview_timer.timeout.connect(self.update_latest_preview)
         self.setWindowTitle(
             "Qorgau — настройка взгляда" if calibrate else "Qorgau — включение камеры"
         )
@@ -286,6 +366,7 @@ class CameraSetup(QDialog):
             recoverable = state.access == "LOCKED" and state.reason in (
                 "AGENT_RESTARTED",
                 "CAMERA_UNAVAILABLE",
+                "DISPLAY_CHANGED",
             )
             if state.lifecycle == "RUNNING" and not recoverable:
                 self.feedback.setText(
@@ -298,12 +379,19 @@ class CameraSetup(QDialog):
                 self.agent.capture_pump.close()
                 self.agent.capture_pump = None
             if self.agent.camera:
-                self.agent.camera.close()
+                if self.agent.camera.close() is False:
+                    self.agent.camera_preparing = self.preparing = False
+                    self.agent.capabilities['gaze'] = False
+                    self.feedback.setText('Камера завершает обработку. Повторите через несколько секунд.')
+                    return
                 self.agent.camera = None
             self.agent.capabilities.update(camera=False, recording=False, gaze=False)
         self.start_button.setEnabled(False)
         self.start_button.setText("Проверяем камеру…")
         self.preview_ready = False
+        self.public_reference = False
+        self.screen_reference = False
+        self.progress.setVisible(self.calibrate)
         self.phone.setEnabled(False)
         self.face.setEnabled(False)
         self.index.setEnabled(False)
@@ -314,11 +402,19 @@ class CameraSetup(QDialog):
         self.worker.frame.connect(self.show_frame)
         if not self.calibrate:
             self.worker.ready.connect(self.camera_ready)
+            self.worker.reference_required.connect(self.require_reference)
+            self.worker.reference_progress.connect(self.reference_progress)
+            self.worker.screen_reference_required.connect(self.require_screen_reference)
+            self.worker.screen_target.connect(self.show_screen_target)
+            self.worker.screen_progress.connect(self.screen_progress)
+            self.worker.screen_result.connect(self.screen_result)
         if self.calibrate:
             self.worker.phase.connect(self.phase)
         self.worker.message.connect(self.feedback.setText)
         self.worker.finished.connect(self.finished_calibration)
         self.worker.start()
+        self._preview_sequence = None
+        self.preview_timer.start()
 
     def primary_action(self):
         if (
@@ -328,8 +424,18 @@ class CameraSetup(QDialog):
             and self.preview_ready
         ):
             self.start_button.setEnabled(False)
-            self.start_button.setText("Подключаем камеру…")
-            self.feedback.setText("Сохраняем выбранную камеру…")
+            if self.screen_reference:
+                self.open_screen_calibration()
+                return
+            elif self.public_reference:
+                self.start_button.setText("Настраиваем взгляд…")
+                self.instruction.setText("Смотрите в центр экрана и спокойно держите голову.")
+                self.feedback.setText("Сейчас начнётся настройка. В кадре должны быть только вы.")
+                self.progress.setValue(0)
+                self.progress.show()
+            else:
+                self.start_button.setText("Подключаем камеру…")
+                self.feedback.setText("Сохраняем выбранную камеру…")
             self.worker.confirm.set()
             return
         self.start()
@@ -338,12 +444,103 @@ class CameraSetup(QDialog):
         if self.cancelled or self.calibrate:
             return
         self.preview_ready = True
+        if self.screen_reference:
+            self.instruction.setText('Следите глазами за 9 точками: по 3 секунды на каждую, первый проход — примерно 27 секунд.')
+            self.feedback.setText('Проблемная точка повторится автоматически. Пройденные точки сохраняются. Esc — отмена.')
+            self.start_button.setText('Настроить по точкам')
+            self.start_button.setEnabled(True)
+            QTimer.singleShot(0, self.open_screen_calibration)
+            return
         self.instruction.setText(
+            "Посмотрите в центр экрана. Нажмите кнопку и удерживайте взгляд, пока идёт настройка."
+            if self.public_reference else
             "Убедитесь, что лицо хорошо видно, посмотрите на монитор и подтвердите камеру."
         )
         self.feedback.setText("Предпросмотр работает. Изображение остаётся только на этом компьютере.")
-        self.start_button.setText("Использовать эту камеру")
+        self.start_button.setText("Смотрю в центр экрана" if self.public_reference else "Использовать эту камеру")
         self.start_button.setEnabled(True)
+
+    def require_reference(self):
+        if not self.cancelled:
+            self.public_reference = True
+
+    def require_screen_reference(self):
+        if not self.cancelled:
+            self.public_reference = self.screen_reference = True
+
+    def open_screen_calibration(self):
+        from .screen_calibration import ScreenCalibrationDialog
+        if self.screen_dialog is not None or self.cancelled or not self.worker.isRunning():
+            return
+        dialog = self.screen_dialog = ScreenCalibrationDialog(self)
+        dialog.started.connect(self.worker.screen_session.start)
+        dialog.target_presented.connect(self.worker.screen_session.presented)
+        dialog.cancelled.connect(self.reject)
+        dialog.invalidated.connect(lambda reason: self.reject())
+        dialog.finished.connect(self.screen_dialog_finished)
+        dialog.showFullScreen()
+
+    def show_screen_target(self, index, phase, point, count, total):
+        if self.screen_dialog is not None and not self.cancelled:
+            self.screen_dialog.show_target(index, phase, point, count, total)
+
+    def screen_progress(self, count, total, message):
+        if self.screen_dialog is not None and not self.cancelled:
+            self.screen_dialog.update_progress(count, total, message)
+
+    def screen_result(self, result):
+        if self.screen_dialog is None or self.cancelled:
+            return
+        if result.get('ready'):
+            self.screen_dialog.finish_quality('Личная зона экрана настроена. Запас за границей: 6°.')
+        else:
+            from .calibration_diagnostics import format_calibration_failure
+            self.screen_dialog.finish_error(format_calibration_failure(result))
+
+    def screen_dialog_finished(self, result):
+        self.screen_dialog = None
+        if result != QDialog.DialogCode.Accepted and not self.cancelled:
+            self.reject()
+        elif result == QDialog.DialogCode.Accepted and not self.worker.isRunning():
+            self.finished_calibration()
+
+    def reference_progress(self, progress):
+        if self.cancelled:
+            return
+        required = max(15, progress.get("required", 25))
+        count = max(0, min(required, progress.get("collected", 0)))
+        self.progress.setValue(round(count / required * 100))
+        if progress.get("ready"):
+            self.feedback.setText("Взгляд настроен. Подключаем камеру…")
+            self.start_button.setEnabled(False)
+        elif progress.get("error"):
+            self.feedback.setText(
+                "Не удалось получить устойчивое положение. Смотрите в центр экрана, "
+                "держите голову спокойно и проверьте освещение. В кадре должны быть только вы."
+            )
+            self.start_button.setText("Повторить настройку")
+            self.start_button.setEnabled(True)
+        else:
+            self.feedback.setText(
+                f"Удерживайте взгляд в центре экрана… {count}/{required}. "
+                "Нужно одно хорошо освещённое лицо и открытые глаза."
+            )
+
+    def update_latest_preview(self):
+        if self.cancelled or (self.screen_dialog is not None and self.screen_dialog.isVisible()):
+            return
+        source = getattr(self.worker, 'preview_source', None)
+        packet = source.latest_preview() if source is not None else None
+        if packet is None or packet.sequence == self._preview_sequence:
+            return
+        self._preview_sequence = packet.sequence
+        frame = packet.frame
+        height, width = frame.shape[:2]
+        scale = min(1., 640 / width, 360 / height)
+        small = source.cv2.resize(frame, (round(width * scale), round(height * scale)))
+        rgb = source.cv2.cvtColor(small, source.cv2.COLOR_BGR2RGB)
+        self.show_frame(QImage(rgb.data, rgb.shape[1], rgb.shape[0], int(rgb.strides[0]),
+                              QImage.Format.Format_RGB888).copy())
 
     def show_frame(self, image):
         self.preview.setPixmap(
@@ -375,12 +572,36 @@ class CameraSetup(QDialog):
             self.capture.setEnabled(False)
 
     def finished_calibration(self):
+        self.preview_timer.stop()
+        if self._handled_worker is self.worker:
+            return
+        if (self.screen_dialog is not None and not self.cancelled
+                and self.worker.result is not None):
+            # Let the fullscreen success indicator auto-close before closing
+            # this parent dialog and transferring camera ownership to Agent.
+            return
+        self._handled_worker = self.worker
+        if self.worker.error and self.screen_dialog is not None:
+            dialog, self.screen_dialog = self.screen_dialog, None
+            dialog.cancelled.disconnect(self.reject)
+            dialog.invalidated.disconnect()
+            dialog.finished.disconnect(self.screen_dialog_finished)
+            dialog.reject()
+            dialog.deleteLater()
         with self.agent.mutex:
             self.agent.camera_preparing = False
             self.preparing = False
             if self.worker.result:
                 camera = self.worker.result
-                if self.cancelled or (
+                self.worker.result = None
+                public_reference_missing = (
+                    getattr(camera, "public_gaze", None) is not None
+                    and not camera.gaze_reference_progress["ready"]
+                )
+                if public_reference_missing:
+                    camera.close()
+                    self.worker.error = "Настройка взгляда не завершена. Повторите включение камеры."
+                elif self.cancelled or (
                     self.agent.engine.state.lifecycle == "RUNNING"
                     and self.agent.engine.state.access != "LOCKED"
                 ):
@@ -415,6 +636,8 @@ class CameraSetup(QDialog):
                         gaze=bool(camera.centres) or bool(getattr(camera, 'gaze_enabled', False)),
                         vision="yolo11n-onnx/mediapipe-personal-calibration"
                         if camera.centres
+                        else "yolo11n-phone/yolov8n-face/public-gaze-v1"
+                        if getattr(camera, "public_gaze", None) is not None
                         else "yolo11n-phone/yolov8n-face/mediapipe-auto-gaze",
                     )
                     self.agent.config["camera_settings"] = {
@@ -448,12 +671,18 @@ class CameraSetup(QDialog):
 
     def reject(self):
         self.cancelled = True
+        self.preview_timer.stop()
+        if self.screen_dialog is not None:
+            self.screen_dialog.hide()
         if self.worker and self.worker.isRunning():
             self.cancelled = True
             self.worker.stop.set()
             self.cancel.setEnabled(False)
             self.capture.setEnabled(False)
             self.feedback.setText("Отключаем камеру…")
+            return
+        if self.worker is not None and self._handled_worker is not self.worker:
+            self.finished_calibration()
             return
         super().reject()
 
@@ -462,5 +691,5 @@ class CameraSetup(QDialog):
             self.reject()
             event.ignore()
         else:
-            self.cancelled = True
+            self.reject()
             event.accept()

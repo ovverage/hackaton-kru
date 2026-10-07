@@ -1,0 +1,320 @@
+{
+  "status": "failed",
+  "checkpoint_sha256": "faa3746bed959118cf324e160700d15924f54e2bf691bc1ebcad39c005c3cd94",
+  "dataset": "coco",
+  "dataset_manifest_sha256": "d161ab98dba7e31b5484040da01c7677afc9381d07199ac5e1033c82e39a1e91",
+  "predeclared_ap50_floors": {
+    "cell phone": 0.4,
+    "person": 0.6,
+    "face": 0.5
+  },
+  "fixed_operating_thresholds": {
+    "cell phone": 0.8,
+    "person": 0.55,
+    "face": 0.55
+  },
+  "predeclared_precision_floors": {
+    "cell phone": 0.8,
+    "person": 0.8,
+    "face": 0.8
+  },
+  "predeclared_recall_floors": {
+    "cell phone": 0.25,
+    "person": 0.5,
+    "face": 0.5
+  },
+  "parity_selection": [
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000067213.jpg",
+      "sha256": "7c456c6e20d11fa40248d67b7d816d0aaf8106b1635243bdd1ba044245f05f8e"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000413395.jpg",
+      "sha256": "e101bdf508bf0a74adb38301dc97cb0612fa95a84e2a660eb97749b31edec18a"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000162858.jpg",
+      "sha256": "3850ddaa772d9b9532537097527759d3ce05c0583f05e5b77561f654f8631193"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000236166.jpg",
+      "sha256": "d0f0b38251198a84cc2f1fb9ed30ab8461aa2c5b71cf59b43b5e9efa0ddaca2a"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000256518.jpg",
+      "sha256": "2e0f61f66dcd728f9d3ca0e5898f1d8c0684f32951efe2b84607bd3b3e665764"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000414638.jpg",
+      "sha256": "fa32398a8441c2a27f5047bc2ad2f9144127f10f2c6663b22f0701679e8e97c3"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000131138.jpg",
+      "sha256": "2598539292e89180ada7b17491bb6f7d3793dd792897e22ef8bbe21f3eec87cb"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000544811.jpg",
+      "sha256": "3c22bb5ba0aa5ea20ed6428b147515cb19afa06d47dc6cc5b5e64d07e448f897"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000571313.jpg",
+      "sha256": "9a3c075c9f15b67417d616b5cde10f704705215341ed15414035f8a77277a80e"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000445834.jpg",
+      "sha256": "b054ec7280c2da3a51643e2aceb32fe81cb9d78535ad5d8e01b0caa8a3110007"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000522638.jpg",
+      "sha256": "dd5138ca473bc6f8a9e380190c94275ad66c2e433a82e7f7557a3efef3d4b52a"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000534827.jpg",
+      "sha256": "12c5d60436e2e16a10e33081ebdd6d47dc5d7abeba82fa1831cc76c52c17b142"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000527427.jpg",
+      "sha256": "c5e3f3f5bbd1990de2cae0d0a81e50a09db5963eb79c609b925959eb84a183ab"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000288584.jpg",
+      "sha256": "77aa911fa324f3711a1b6f64fb716762cc897694fd90337d6a96ca3992330a60"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000463849.jpg",
+      "sha256": "9cf4ee538d3956f783826a88cf32a6d629143baf576d35aeb637c48dca880108"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000372260.jpg",
+      "sha256": "48ae887c9520533893d3f7afa853f20db4bc3376def97692b0bd410e715f674c"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000134689.jpg",
+      "sha256": "f951a4e9e970a0e2d19efc702cac3c01f08cae3dbe6080cd91c218509b008c01"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000129054.jpg",
+      "sha256": "b499404f1b12c09135740acf268306f73ecc23c4f0259c5b03ae5c06e45a2d3d"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000129812.jpg",
+      "sha256": "e2dbab4ad13bb7028fae05f009fe64cfdbaaeb4afdd8bb64e6135b91b3e39337"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000546826.jpg",
+      "sha256": "4a4089c8b04a04facaaa44cef49aeb2b2897fbaabfa221442ce50e7e67c521ab"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000082688.jpg",
+      "sha256": "d0bee59612fce70e02dd30fd24b87ee336a2f4d37e56bd7c66e1f928bd71453c"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000117719.jpg",
+      "sha256": "347879f8b17e27bbe503a00f8fe6963c0519f35e4d3db5ecdad92de924024744"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000064868.jpg",
+      "sha256": "b3cde4030154cacc17d93aa0a01344ec749f96faab680016e0f680458410cb52"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000552902.jpg",
+      "sha256": "ecae0002c2e7c82e63a47c377d92d05a9d340dbe283e2c4a0fdfe21627e77885"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000388215.jpg",
+      "sha256": "1362deac1042cbbcb765909ad09b16ce788e1e946f296d5bfec8dafcf475ee90"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000468505.jpg",
+      "sha256": "a3327665e199c84b0ad0e69c8e3f3f6df13902eb3b8580a0708c2c6cade370b6"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000466986.jpg",
+      "sha256": "8fc3fb29c9647c2c685bf3152703bcdac24f4cb39c16b317ab02c5a1eeaa515c"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000154000.jpg",
+      "sha256": "4224e841b58048d5568088cd5e7a67b6882a4f8fd3dda928ac7ea97a864bfe76"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000520009.jpg",
+      "sha256": "54617d5196a0d66e47f083ce2ecc67c990b5415eca52302dafdc0591597d4e02"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000318114.jpg",
+      "sha256": "8e6da930dbb9d44c5674f231ecc190c69679139ae97967e953860c3bc12b9725"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000360137.jpg",
+      "sha256": "e98f0ffc52d58b2bc9ac952d1aa4db2f7a40f13a2681e6e935c675870d201d16"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/coco/images/test/000000248810.jpg",
+      "sha256": "45f0c3ff2c7a8ff6ea3b6ae2f697e1e1254a729675d2d1c38439e36aae8c7f1b"
+    }
+  ],
+  "limitations": [
+    "Official YOLO11n initialization was pretrained on COCO train2017; internal dev is held out from this fine-tune only, not from pretraining.",
+    "Image-level split does not establish subject/scene independence; COCO provides no exhaustive identity/video groups.",
+    "All target crowd boxes are retained as weak group supervision to avoid silently treating crowds as background. YOLO loss has no ignore regions.",
+    "Ultralytics label-space AP is diagnostic. The final pycocotools report uses original categories, crowd flags, areas and maxDets=100.",
+    "Phone boxes do not label camera orientation, photographing intent, or temporal exam events."
+  ],
+  "deployment_readiness": "Requires application/temporal webcam validation in addition to these image-level gates.",
+  "validation_images": 5000,
+  "prediction_sha256": "1241d06bf71acd83d16d4163e23f605cca242efecacb2536406b4332ed88e751",
+  "diagnostic_yolo_metrics": {
+    "metrics/precision(B)": 0.6471042817577826,
+    "metrics/recall(B)": 0.44962817963399465,
+    "metrics/mAP50(B)": 0.5099815577191311,
+    "metrics/mAP50-95(B)": 0.32053560686192845,
+    "fitness": 0.32053560686192845
+  },
+  "operating_point_audit": {
+    "cell phone": {
+      "tp": 19,
+      "fp": 0,
+      "fn": 243,
+      "ignored_predictions": 0,
+      "images": 5000,
+      "positive_images": 214,
+      "negative_images": 4786,
+      "negative_image_false_positives": 0,
+      "confidence": 0.8,
+      "iou": 0.5,
+      "precision": 1.0,
+      "recall": 0.07251908396946564,
+      "negative_image_false_positive_rate": 0.0
+    },
+    "person": {
+      "tp": 5076,
+      "fp": 206,
+      "fn": 5701,
+      "ignored_predictions": 129,
+      "images": 5000,
+      "positive_images": 2693,
+      "negative_images": 2307,
+      "negative_image_false_positives": 26,
+      "confidence": 0.55,
+      "iou": 0.5,
+      "precision": 0.9609996213555472,
+      "recall": 0.4710030620766447,
+      "negative_image_false_positive_rate": 0.011270047680970958
+    }
+  },
+  "diagnostic_per_class": {
+    "cell phone": {
+      "precision_at_max_F1": 0.49386213142911795,
+      "recall_at_max_F1": 0.25190839694656486,
+      "AP50": 0.27330491719565636,
+      "AP50_95": 0.16204027982272673
+    },
+    "person": {
+      "precision_at_max_F1": 0.8003464320864473,
+      "recall_at_max_F1": 0.6473479623214244,
+      "AP50": 0.7466581982426059,
+      "AP50_95": 0.47903093390113005
+    }
+  },
+  "official_coco": {
+    "status": "passed",
+    "maxDets": [
+      1,
+      10,
+      100
+    ],
+    "images": 5000,
+    "metrics": {
+      "all_targets": {
+        "AP50_95": 0.32748530547754684,
+        "AP50": 0.5212209546152007,
+        "AP75": 0.34024550595745806,
+        "AP_small": 0.16311627906812057,
+        "AP_medium": 0.4275036104226095,
+        "AP_large": 0.5461659521431905,
+        "AR1": 0.19920327924821518,
+        "AR10": 0.42686042582910877,
+        "AR100": 0.469837783603334,
+        "AR_small": 0.29900028858942507,
+        "AR_medium": 0.5921589289034898,
+        "AR_large": 0.6928572873674841
+      },
+      "cell phone": {
+        "AP50_95": 0.16437522360758103,
+        "AP50": 0.2735752113979211,
+        "AP75": 0.16672429661581914,
+        "AP_small": 0.052029411919851484,
+        "AP_medium": 0.28772513792984666,
+        "AP_large": 0.3781622619325377,
+        "AR1": 0.21221374045801528,
+        "AR10": 0.34427480916030534,
+        "AR100": 0.3538167938931298,
+        "AR_small": 0.2054054054054054,
+        "AR_medium": 0.5230769230769231,
+        "AR_large": 0.5972222222222222
+      },
+      "person": {
+        "AP50_95": 0.49059538734751257,
+        "AP50": 0.76886669783248,
+        "AP75": 0.513766715299097,
+        "AP_small": 0.27420314621638964,
+        "AP_medium": 0.5672820829153723,
+        "AP_large": 0.7141696423538433,
+        "AR1": 0.18619281803841517,
+        "AR10": 0.5094460424979123,
+        "AR100": 0.5858587733135381,
+        "AR_small": 0.3925951717734448,
+        "AR_medium": 0.6612409347300565,
+        "AR_large": 0.7884923525127459
+      }
+    }
+  },
+  "heldout_metrics_sha256": "9412c076b30b2e439830b1296a0c9025287b8207a52ad16b724331f2068283f7",
+  "export": {
+    "path": "artifacts/training/20261007/training/runs/budget-coco-v1/person-phone-yolo11n.onnx",
+    "sha256": "9736520166109d6746864d503910fc4cccc9fb21b68b848b52c05d2ba3b54250",
+    "bytes": 10565592,
+    "input": [
+      1,
+      3,
+      640,
+      640
+    ],
+    "opset": 17,
+    "names": {
+      "0": "cell phone",
+      "1": "person"
+    }
+  },
+  "cpu_parity": {
+    "status": "passed",
+    "images": 32,
+    "provider": "CPUExecutionProvider",
+    "cpu_threads": 2,
+    "max_box_coordinate_error_px": 0.00421142578125,
+    "max_score_error": 1.4886260032653809e-05,
+    "tolerance_coordinate_px": 0.05,
+    "tolerance_score": 0.0005,
+    "inference_median_ms": 494.3722999887541,
+    "inference_p95_ms": 591.7230250430293,
+    "failures": [],
+    "note": "Same letterboxed tensors as runtime; raw FP32 graph parity. Latency excludes camera, preprocessing and NMS and is specific to this CPU.",
+    "versions": {
+      "onnxruntime": "1.24.3",
+      "torch": "2.6.0+cu124"
+    }
+  },
+  "gate_failures": [
+    "cell phone AP50 missing, non-finite or below 0.40",
+    "cell phone recall missing, non-finite or below 0.25",
+    "person recall missing, non-finite or below 0.50"
+  ],
+  "error": "Model acceptance gates failed: cell phone AP50 missing, non-finite or below 0.40; cell phone recall missing, non-finite or below 0.25; person recall missing, non-finite or below 0.50",
+  "publication_redaction": {
+    "host_paths": "replaced_with_logical_artifact_identifiers",
+    "artifact_identifiers_are_download_urls": false,
+    "historical_release_status_preserved": true,
+    "original_report_sha256": "68484a7a58a4e16fa18b7af4ee58eccd33621ab2b4308535e2e1f780275cd4a1",
+    "embedded_evidence_hashes_scope": "historical original artifacts; a redacted report copy has a different file hash"
+  }
+}

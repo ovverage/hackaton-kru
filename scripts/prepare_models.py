@@ -15,6 +15,7 @@ RUNTIME_FILES = (
     "face_yolov8n.onnx",
     "gaze-direction.json",
 )
+PUBLIC_GAZE_FILES = ("gaze-public.onnx", "gaze-public.json")
 
 
 def sha256(path):
@@ -24,10 +25,14 @@ def sha256(path):
 
 def prepare(root=ROOT, *, verify_only=False):
     manifest = json.loads((root / "model-manifest.json").read_text(encoding="utf-8"))
+    profile = manifest.get("runtime_gaze", "legacy")
+    if profile not in ("legacy", "public-gaze-v1"):
+        raise ValueError(f"UNKNOWN_RUNTIME_GAZE_PROFILE: {profile}")
+    names = RUNTIME_FILES + (PUBLIC_GAZE_FILES if profile == "public-gaze-v1" else ())
     folder = root / "models"
     folder.mkdir(exist_ok=True)
     verified = []
-    for name in RUNTIME_FILES:
+    for name in names:
         entry = next((x for x in manifest["files"] if x["file"] == name), None)
         if not entry or not re.fullmatch("[0-9a-f]{64}", entry.get("sha256", "")):
             raise ValueError(f"Missing pinned model: {name}")

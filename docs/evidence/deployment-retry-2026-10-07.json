@@ -1,0 +1,87 @@
+{
+  "checked_at": "2026-10-07T11:13:19.550964+00:00",
+  "operation": "read_only_verification",
+  "expected_commit": "65125c5b6d65743869289a18e6a575e70d7dad8b",
+  "expected_student_sha256": "052423f11b4ec33a5db849fe45e107fc8232c91d6b3aabebb786c6ba299f72ed",
+  "run": {
+    "id": 37609155637,
+    "run_attempt": 2,
+    "head_sha": "65125c5b6d65743869289a18e6a575e70d7dad8b",
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/ovverage/hackaton-kru/actions/runs/37609155637",
+    "updated_at": "2026-10-07T11:12:42Z"
+  },
+  "jobs": [
+    {
+      "id": 112762862146,
+      "name": "deploy",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T11:12:18Z",
+      "completed_at": "2026-10-07T11:12:41Z"
+    },
+    {
+      "id": 112762862421,
+      "name": "verify",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T10:42:44Z",
+      "completed_at": "2026-10-07T10:44:42Z"
+    },
+    {
+      "id": 112762863300,
+      "name": "release",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-07T11:12:16Z",
+      "completed_at": "2026-10-07T10:44:42Z"
+    },
+    {
+      "id": 112762912352,
+      "name": "windows",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-07T11:12:23Z",
+      "completed_at": "2026-10-07T10:42:18Z"
+    }
+  ],
+  "active_step": null,
+  "deploy_log_sha256": "ed6153bc55fee80b737b7f565c7e8eb235cf1d9398186559920b5d692232f597",
+  "deploy_evidence_lines": [
+    "2026-10-07T11:12:39.7830413Z {\"status\": \"deployed\", \"release\": \"20261007T111225-65125c5b6d65\", \"commit\": \"65125c5b6d65743869289a18e6a575e70d7dad8b\", \"archive_sha256\": \"72e7f7b3bbcbe62f04cc6927735378420a99b67be4d4fbb07e93f21ded09b034\", \"previous_release\": \"20261007T101808-fa2c54120968\", \"student_sha256\": \"052423f11b4ec33a5db849fe45e107fc8232c91d6b3aabebb786c6ba299f72ed\"}"
+  ],
+  "status": "passed",
+  "health": {
+    "status": "ok",
+    "version": "0.4.8"
+  },
+  "deployment": {
+    "commit": "65125c5b6d65743869289a18e6a575e70d7dad8b",
+    "archive_sha256": "72e7f7b3bbcbe62f04cc6927735378420a99b67be4d4fbb07e93f21ded09b034",
+    "previous_release": "20261007T101808-fa2c54120968",
+    "student_sha256": "052423f11b4ec33a5db849fe45e107fc8232c91d6b3aabebb786c6ba299f72ed"
+  },
+  "web_index_sha256": "202dde61545d51959b85db8940c80e9e74e1c828b5f979435e23053bdec4a9af",
+  "web_assets": {
+    "/assets/index-DAd324Kd.js": "5f6346396514e0895a6a25aca1c6d95184fc294ab032b46ab3f46a11e0de0b50",
+    "/assets/index-BaMxiy9m.css": "a2044907f901c0f8a63500022d7f53b728d0e87b1a8189e06c28abdd0aacbc66"
+  },
+  "exe_range": {
+    "status": 206,
+    "content_range": "bytes 0-1/398657193",
+    "first_two": "MZ",
+    "etag": "\"953bd8a7df5d118d8d7010150584d782\""
+  },
+  "checks": {
+    "ci_succeeded": true,
+    "health_0_4_8": true,
+    "deployment_commit_matches": true,
+    "student_sha_unchanged": true,
+    "exe_range_valid": true,
+    "web_index_unchanged": true,
+    "web_assets_unchanged": true,
+    "no_windows_rebuild": true
+  },
+  "exe_note": "Server receiver computes full EXE SHA-256 when deploying. Public download verified by bounded Range request; previously verified full 0.4.8 download was not repeated."
+}

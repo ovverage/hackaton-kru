@@ -1,0 +1,242 @@
+{
+  "status": "failed",
+  "checkpoint_sha256": "5f8658a4344ea33bda13825cace151f6272d7865709c14fd642abcd3cd720a40",
+  "dataset": "wider",
+  "dataset_manifest_sha256": "2266968bf72608ef96e72c3f25566f7fccb7dcf6bc4893aa763c6026110e2578",
+  "predeclared_ap50_floors": {
+    "cell phone": 0.4,
+    "person": 0.6,
+    "face": 0.5
+  },
+  "fixed_operating_thresholds": {
+    "cell phone": 0.8,
+    "person": 0.55,
+    "face": 0.55
+  },
+  "predeclared_precision_floors": {
+    "cell phone": 0.8,
+    "person": 0.8,
+    "face": 0.8
+  },
+  "predeclared_recall_floors": {
+    "cell phone": 0.25,
+    "person": 0.5,
+    "face": 0.5
+  },
+  "parity_selection": [
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/53--Raid/53_Raid_policeraid_53_107.jpg",
+      "sha256": "f6790963ec92acb461bd49908fd45e3e351517621362b4f7d55e629695b1e598"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/12--Group/12_Group_Team_Organized_Group_12_Group_Team_Organized_Group_12_583.jpg",
+      "sha256": "ea5b8f26c4fd0077901665ab7f0cd58fe5e412a7ffcb110b270ab6b36da2e967"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/12--Group/12_Group_Large_Group_12_Group_Large_Group_12_771.jpg",
+      "sha256": "ea1484588cf8c8c5119a91bb6d7d3ac1eb1860456b7198addf706dcc1eed7a27"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/2--Demonstration/2_Demonstration_Political_Rally_2_64.jpg",
+      "sha256": "a52bc13063a14a7145181fe64181970369a88eba08f7ccbf5787eae492bd737c"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/0--Parade/0_Parade_Parade_0_429.jpg",
+      "sha256": "fcb76b94ab342a2b5f6013c937e12229731d22c297416aeb88d7d5abb8b8ad9e"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/19--Couple/19_Couple_Couple_19_514.jpg",
+      "sha256": "a3f50266ac760b515256572cfa8dd27d508414e7bef174ffd0de0f000974169c"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/49--Greeting/49_Greeting_peoplegreeting_49_890.jpg",
+      "sha256": "59390b82fef3622d2e24f2a5c3922c2ddf6a6aa31142410c0dbdae71a19ebc4a"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/6--Funeral/6_Funeral_Funeral_6_292.jpg",
+      "sha256": "0a6c828d3a5bf1ba8f66fbaa0031f2b97808e6550354644ad1b64918c3a461f5"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/0--Parade/0_Parade_Parade_0_12.jpg",
+      "sha256": "5d60db2ecabca9eeab686adf1f342cad7368cf901532610a7f753bdc8e1e8214"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/25--Soldier_Patrol/25_Soldier_Patrol_Soldier_Patrol_25_467.jpg",
+      "sha256": "25a224f6da4b7a7b7fe31431b4cd441a103aa2b9eaa0159aaf766f8b57912c72"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/9--Press_Conference/9_Press_Conference_Press_Conference_9_183.jpg",
+      "sha256": "98f3125aa901cb192b0371d0534fe7e59e9ddad2108d62edc7dd3421a1e78f6d"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/51--Dresses/51_Dresses_wearingdress_51_306.jpg",
+      "sha256": "69420b0d94dd0f364697c8d27ebba8b84cbb445abd00fa9af68695f55f661957"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/12--Group/12_Group_Team_Organized_Group_12_Group_Team_Organized_Group_12_330.jpg",
+      "sha256": "b0bf9e7c8b5376d23bfeb38ff5ecfa26fc8d9c6bf6c68c500d320e46d0715864"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/55--Sports_Coach_Trainer/55_Sports_Coach_Trainer_sportcoaching_55_726.jpg",
+      "sha256": "7bb3e281eaeeacaff8d7dd7b72f0a140ef59d01aa438c28e77ef0fd4bc27459e"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/51--Dresses/51_Dresses_wearingdress_51_1035.jpg",
+      "sha256": "0582d22797180e954156b1867bc3760cadd746ee2ddde9ca363ae906dda8c5af"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/20--Family_Group/20_Family_Group_Family_Group_20_759.jpg",
+      "sha256": "7fe13a0d111539b436008d3ca3abed98297137c18f165916ba7b41f1a456a0e9"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/8--Election_Campain/8_Election_Campain_Election_Campaign_8_433.jpg",
+      "sha256": "e67719ee03f42afc49e9f6b9a469970562671ac1180c7df696ac6fad0447c63d"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/0--Parade/0_Parade_marchingband_1_309.jpg",
+      "sha256": "79b5093728fa8afd85b8ee7f9737c2bdc399336af8a62a979390a6f2ce59738f"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/35--Basketball/35_Basketball_playingbasketball_35_36.jpg",
+      "sha256": "a97f8cf4c9c18ddbc5091cc449377fc588f5f8521a2d430a7e7f4bdd0bcab0cd"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/35--Basketball/35_Basketball_Basketball_35_457.jpg",
+      "sha256": "3455c151aafc8ee8f0f67a298103b6cebf6933503fc0758d0249f99608bca3f1"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/56--Voter/56_Voter_peoplevoting_56_953.jpg",
+      "sha256": "2ca5bec755c2f98d81170cce01276feddd6edcc9010543d8f62a9aae62505a25"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/2--Demonstration/2_Demonstration_Protesters_2_618.jpg",
+      "sha256": "697af86edcd507009340c0b1fe76a58730e9b4a47190155d6318b87af2f30e3d"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/36--Football/36_Football_americanfootball_ball_36_631.jpg",
+      "sha256": "f888f31d00cb9743a77c03b1342576d61a9505a1637d26c842d1eb5d88a81d1c"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/0--Parade/0_Parade_marchingband_1_188.jpg",
+      "sha256": "ba03f380154e566b04032c4f58770843c1fef120246bf019499011cf27fa0e4c"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/13--Interview/13_Interview_Interview_2_People_Visible_13_1001.jpg",
+      "sha256": "b13992a7fa054d63b036f944a5ae5f74e0000ebb33f576c283d7e447b66045be"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/15--Stock_Market/15_Stock_Market_Stock_Market_15_676.jpg",
+      "sha256": "0a817f0c82c81df0d88d7c6937eb003267b86f6c2a12ccff38de3bfa0f2acb7d"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/40--Gymnastics/40_Gymnastics_Gymnastics_40_460.jpg",
+      "sha256": "d969f8ea61597c86c96a2dbdba2decc5521a87fb88ddee0a50f016a4549159c3"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/49--Greeting/49_Greeting_peoplegreeting_49_140.jpg",
+      "sha256": "8116a4ae2442517525ccfda9316aa9149b9d7a5db3d14f2eec188711fb820d0e"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/50--Celebration_Or_Party/50_Celebration_Or_Party_birthdayparty_50_464.jpg",
+      "sha256": "23c6711f285bf1b136fc377b57a4d1de287d31c9322a4373c87c1894f563040e"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/31--Waiter_Waitress/31_Waiter_Waitress_Waiter_Waitress_31_726.jpg",
+      "sha256": "58b775c04d203e44af9076bfdafb05c7f98533911a70ed96c76a9abd0e41ae16"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/58--Hockey/58_Hockey_icehockey_puck_58_895.jpg",
+      "sha256": "2e95b5160d2acedbe74fe72287f9f8cea43c5b4299019a0fbab916ef4d58fc67"
+    },
+    {
+      "path": "artifacts/training/20261007/data/public-detection/wider/images/test/12--Group/12_Group_Group_12_Group_Group_12_379.jpg",
+      "sha256": "57575bfb116b810e6fbaccfdd73aa241939541028788b78f783b5a9fd38a427f"
+    }
+  ],
+  "limitations": [
+    "Event-disjoint internal dev is not guaranteed person-disjoint because WIDER does not provide exhaustive person identities.",
+    "Whole train/dev images containing invalid-flagged faces are excluded; no tiny valid face box is excluded by size.",
+    "Final label-space AP uses valid boxes on every official val image. It cannot implement WIDER ignore regions and is not the official easy/medium/hard AP. Predictions are exported for the official evaluator.",
+    "WIDER faces do not establish webcam presence/second-person temporal event performance."
+  ],
+  "deployment_readiness": "Requires application/temporal webcam validation in addition to these image-level gates.",
+  "validation_images": 3226,
+  "prediction_sha256": "b5d0db959ffcf5b1a52e7d51a13a8fcf5b4e63987b39d492e3beb7aa7c9091a7",
+  "diagnostic_yolo_metrics": {
+    "metrics/precision(B)": 0.7972044307716645,
+    "metrics/recall(B)": 0.5294418450052415,
+    "metrics/mAP50(B)": 0.5951012774417946,
+    "metrics/mAP50-95(B)": 0.3064759735479284,
+    "fitness": 0.3064759735479284
+  },
+  "operating_point_audit": {
+    "face": {
+      "tp": 13636,
+      "fp": 364,
+      "fn": 25476,
+      "ignored_predictions": 0,
+      "images": 3226,
+      "positive_images": 3222,
+      "negative_images": 4,
+      "negative_image_false_positives": 1,
+      "confidence": 0.55,
+      "iou": 0.5,
+      "precision": 0.974,
+      "recall": 0.34863980364082636,
+      "negative_image_false_positive_rate": 0.25
+    }
+  },
+  "diagnostic_per_class": {
+    "face": {
+      "precision_at_max_F1": 0.7972044307716645,
+      "recall_at_max_F1": 0.5294418450052415,
+      "AP50": 0.5951012774417946,
+      "AP50_95": 0.3064759735479284
+    }
+  },
+  "heldout_metrics_sha256": "bc455365937222216e7ae3ac060d627ff4067d2edbf366c83d0fb7a405c36273",
+  "export": {
+    "path": "artifacts/training/20261007/training/runs/budget-wider-v1/face-yolo11n.onnx",
+    "sha256": "6a57352ccc0f78cbbd84c6be0f7d785ed8f24b3623c714908c7cce8c153c0662",
+    "bytes": 10564794,
+    "input": [
+      1,
+      3,
+      640,
+      640
+    ],
+    "opset": 17,
+    "names": {
+      "0": "face"
+    }
+  },
+  "cpu_parity": {
+    "status": "passed",
+    "images": 32,
+    "provider": "CPUExecutionProvider",
+    "cpu_threads": 2,
+    "max_box_coordinate_error_px": 0.004425048828125,
+    "max_score_error": 3.993511199951172e-06,
+    "tolerance_coordinate_px": 0.05,
+    "tolerance_score": 0.0005,
+    "inference_median_ms": 316.6884999955073,
+    "inference_p95_ms": 435.5940900044516,
+    "failures": [],
+    "note": "Same letterboxed tensors as runtime; raw FP32 graph parity. Latency excludes camera, preprocessing and NMS and is specific to this CPU.",
+    "versions": {
+      "onnxruntime": "1.24.3",
+      "torch": "2.6.0+cu124"
+    }
+  },
+  "gate_failures": [
+    "face recall missing, non-finite or below 0.50"
+  ],
+  "error": "Model acceptance gates failed: face recall missing, non-finite or below 0.50",
+  "publication_redaction": {
+    "host_paths": "replaced_with_logical_artifact_identifiers",
+    "artifact_identifiers_are_download_urls": false,
+    "historical_release_status_preserved": true,
+    "original_report_sha256": "6faaa03cca7a9f559ae3ba9a86f831ff010f69bb01bc616780b498fd6057b217",
+    "embedded_evidence_hashes_scope": "historical original artifacts; a redacted report copy has a different file hash"
+  }
+}

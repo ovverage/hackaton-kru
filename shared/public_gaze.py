@@ -139,21 +139,41 @@ class PublicGazeEstimator:
         self.reference = reference
         self.reference_error = float(self.np.median([o["error90_degrees"] for o in valid]))
 
-    def observe(self, frame, landmarks, mesh_features=None):
+    def observe(self, frame, landmarks, mesh_features=None, *, eye_blink=None, demo_sensitivity=False):
         result = {"direction": "UNKNOWN", "offscreen_probability": None,
                   "reference_ready": self.reference is not None,
+                  "gaze_tracking_status": "eye_state_missing",
+                  "gaze_decision_policy": "demo_sensitivity" if demo_sensitivity else "uncertainty_guard",
+                  "gaze_decision_threshold_degrees": 9.0 if demo_sensitivity else None,
+                  "gaze_decision_reason": "eye_state_missing",
                   "source": "public_gaze_model"}
-        if mesh_features is None or len(mesh_features) != 33:
+        # The full-face CNN uses only blink visibility from the legacy vector.
+        # Live callers supply measured blink scores directly, so a narrow iris
+        # or unavailable pose matrix does not disable otherwise valid crops.
+        if eye_blink is None and mesh_features is not None and len(mesh_features) == 33:
+            eye_blink = mesh_features[29:31]
+        if (eye_blink is None or len(eye_blink) != 2
+                or not all(isinstance(v, (int, float)) and math.isfinite(v) and 0 <= v <= 1
+                           for v in eye_blink)):
             return result
         # Blinks, severe eye occlusion, missing/ambiguous faces do not produce
         # apparent confidence. Caller must pass landmarks of exactly one face.
-        if mesh_features[29] > .65 or mesh_features[30] > .65:
+        if eye_blink[0] > .65 or eye_blink[1] > .65:
+            result['gaze_tracking_status'] = 'blink'
+            result['gaze_decision_reason'] = 'blink'
             return result
-        observation = self.estimate(frame, landmarks)
+        observation = self.estimate(frame, [] if landmarks is None else landmarks)
         if not observation:
+            result['gaze_tracking_status'] = 'face_landmarks_missing' if landmarks is None else 'invalid_crop'
+            result['gaze_decision_reason'] = result['gaze_tracking_status']
             return result
         result.update(observation)
-        if self.reference is None or observation["error90_degrees"] > 20:
+        result['gaze_tracking_status'] = 'tracked' if self.reference is not None else 'not_calibrated'
+        if self.reference is None:
+            result['gaze_decision_reason'] = 'reference_missing'
+            return result
+        if observation["error90_degrees"] > 20:
+            result['gaze_decision_reason'] = 'model_uncertain'
             return result
         yaw0, pitch0 = angles(self.reference)
         yaw = (observation["yaw_degrees"]-yaw0+180)%360-180
@@ -164,10 +184,18 @@ class PublicGazeEstimator:
         uncertainty = observation["error90_degrees"]+(self.reference_error or 0)
         horizontal = max(22., uncertainty)
         vertical = max(18., uncertainty)
+        if demo_sensitivity:
+            # User-selected sensitivity for the closed hackathon demo. This is
+            # an operational point-estimate trigger, not a calibrated screen
+            # boundary or a statistical accuracy claim. Visibility/reference
+            # and per-frame quality gates above still apply. RuleEngine also
+            # requires a fresh, continuous five-second observation interval.
+            horizontal = vertical = 9.0
         if abs(yaw) >= horizontal and abs(yaw)/horizontal > abs(pitch)/vertical:
             result["direction"] = "LEFT" if yaw > 0 else "RIGHT"
         elif abs(pitch) >= vertical:
             result["direction"] = "UP" if pitch > 0 else "DOWN"
-        elif abs(yaw) < 10 and abs(pitch) < 8:
+        elif abs(yaw) < (9 if demo_sensitivity else 10) and abs(pitch) < (9 if demo_sensitivity else 8):
             result["direction"] = "CENTER"
+        result['gaze_decision_reason'] = 'eligible' if result['direction'] != 'UNKNOWN' else 'uncertainty_margin'
         return result

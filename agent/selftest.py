@@ -45,6 +45,177 @@ def check_browser():
         raise RuntimeError("Packaged browser renderer did not load the offline test page")
 
 
+def check_screen_calibration():
+    """Exercise packaged profile geometry and rule wiring with known observations."""
+    from shared.screen_gaze import FIT_TARGETS, VALIDATION_TARGETS, ScreenGazeCalibration
+    from shared.rules import RuleEngine
+    from .exam_ui import gaze_warning_active, gaze_warning_text
+    from .screen_capture import TARGET_VISIBLE_SECONDS, TARGET_SETTLE_SECONDS, CAPTURE_SECONDS
+
+    def observation(x, y, *, error=16.):
+        return {
+            'yaw_degrees': 7. + (x - .5) * -32.,
+            'pitch_degrees': -3. + (y - .5) * -24.,
+            'error90_degrees': error, 'gaze_tracking_status': 'tracked',
+        }
+
+    fit = {key: [observation(x, y) for _ in range(3)] for key, x, y in FIT_TARGETS}
+    validation = {key: [observation(x, y) for _ in range(3)] for key, x, y in VALIDATION_TARGETS}
+    assert len(fit) == 5 and len(validation) == 4 and not set(fit).intersection(validation)
+    profile = ScreenGazeCalibration()
+    result = profile.fit(fit, validation)
+    assert result['ready'] and result['quality']['validation_max_error'] < 1e-10
+    assert not result['quality']['statistical_accuracy_guarantee']
+    assert profile.observe(observation(.5, .5))['screen_direction'] == 'SCREEN'
+    assert profile.observe(observation(.95, .95))['screen_direction'] == 'SCREEN'
+    boundary = profile.observe(observation(.05 - 6. / 32., .5))
+    assert boundary['screen_direction'] == 'UNKNOWN' and boundary['screen_reason'] == 'boundary_margin'
+    assert abs(boundary['screen_distance_degrees'] - 6.) < 1e-8
+
+    def events_for(direction):
+        engine = RuleEngine()
+        engine.start()
+        events = []
+        for index in range(27):
+            new_events = engine.observe(index * .2, direction=direction, faces=1)
+            if index * .2 < 5:
+                assert not any(event['type'].startswith('GAZE_') for event in new_events)
+            events.extend(new_events)
+        return engine, events
+
+    for x, y, direction in ((-.3, .5, 'LEFT'), (1.3, .5, 'RIGHT'), (.5, 1.3, 'DOWN')):
+        outside = profile.observe(observation(x, y))
+        assert outside['screen_direction'] == direction and outside['screen_distance_degrees'] > 6
+        engine, events = events_for(outside['screen_direction'])
+        assert sum(event['type'] == 'GAZE_' + direction for event in events) == 1
+        assert engine.state.counts()[direction] == 1
+
+    upward = profile.observe(observation(.5, -.3))
+    assert upward['screen_observed_direction'] == 'UP'
+    engine, _ = events_for(upward['screen_direction'])
+    assert not any(engine.state.counts().values())
+    uncertain = profile.observe(observation(-.3, .5, error=30.))
+    assert uncertain['screen_observed_direction'] == 'LEFT'
+    assert uncertain['screen_direction'] == 'UNKNOWN' and uncertain['screen_reason'] == 'model_uncertain'
+    engine, _ = events_for(uncertain['screen_direction'])
+    assert not any(engine.state.counts().values())
+    snapshot = dict(state=dict(lifecycle='RUNNING', access='OPEN'), camera=True,
+        gaze_diagnostics=dict(source='public_gaze_model', reference_ready=True,
+            gaze_tracking_status='tracked', direction=uncertain['screen_direction'],
+            gaze_observed_direction=uncertain['screen_observed_direction'],
+            gaze_observation_uncertain=True))
+    assert gaze_warning_active(snapshot) and 'Предварительная оценка' in gaze_warning_text(snapshot)
+    assert TARGET_VISIBLE_SECONDS == 3 and TARGET_SETTLE_SECONDS + CAPTURE_SECONDS == 3
+    from .calibration_diagnostics import compact_calibration_report, format_calibration_failure
+    failure = {'ready': False, 'error': 'SCREEN_ANGULAR_SPAN_TOO_SMALL',
+               'quality': {'yaw_span_degrees': 0., 'pitch_span_degrees': 0.},
+               'frame': 'must not be retained'}
+    assert 'frame' not in compact_calibration_report(failure)
+    assert 'противоположные края' in format_calibration_failure(failure)
+    assert check_target_retries()
+    return {'adaptive_screen_calibration': True, 'screen_margin_degrees': 6,
+            'screen_target_seconds': TARGET_VISIBLE_SECONDS,
+            'screen_nominal_seconds': TARGET_VISIBLE_SECONDS * 9,
+            'screen_settle_seconds': TARGET_SETTLE_SECONDS, 'screen_failure_diagnostics': True,
+            'screen_automatic_target_retry': True,
+            'screen_targets': 9, 'screen_fit_targets': 5, 'screen_validation_targets': 4,
+            'screen_rule_timer_seconds': 5, 'screen_uncertain_display_without_strike': True,
+            'screen_up_banner_only': True}
+
+
+def check_target_retries():
+    """Exercise packaged target replacement with a synthetic clock, without camera I/O."""
+    from types import SimpleNamespace
+    from threading import Event
+    from . import screen_capture
+
+    session = screen_capture.ScreenCaptureSession()
+    clock = SimpleNamespace(at=100.)
+    clock.monotonic = lambda: clock.at
+    signature = ('synthetic-screen',)
+    tokens = []
+
+    class Camera:
+        token = None
+        point = (.5, .5)
+        pending = None
+        sequence = 0
+
+        def begin_screen_calibration(self, display):
+            assert display == signature
+
+        def invalidate_screen_calibration(self, reason):
+            raise AssertionError(reason)
+
+        def target(self, token, phase, point, count, required):
+            self.token, self.point = token, point
+            tokens.append(token)
+            self.pending = clock.at + screen_capture.TARGET_SETTLE_SECONDS
+
+        def read(self):
+            clock.at += .1
+            self.sequence += 1
+            if self.pending is not None and clock.at >= self.pending:
+                self.pending = None
+                session.presented(self.token, signature)
+
+        def screen_calibration_sample(self):
+            x, y = self.point
+            noise = (10 if self.sequence % 2 else -10) if self.token == 1 else 0
+            return dict(at=clock.at, frame_id=str(self.sequence), rotation=None,
+                        gaze=dict(yaw_degrees=7 + (x - .5) * -32 + noise,
+                                  pitch_degrees=-3 + (y - .5) * -24, error90_degrees=16))
+
+        def install_screen_calibration(self, profile, center, rotations, display):
+            return profile.ready and display == signature
+
+    previous_clock = screen_capture.time
+    screen_capture.time = clock
+    try:
+        camera = Camera()
+        result = session.run(camera, signature, Event(), target=camera.target,
+                             progress=lambda *args: None, read=camera.read)
+        assert result['ready'] and result['capture']['retry_count'] == 1
+        assert tokens == [0, 1, 10, 2, 3, 4, 5, 6, 7, 8]
+        return True
+    finally:
+        screen_capture.time = previous_clock
+
+
+def check_frame_transport():
+    """Exercise the bundled latest-frame owner without opening a camera."""
+    from queue import Queue
+    import numpy as np
+    from .latest_frame import LatestFrameSource
+
+    class SyntheticCapture:
+        def __init__(self):
+            self.frames = Queue()
+            self.released = 0
+
+        def read(self):
+            return self.frames.get(timeout=2)
+
+        def release(self):
+            self.released += 1
+
+    capture = SyntheticCapture()
+    source = LatestFrameSource(capture)
+    try:
+        capture.frames.put((True, np.zeros((12, 16, 3), np.uint8)))
+        first = source.read(timeout=1)
+        capture.frames.put((True, np.ones((12, 16, 3), np.uint8)))
+        second = source.read(after_sequence=first.sequence, timeout=1)
+        assert second.sequence > first.sequence and second.captured_at >= first.captured_at
+        assert source.latest() is second and int(first.frame.sum()) == 0
+        assert int(second.frame.sum()) == 12 * 16 * 3
+    finally:
+        source.close(timeout=0)
+        capture.frames.put((False, None))
+        assert source.close(timeout=1) and capture.released == 1
+    return True
+
+
 
 def run(output):
     from .install_guard import hold_installation_mutex
@@ -78,6 +249,94 @@ def run(output):
     assert gaze.observe(None)['direction'] == 'UNKNOWN'
     probabilities = gaze.probabilities([0.] * 33)
     assert len(probabilities) == 5 and abs(sum(probabilities)-1) < 1e-6
+    public_gaze_check = None
+    public_path = phone_path.parent / 'gaze-public.onnx'
+    if public_path in assets:
+        from shared.public_gaze import PublicGazeEstimator
+        estimator = PublicGazeEstimator(public_path)
+        tensor = np.zeros((1, 3, 224, 224), dtype=np.float32)
+        output_values = estimator.session.run(['gaze'], {'face': tensor})[0]
+        assert output_values.shape == (1, 4) and np.isfinite(output_values).all()
+        assert abs(float(np.linalg.norm(output_values[0, :3])) - 1) < 1e-4
+        assert estimator.reference is None
+        assert estimator.observe(frame, [], None)['direction'] == 'UNKNOWN'
+        from shared.head_pose import HeadPoseObserver
+        from shared.gaze_feedback import public_gaze_feedback
+        head = HeadPoseObserver()
+        neutral = [0.] * 33
+        neutral[12:21] = np.eye(3).ravel().tolist()
+        assert head.set_reference([neutral] * 25)
+        turned = list(neutral)
+        angle = np.deg2rad(30)
+        turned[12:21] = [np.cos(angle), 0., np.sin(angle), 0., 1., 0., -np.sin(angle), 0., np.cos(angle)]
+        assert head.observe(turned)['head_direction'] == 'RIGHT'
+        feedback = public_gaze_feedback(
+            {'yaw_degrees': 25., 'pitch_degrees': 0., 'error90_degrees': 18., 'direction': 'UNKNOWN'},
+            [0., 0., -1.],
+        )
+        assert feedback['gaze_observed_direction'] == 'LEFT' and feedback['gaze_observation_uncertain']
+        for axis, expected in (('yaw_degrees', 'LEFT'), ('pitch_degrees', 'UP')):
+            sample = {'yaw_degrees': 0., 'pitch_degrees': 0., 'error90_degrees': 18., 'direction': 'UNKNOWN'}
+            sample[axis] = 9.
+            feedback = public_gaze_feedback(sample, [0., 0., -1.])
+            assert feedback['gaze_observed_direction'] == expected
+            assert feedback['gaze_display_threshold_degrees'] == 9
+            assert sample['direction'] == 'UNKNOWN'
+        # Direct matrices work when the irises/legacy feature vector are absent.
+        head.clear()
+        assert head.set_reference_rotations([np.eye(4)] * 25)
+        angle = np.deg2rad(75)
+        profile = np.eye(4)
+        profile[:3, :3] = [[np.cos(angle), 0., np.sin(angle)], [0., 1., 0.], [-np.sin(angle), 0., np.cos(angle)]]
+        observation = head.observe_rotation(profile)
+        assert observation['head_direction'] == 'RIGHT' and observation['head_extreme']
+        lost = head.observe_rotation(None)
+        assert lost['head_tracking_status'] == 'unavailable' and lost['head_yaw'] is None
+        from shared.gaze_display_memory import GazeDisplayMemory
+        display = GazeDisplayMemory()
+        display.update(feedback, at=0., blink=False, single_face=True, reference_ready=True)
+        held = display.update({'gaze_observed_direction': 'UNKNOWN'}, at=.1, blink=True,
+                              single_face=True, reference_ready=True)
+        assert held['gaze_display_stale'] and held['gaze_feedback_reason'] == 'blink_hold'
+        # Exercise the live demo policy with a controlled sensor output. This
+        # validates the decision wiring, not real-image angular accuracy.
+        from unittest.mock import patch
+        from shared.rules import RuleEngine
+        from .desktop import public_gaze_status_text
+        estimator.reference = [0., 0., -1.]
+        estimator.reference_error = 16.
+        sample = {'vector': [0., 0., -1.], 'yaw_degrees': 25., 'pitch_degrees': 0.,
+                  'error90_degrees': 16., 'source': 'public_gaze_model'}
+        with patch.object(estimator, 'estimate', return_value=sample):
+            assert estimator.observe(frame, [], eye_blink=[0., 0.])['direction'] == 'UNKNOWN'
+            policy = estimator.observe(frame, [], eye_blink=[0., 0.], demo_sensitivity=True)
+        assert policy['direction'] == 'LEFT' and policy['gaze_decision_threshold_degrees'] == 9
+        engine = RuleEngine()
+        engine.start()
+        events = []
+        for index in range(27):
+            events.extend(engine.observe(index * .2, direction=policy['direction'], faces=1))
+        assert sum(event.get('type') == 'GAZE_LEFT' for event in events) == 1
+        policy.update(public_gaze_feedback(policy, estimator.reference))
+        ui = public_gaze_status_text(policy, active=True, gaze_seconds=2.)
+        assert '25.0°' in ui and '2.0 / 5' in ui
+        from .exam_ui import gaze_warning_active, gaze_warning_text
+        for direction, word in (('LEFT', 'влево'), ('RIGHT', 'вправо'), ('UP', 'вверх'), ('DOWN', 'вниз')):
+            warning_snapshot = dict(state=dict(lifecycle='RUNNING', access='OPEN'), camera=True,
+                gaze_diagnostics=dict(source='public_gaze_model', reference_ready=True,
+                    gaze_tracking_status='tracked', direction='UNKNOWN',
+                    gaze_observed_direction=direction, gaze_observation_uncertain=True))
+            assert gaze_warning_active(warning_snapshot)
+            banner_text = gaze_warning_text(warning_snapshot)
+            assert word in banner_text and 'Предварительная оценка' in banner_text
+        public_gaze_check = {'onnx_inference': True, 'explicit_reference_required': True,
+                             'separate_head_pose': True, 'uncertain_gaze_feedback': True,
+                             'display_threshold_degrees': 9, 'independent_head_matrix': True,
+                             'blink_display_continuity': True,
+                             'demo_sensitivity_timer': True, 'numeric_angles_ui': True,
+                             'uncertain_direction_banners': True,
+                             'kind': 'synthetic packaged CPU smoke; no physical calibration or accuracy claim'}
+        public_gaze_check.update(check_screen_calibration())
     with vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(
         base_options=python.BaseOptions(model_asset_path=str(face_path)), num_faces=2,
     )) as face:
@@ -105,7 +364,10 @@ def run(output):
               "installer_mutex": installer_mutex, "models_verified": True, "onnx_inference": True, "face_landmarker": True,
               "yolo_face_inference": True, "gaze_forest": True, "model_version": MODEL_VERSION,
               "model_files": {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in assets},
-              "h264_encode_decode": True, "phone_cpu_median_ms": round(statistics.median(times[2:]) * 1000, 2)}
+              "h264_encode_decode": True, "latest_frame_capture": check_frame_transport(),
+              "phone_cpu_median_ms": round(statistics.median(times[2:]) * 1000, 2)}
+    if public_gaze_check:
+        report['public_gaze'] = public_gaze_check
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     Path(output).write_text(json.dumps(report, indent=2), encoding="utf-8")
     return report

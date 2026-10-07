@@ -16,7 +16,7 @@ REASONS = {
     "ENVIRONMENT_ATTEMPT": "Попытка выйти из разрешённого окна или использовать запрещённую клавишу.",
     "SERVER_UNAVAILABLE": "Связь с сервером отсутствует более 10 секунд.",
     "REMOTE_SESSION": "Обнаружен сеанс удалённого рабочего стола.",
-    "DISPLAY_CHANGED": "Изменилось количество подключённых экранов.",
+    "DISPLAY_CHANGED": "Изменился экран или его масштаб. Повторите настройку камеры по точкам.",
     "BROWSER_ATTEMPT": "Открыт сайт за пределами разрешённого адреса.",
     "CAMERA_FROZEN": "Изображение камеры не меняется более 5 секунд.",
 }
@@ -64,7 +64,7 @@ def present(snapshot):
         "tone": tone,
         "badge": badge,
         "can_open": lifecycle == "RUNNING" and not locked,
-        "can_calibrate": (lifecycle != "RUNNING" or (locked and state.get("reason") in ("AGENT_RESTARTED", "CAMERA_UNAVAILABLE")))
+        "can_calibrate": (lifecycle != "RUNNING" or (locked and state.get("reason") in ("AGENT_RESTARTED", "CAMERA_UNAVAILABLE", "DISPLAY_CHANGED")))
         and not snapshot.get("camera_preparing", False),
         "locked": locked,
         "complete": lifecycle == "COMPLETED",

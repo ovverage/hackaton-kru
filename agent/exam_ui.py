@@ -32,8 +32,19 @@ def text(value, size=14):
 
 
 def gaze_warning_active(snap):
-    """A visual nudge is immediate; rule strikes still use the five-second timer."""
+    """Show fresh observed motion; this UI nudge does not decide rule strikes."""
     gaze = snap.get("gaze_diagnostics") or {}
+    if gaze.get("source") == "public_gaze_model":
+        away = (
+            gaze.get("gaze_tracking_status") == "tracked"
+            and not gaze.get("gaze_display_stale")
+            and gaze.get("gaze_observed_direction") in ("DOWN", "LEFT", "RIGHT", "UP")
+        )
+    else:
+        away = (
+            gaze.get("attention_away")
+            or gaze.get("direction") in ("DOWN", "LEFT", "RIGHT", "UP")
+        )
     return bool(
         snap["state"]["lifecycle"] == "RUNNING"
         and snap["state"]["access"] == "OPEN"
@@ -41,11 +52,68 @@ def gaze_warning_active(snap):
         and not snap.get("camera_fault")
         and not snap.get("recognition_paused")
         and gaze.get("reference_ready")
-        and (
-            gaze.get("attention_away")
-            or gaze.get("direction") in ("DOWN", "LEFT", "RIGHT", "UP")
-        )
+        and away
     )
+
+
+def gaze_warning_text(snap):
+    """Name the displayed camera-image direction without implying a penalty."""
+    gaze = snap.get("gaze_diagnostics") or {}
+    instruction = "Верните взгляд на монитор"
+    if gaze.get("source") != "public_gaze_model":
+        return instruction
+    direction = {
+        "LEFT": "влево", "RIGHT": "вправо", "UP": "вверх", "DOWN": "вниз",
+    }.get(gaze.get("gaze_observed_direction"))
+    if direction is None:
+        return instruction
+    prefix = "Предварительная оценка: взгляд" if gaze.get("gaze_observation_uncertain", True) else "Взгляд"
+    return f"{prefix} {direction} (по изображению камеры)\n{instruction}"
+
+
+def calibrated_exam_screen(camera, screens):
+    """Resolve the actual calibrated QScreen, including its geometry and DPI."""
+    from .screen_calibration import screen_signature
+    signature = getattr(camera, 'screen_signature', None)
+    if signature is None:
+        return None
+    return next((screen for screen in screens if screen_signature(screen) == signature), None)
+
+
+def place_exam_browser(browser, screen):
+    """Choose the calibrated display before the native browser becomes visible."""
+    if screen is not None:
+        browser.winId()
+        browser.windowHandle().setScreen(screen)
+        browser.setGeometry(screen.geometry())
+    browser.showFullScreen()
+
+
+def calibration_overlay_handles(surfaces):
+    """Both setup and its fullscreen target dialog are permitted while locked."""
+    handles = []
+    for surface in surfaces:
+        calibration = surface.calibration
+        if calibration is not None and calibration.isVisible():
+            handles.append(int(calibration.winId()))
+            targets = getattr(calibration, 'screen_dialog', None)
+            if targets is not None and targets.isVisible():
+                handles.append(int(targets.winId()))
+    return handles
+
+
+def raise_calibration_overlays(surfaces):
+    """Keep target dots above every lock surface without activating a window."""
+    target_dialogs = []
+    for surface in surfaces:
+        calibration = surface.calibration
+        if calibration is not None and calibration.isVisible():
+            calibration.raise_()
+            targets = getattr(calibration, 'screen_dialog', None)
+            if targets is not None and targets.isVisible():
+                target_dialogs.append(targets)
+    for targets in target_dialogs:
+        targets.raise_()
 
 
 class GazeWarning(QWidget):
@@ -71,6 +139,7 @@ class GazeWarning(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(26, 15, 26, 15)
         self.message = QLabel("Верните взгляд на монитор")
+        self.message.setWordWrap(True)
         self.message.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.message.setTextFormat(Qt.TextFormat.PlainText)
         layout.addWidget(self.message)
@@ -78,7 +147,14 @@ class GazeWarning(QWidget):
     def place(self, screen):
         geometry = screen.geometry()
         width = min(720, max(360, geometry.width() - 48))
-        height = 68
+        # Apply the stylesheet font before measuring the first shown banner.
+        # Uncertain feedback can wrap onto three lines at the actual font size.
+        self.ensurePolished()
+        self.message.ensurePolished()
+        layout_margins, frame_margins = self.layout().contentsMargins(), self.contentsMargins()
+        horizontal = layout_margins.left() + layout_margins.right() + frame_margins.left() + frame_margins.right()
+        vertical = layout_margins.top() + layout_margins.bottom() + frame_margins.top() + frame_margins.bottom()
+        height = max(68, self.message.heightForWidth(width - horizontal) + vertical)
         self.setGeometry(
             geometry.x() + (geometry.width() - width) // 2,
             geometry.y() + 28,
@@ -188,7 +264,7 @@ class LockScreen(QWidget):
         )
         self.form.setVisible(locked)
         self.recover.setVisible(locked and snap["state"].get("reason") in (
-            "AGENT_RESTARTED", "CAMERA_UNAVAILABLE", "CAMERA_FROZEN"
+            "AGENT_RESTARTED", "CAMERA_UNAVAILABLE", "CAMERA_FROZEN", "DISPLAY_CHANGED"
         ))
         marker = (
             snap["state"]["lock_id"],
@@ -215,6 +291,7 @@ class LockScreen(QWidget):
                 "GAZE_DOWN": "Длительный взгляд вниз",
                 "GAZE_LEFT": "Длительный взгляд влево",
                 "GAZE_RIGHT": "Длительный взгляд вправо",
+                "HEAD_TURN_REVIEW": "Устойчивый поворот головы — на проверку",
             }.get(event["type"], label)
             self.evidence_layout.addWidget(
                 text(f"{happened}  ·  {label}", 16)
@@ -427,8 +504,64 @@ class ExamController(QObject):
             self.browser = None
             self.browser_exam = None
 
+    def invalidate_exam_monitor(self):
+        camera = getattr(self.agent, 'camera', None)
+        if camera is not None:
+            camera.request_screen_invalidation('SCREEN_CHANGED')
+        self.agent.capabilities['gaze'] = False
+        if (self.agent.engine.state.lifecycle == 'RUNNING'
+                and self.agent.engine.state.access == 'OPEN'):
+            self.agent.security_event('DISPLAY_CHANGED')
+
+    def check_exam_monitor(self, screens):
+        """A connected calibrated monitor alone is insufficient: the test uses it."""
+        camera = getattr(self.agent, 'camera', None)
+        if getattr(camera, 'screen_signature', None) is None:
+            return True
+        expected = calibrated_exam_screen(camera, screens)
+        if expected is None:
+            self.invalidate_exam_monitor()
+            return False
+        if self.browser is not None:
+            handle = self.browser.windowHandle()
+            if (handle is not None and handle.screen() is not expected
+                    and self.agent.engine.state.access == 'LOCKED'
+                    and not getattr(camera, 'requires_gaze_reference', True)):
+                # A newly completed recovery may choose another monitor. Move
+                # only our browser while lock overlays still protect the exam.
+                place_exam_browser(self.browser, expected)
+                handle = self.browser.windowHandle()
+            if handle is None or handle.screen() is not expected:
+                self.invalidate_exam_monitor()
+                return False
+            return True
+        selected = self.agent.guard_target or {}
+        if self.guard is None or selected.get('desktop') or selected.get('builtin_url'):
+            return True
+        from .windows_guard import WindowTarget
+        target = WindowTarget(**selected) if 'hwnd' in selected else next(
+            (window for window in self.guard.windows()
+             if window.pid == selected.get('launched_pid')
+             and window.executable.casefold() == selected.get('executable', '').casefold()), None,
+        )
+        # The existing target watchdog owns missing/reused handles. There is no
+        # current foreign window whose display can be evaluated in that case.
+        if target is None or not self.guard.valid(target):
+            return True
+        try:
+            native = expected.nativeInterface()
+            expected_monitor = int(native.handle())
+            actual_monitor = self.guard.monitor_handle(target.hwnd)
+            matches = expected_monitor != 0 and expected_monitor == actual_monitor
+        except (AttributeError, TypeError, ValueError, OSError, RuntimeError):
+            matches = False
+        if not matches:
+            self.invalidate_exam_monitor()
+        return matches
+
     def tick(self):
         snap = self.agent.snapshot()
+        screens = QApplication.screens()
         if self.browser and snap["state"]["lifecycle"] == "COMPLETED":
             self.release()
         selected = self.agent.guard_target
@@ -444,18 +577,22 @@ class ExamController(QObject):
                 selected["builtin_url"], self.agent.security_event
             )
             self.browser_exam = snap["exam_id"]
-            self.browser.showFullScreen()
+            expected = calibrated_exam_screen(getattr(self.agent, 'camera', None), screens)
+            place_exam_browser(self.browser, expected)
             if self.guard:
                 self.agent.guard_target = self.guard.info(
                     int(self.browser.winId())
                 ).public()
-        screens = QApplication.screens()
+        if snap['state']['lifecycle'] == 'RUNNING':
+            self.check_exam_monitor(screens)
+            snap = self.agent.snapshot()
         while len(self.gaze_warnings) < len(screens):
             self.gaze_warnings.append(GazeWarning())
         warn_about_gaze = gaze_warning_active(snap)
         for i, screen in enumerate(screens):
             warning = self.gaze_warnings[i]
             if warn_about_gaze:
+                warning.message.setText(gaze_warning_text(snap))
                 warning.place(screen)
                 warning.show()
                 warning.raise_()
@@ -541,10 +678,8 @@ class ExamController(QObject):
             previous = self.guard.locked
             result = self.guard.tick(
                 locked=locked,
-                overlays=[int(s.winId()) for s in self.surfaces[: len(screens)]] + [
-                    int(s.calibration.winId()) for s in self.surfaces
-                    if s.calibration and s.calibration.isVisible()
-                ],
+                overlays=[int(s.winId()) for s in self.surfaces[: len(screens)]]
+                + calibration_overlay_handles(self.surfaces),
             )
             if missing_target:
                 result = "TARGET_CLOSED"
@@ -560,6 +695,7 @@ class ExamController(QObject):
                 if not previous:
                     self.surfaces[0].activateWindow()
                     self.surfaces[0].password.setFocus()
+                raise_calibration_overlays(self.surfaces)
             elif not locked and not desktop:
                 self.guard.u.SetWindowPos(self.guard.target.hwnd, -1, 0, 0, 0, 0, 0x13)
                 if previous:

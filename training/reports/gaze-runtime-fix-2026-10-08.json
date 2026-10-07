@@ -1,0 +1,239 @@
+{
+  "recorded_utc": "2026-10-07T19:28:05.395425+00:00",
+  "version": "0.4.11-hackathon",
+  "user_request": "Display gaze/head deviations from9degrees; reduce missing frontal gaze; handle strong head rotations.",
+  "confirmed_code_cause": "Live full-face CNN and head pose were gated by the33-element legacy vector, including iris geometry unrelated to the CNN face crop.",
+  "changes": [
+    "Display-only eye and head deviation threshold9degrees inclusive, relative to explicit centre calibration.",
+    "Full-face CNN now accepts current measured blink scores independently of legacy iris/head features; still requires one visible face and measured open eyes.",
+    "Direct finite proper3x3/4x4 head rotation matrices;25 explicit stable centre poses; independently tracked from eye/blink state.",
+    "Strong-turn indication at45degrees yaw or35degrees pitch when an actual pose matrix exists.",
+    "Blink display continuity capped350ms and explicitly stale; strict gaze staysUNKNOWN; ordinary missing signals clear remembered display.",
+    "After a freshly observed extreme turn, continuous pose loss for2seconds while one face remains produces a review-only tracking-loss event with no current direction/angle.",
+    "Tracking-loss and visibility explanations in UI; camera-image direction convention retained."
+  ],
+  "invariants": [
+    "No retraining, checkpoint reselection or final-test threshold tuning.",
+    "ONNX weights, crop/preprocessing, raw inference and calibration geometry unchanged; original AST outsideobserve() verified identical.",
+    "Strict eye-gaze quality gates and strike thresholds unchanged; display estimates are not violation evidence.",
+    "Existing5second head-turn review threshold22degrees yaw/18degrees pitch remains independent of9degree display.",
+    "Public0.4.8 download and server services untouched by this private release."
+  ],
+  "validation": {
+    "full_suite": "550 passed,26 skipped; before the final UI/invalid-blink test additions",
+    "final_focused": "50 passed: independent input routing, UI status, bounded blink memory",
+    "independent_code_review": "No actionable findings;160 focused checks passed; raw inference AST unchanged",
+    "ruff": "passed",
+    "packaged_self_test": {
+      "result": "PASS",
+      "status": "passed",
+      "version": "0.4.11-hackathon",
+      "platform": "Windows-11-10.0.28000-SP0",
+      "frozen": true,
+      "browser_renderer": true,
+      "kind": "synthetic packaging test; no webcam or accuracy claim",
+      "installer_mutex": true,
+      "models_verified": true,
+      "onnx_inference": true,
+      "face_landmarker": true,
+      "yolo_face_inference": true,
+      "gaze_forest": true,
+      "model_version": "2026.10.07.gaze-demo",
+      "model_files": {
+        "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+        "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+        "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+        "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+        "gaze-public.onnx": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+        "gaze-public.json": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431"
+      },
+      "h264_encode_decode": true,
+      "phone_cpu_median_ms": 53.22,
+      "public_gaze": {
+        "onnx_inference": true,
+        "explicit_reference_required": true,
+        "separate_head_pose": true,
+        "uncertain_gaze_feedback": true,
+        "display_threshold_degrees": 9,
+        "independent_head_matrix": true,
+        "blink_display_continuity": true,
+        "kind": "synthetic packaged CPU smoke; no physical calibration or accuracy claim"
+      }
+    },
+    "portable_self_test": {
+      "checked_utc": "2026-10-07T19:27:40.827770+00:00",
+      "status": "passed",
+      "executable_sha256": "d0f314f897032f7aa0e2fab33f081653ec2622db1404c1d6ecb6679aefb06ab1",
+      "working_directory": "artifacts/private-builds/portable-check/bde04e718565",
+      "only_executable_supplied": true,
+      "external_models_directory": false,
+      "python_on_path": false,
+      "path": "environment-identifiers/portable-self-test-system-path",
+      "result": {
+        "result": "PASS",
+        "status": "passed",
+        "version": "0.4.11-hackathon",
+        "platform": "Windows-11-10.0.28000-SP0",
+        "frozen": true,
+        "browser_renderer": true,
+        "kind": "synthetic packaging test; no webcam or accuracy claim",
+        "installer_mutex": true,
+        "models_verified": true,
+        "onnx_inference": true,
+        "face_landmarker": true,
+        "yolo_face_inference": true,
+        "gaze_forest": true,
+        "model_version": "2026.10.07.gaze-demo",
+        "model_files": {
+          "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+          "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+          "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+          "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+          "gaze-public.onnx": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+          "gaze-public.json": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431"
+        },
+        "h264_encode_decode": true,
+        "phone_cpu_median_ms": 55.99,
+        "public_gaze": {
+          "onnx_inference": true,
+          "explicit_reference_required": true,
+          "separate_head_pose": true,
+          "uncertain_gaze_feedback": true,
+          "display_threshold_degrees": 9,
+          "independent_head_matrix": true,
+          "blink_display_continuity": true,
+          "kind": "synthetic packaged CPU smoke; no physical calibration or accuracy claim"
+        }
+      },
+      "scope": "Frozen EXE in isolated working directory; not a clean OS or physical camera acceptance"
+    },
+    "binary_audit": {
+      "checked_utc": "2026-10-07T19:27:20.183612+00:00",
+      "version": "0.4.11-hackathon",
+      "executable": "artifacts/private-builds/deliverables/Qorgau-Hackathon-20261007T192220-de7ecb/Qorgau-Hackathon.exe",
+      "stage": "artifacts/private-builds/hackathon-build/20261007T192220-de7ecb",
+      "status": "passed",
+      "scope": "Read-only frozen archive audit; no camera or accuracy claim",
+      "models": {
+        "yolo11n.onnx": {
+          "sha256": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+          "bytes": 10564786,
+          "matches": true
+        },
+        "face_landmarker.task": {
+          "sha256": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+          "bytes": 3758596,
+          "matches": true
+        },
+        "face_yolov8n.onnx": {
+          "sha256": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+          "bytes": 12238336,
+          "matches": true
+        },
+        "gaze-direction.json": {
+          "sha256": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+          "bytes": 2158264,
+          "matches": true
+        },
+        "gaze-public.onnx": {
+          "sha256": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+          "bytes": 4314328,
+          "matches": true
+        },
+        "gaze-public.json": {
+          "sha256": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431",
+          "bytes": 7021,
+          "matches": true
+        }
+      },
+      "modules": {
+        "agent.vision": {
+          "source_sha256": "21e4d95e832f304db0407dd336472d1694205478adda318761b9eb9026a99c76",
+          "bytecode_signature_sha256": "8d06f610e69d8e21fde54ec0c0b13f3037e06daf08c8684da2cb7f6ce6fb5b80",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "agent.client": {
+          "source_sha256": "73f22c4fc3fd95dec64755972ff9608d08d1edabde763d7f9de403692c4c3ccf",
+          "bytecode_signature_sha256": "56076eb37a0573720424232f826175f7ef7134a8d27c46053b25b8f00d12ecee",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "agent.desktop": {
+          "source_sha256": "1e46acf6e6470d5cd4827b0f5df529bd9f7fff6e20a1b9146bf952a2bf0be808",
+          "bytecode_signature_sha256": "30653d54790d874cc080276b4b11b759ef0282aca13944acf7a71a622540f8c0",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "agent.selftest": {
+          "source_sha256": "8703aa85f267f396125cf0027f476ea4978ed5285c4c549ae7f9695510209e59",
+          "bytecode_signature_sha256": "262a5ce345f175c6d0f7e77102edf58375b3955c936200a6e6946292da37a534",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "shared.public_gaze": {
+          "source_sha256": "dfa8782e67ff12b4db1b36c5608c267cf046f0448119347e42eb9247c83edadc",
+          "bytecode_signature_sha256": "619830c2022d9c7af3990d0f0fac8bace2c096899582b201f892c13d37786a4f",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "shared.head_pose": {
+          "source_sha256": "6a33ad2daf840ecf71a89b29f906ae310cbbd8d12d115ef14b14b6fac8407d05",
+          "bytecode_signature_sha256": "a0e0697a54ab9b8017a362b8bf3d5e34ad0dc3a358c978c0187391b980c69b12",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "shared.head_review": {
+          "source_sha256": "ce9b839c2ef8746343f80a8dba569f2cf4f37e2bf71a353726e9cbfc80a9c835",
+          "bytecode_signature_sha256": "e7cfc8f6d9727ca9c8f6832c1973d52976cc1be96a3910260a6b7b19d807e824",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "shared.gaze_feedback": {
+          "source_sha256": "02d805468f2e29a1049408237f23a2544da361834ee5857086b46c8643f8877c",
+          "bytecode_signature_sha256": "b9d4a5494d0efa7f97ebff664eabf0795b418d91774e4d32472538df03cc198e",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "shared.gaze_display_memory": {
+          "source_sha256": "f769cdd9d82fd034ce176d49873f5169f69d15831b3b66cd330213d00220cc83",
+          "bytecode_signature_sha256": "aa5d9d125ff97aac20d7a242b66d241cdc1c06ef87b77a800239a192a89638a6",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        }
+      },
+      "executable_sha256": "d0f314f897032f7aa0e2fab33f081653ec2622db1404c1d6ecb6679aefb06ab1",
+      "manifest_sha256": "9e25aa349f6361420d418ff380a82115a742f6983f704f838f8b70f73247016a"
+    },
+    "physical_webcam_acceptance": "pending user verification"
+  },
+  "limitations": [
+    "9degrees is a display trigger, not a guaranteed angular measurement accuracy or a calibrated monitor boundary.",
+    "Synthetic70/85degree yaw and60degree pitch tests prove geometry handling only; they do not establish a maximum detectable physical head turn.",
+    "If MediaPipe loses face landmarks/pose, current head angle and eye direction remain unknown; prior pose is retained only as labelled event history.",
+    "Frontal availability improvement is established for the removed legacy-feature dependency; live performance requires camera verification."
+  ],
+  "artifact": {
+    "path": "artifacts/private-builds/deliverables/Qorgau-Hackathon-20261007T192220-de7ecb/Qorgau-Hackathon.exe",
+    "sha256": "d0f314f897032f7aa0e2fab33f081653ec2622db1404c1d6ecb6679aefb06ab1",
+    "bytes": 403249778
+  },
+  "source_sha256": {
+    "agent/vision.py": "21e4d95e832f304db0407dd336472d1694205478adda318761b9eb9026a99c76",
+    "agent/client.py": "73f22c4fc3fd95dec64755972ff9608d08d1edabde763d7f9de403692c4c3ccf",
+    "agent/desktop.py": "1e46acf6e6470d5cd4827b0f5df529bd9f7fff6e20a1b9146bf952a2bf0be808",
+    "agent/selftest.py": "8703aa85f267f396125cf0027f476ea4978ed5285c4c549ae7f9695510209e59",
+    "shared/public_gaze.py": "dfa8782e67ff12b4db1b36c5608c267cf046f0448119347e42eb9247c83edadc",
+    "shared/head_pose.py": "6a33ad2daf840ecf71a89b29f906ae310cbbd8d12d115ef14b14b6fac8407d05",
+    "shared/head_review.py": "ce9b839c2ef8746343f80a8dba569f2cf4f37e2bf71a353726e9cbfc80a9c835",
+    "shared/gaze_feedback.py": "02d805468f2e29a1049408237f23a2544da361834ee5857086b46c8643f8877c",
+    "shared/gaze_display_memory.py": "f769cdd9d82fd034ce176d49873f5169f69d15831b3b66cd330213d00220cc83"
+  },
+  "publication_redaction": {
+    "host_paths": "replaced_with_logical_artifact_identifiers",
+    "artifact_identifiers_are_download_urls": false,
+    "historical_release_status_preserved": true,
+    "original_report_sha256": "4284c9c1da29f334ae6c071259b74aa336a3fa3ce10b86b0e78b2ebb3316c9d0",
+    "embedded_evidence_hashes_scope": "historical original artifacts; a redacted report copy has a different file hash"
+  }
+}

@@ -1,0 +1,318 @@
+{
+  "recorded_utc": "2026-10-07T19:54:01.537383+00:00",
+  "version": "0.4.12-hackathon",
+  "user_requests": [
+    "Show actual gaze/head angles; rightward eyes-only motion is visible but no warning is counted.",
+    "Show on-screen text even for an uncertain estimate, for all four directions."
+  ],
+  "confirmed_causes": [
+    "Version0.4.11 computed numeric angles but did not format them in the ordinary status branches.",
+    "The560x450 dashboard clipped the gaze/head label; reproduced with real offline Qt widgets.",
+    "The old overlay required strict direction or attention_away, suppressing uncertain visible motion.",
+    "The9degree display sensitivity did not change the automatic decision threshold, whose summed uncertainty was typically29-40degrees."
+  ],
+  "changes": [
+    "Both relative gaze/head axes are visible in degrees; stale blink values are explicitly previous estimates and missing values are unavailable.",
+    "Dashboard scrolls and wraps without clipped labels at560x450 and480x400; initial height increased within available screen space.",
+    "Directional overlay uses fresh tracked observed gaze in all four directions; uncertain estimates are marked preliminary.",
+    "Live private CNN path explicitly uses demo_sensitivity9degrees, with unchanged reference, measured open eyes, single-face and error90<=20 requirements.",
+    "Existing continuous5second rule counts left/right/down gaze in an active unpaused exam; uncertainty/lost tracking/blink is not counted as observed time.",
+    "Saved gaze-strike events carry demo policy, threshold, angles and model-error provenance."
+  ],
+  "decision_policy": {
+    "kind": "User-requested operational sensitivity for a closed hackathon demonstration",
+    "threshold_degrees": 9,
+    "duration_seconds": 5,
+    "directions_counted": [
+      "LEFT",
+      "RIGHT",
+      "DOWN"
+    ],
+    "directions_displayed": [
+      "LEFT",
+      "RIGHT",
+      "UP",
+      "DOWN"
+    ],
+    "uncertain_observations": "Visible preliminary overlay only; no gaze strike",
+    "statistical_accuracy_claim": false,
+    "default_estimator_uncertainty_guard_retained": true
+  },
+  "live_installation_observation": {
+    "version_identified_by_sha256": "0.4.11-hackathon",
+    "desktop_exe_sha256": "d0f314f897032f7aa0e2fab33f081653ec2622db1404c1d6ecb6679aefb06ab1",
+    "journal_lifecycle": "RUNNING",
+    "journal_access": "LOCKED",
+    "journal_reason": "PHONE_DETECTED",
+    "scope": "Point-in-time journal read during diagnosis; not a live frame or physical acceptance test",
+    "mutation": false
+  },
+  "validation": {
+    "full_suite": "610 passed,26 skipped before final dashboard layout changes",
+    "final_focused": "155 passed: actual Qt UI, directional overlays, demo policy, backend event delivery and feedback",
+    "ruff": "passed",
+    "diff_check": "passed",
+    "layout": [
+      {
+        "requested_window": [
+          560,
+          450
+        ],
+        "actual_window": [
+          560,
+          450
+        ],
+        "gaze_status_geometry": [
+          30,
+          413,
+          491,
+          60
+        ],
+        "gaze_status_height_for_width": 60,
+        "gaze_label_clipped": false,
+        "scroll_maximum": 113,
+        "whole_status_visible_after_scroll": true
+      },
+      {
+        "requested_window": [
+          480,
+          400
+        ],
+        "actual_window": [
+          480,
+          400
+        ],
+        "gaze_status_geometry": [
+          30,
+          413,
+          411,
+          75
+        ],
+        "gaze_status_height_for_width": 75,
+        "gaze_label_clipped": false,
+        "scroll_maximum": 178,
+        "whole_status_visible_after_scroll": true
+      }
+    ],
+    "frozen_self_test": {
+      "result": "PASS",
+      "status": "passed",
+      "version": "0.4.12-hackathon",
+      "platform": "Windows-11-10.0.28000-SP0",
+      "frozen": true,
+      "browser_renderer": true,
+      "kind": "synthetic packaging test; no webcam or accuracy claim",
+      "installer_mutex": true,
+      "models_verified": true,
+      "onnx_inference": true,
+      "face_landmarker": true,
+      "yolo_face_inference": true,
+      "gaze_forest": true,
+      "model_version": "2026.10.07.gaze-demo",
+      "model_files": {
+        "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+        "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+        "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+        "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+        "gaze-public.onnx": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+        "gaze-public.json": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431"
+      },
+      "h264_encode_decode": true,
+      "phone_cpu_median_ms": 48.22,
+      "public_gaze": {
+        "onnx_inference": true,
+        "explicit_reference_required": true,
+        "separate_head_pose": true,
+        "uncertain_gaze_feedback": true,
+        "display_threshold_degrees": 9,
+        "independent_head_matrix": true,
+        "blink_display_continuity": true,
+        "demo_sensitivity_timer": true,
+        "numeric_angles_ui": true,
+        "uncertain_direction_banners": true,
+        "kind": "synthetic packaged CPU smoke; no physical calibration or accuracy claim"
+      }
+    },
+    "portable_self_test": {
+      "checked_utc": "2026-10-07T19:53:50.435935+00:00",
+      "status": "passed",
+      "executable_sha256": "5386b7bd01f2797e573d68335df2ec4c48c4048f139c90d088287c7da1f2a144",
+      "working_directory": "artifacts/private-builds/portable-check/f80f9acb20d7",
+      "only_executable_supplied": true,
+      "external_models_directory": false,
+      "python_on_path": false,
+      "path": "environment-identifiers/portable-self-test-system-path",
+      "result": {
+        "result": "PASS",
+        "status": "passed",
+        "version": "0.4.12-hackathon",
+        "platform": "Windows-11-10.0.28000-SP0",
+        "frozen": true,
+        "browser_renderer": true,
+        "kind": "synthetic packaging test; no webcam or accuracy claim",
+        "installer_mutex": true,
+        "models_verified": true,
+        "onnx_inference": true,
+        "face_landmarker": true,
+        "yolo_face_inference": true,
+        "gaze_forest": true,
+        "model_version": "2026.10.07.gaze-demo",
+        "model_files": {
+          "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+          "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+          "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+          "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+          "gaze-public.onnx": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+          "gaze-public.json": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431"
+        },
+        "h264_encode_decode": true,
+        "phone_cpu_median_ms": 48.01,
+        "public_gaze": {
+          "onnx_inference": true,
+          "explicit_reference_required": true,
+          "separate_head_pose": true,
+          "uncertain_gaze_feedback": true,
+          "display_threshold_degrees": 9,
+          "independent_head_matrix": true,
+          "blink_display_continuity": true,
+          "demo_sensitivity_timer": true,
+          "numeric_angles_ui": true,
+          "uncertain_direction_banners": true,
+          "kind": "synthetic packaged CPU smoke; no physical calibration or accuracy claim"
+        }
+      },
+      "scope": "Frozen EXE in isolated working directory; not a clean OS or physical camera acceptance"
+    },
+    "binary_audit": {
+      "checked_utc": "2026-10-07T19:53:21.430672+00:00",
+      "version": "0.4.12-hackathon",
+      "executable": "artifacts/private-builds/deliverables/Qorgau-Hackathon-20261007T194834-14449f/Qorgau-Hackathon.exe",
+      "stage": "artifacts/private-builds/hackathon-build/20261007T194834-14449f",
+      "status": "passed",
+      "scope": "Read-only frozen archive audit; no camera or accuracy claim",
+      "models": {
+        "yolo11n.onnx": {
+          "sha256": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+          "bytes": 10564786,
+          "matches": true
+        },
+        "face_landmarker.task": {
+          "sha256": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+          "bytes": 3758596,
+          "matches": true
+        },
+        "face_yolov8n.onnx": {
+          "sha256": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+          "bytes": 12238336,
+          "matches": true
+        },
+        "gaze-direction.json": {
+          "sha256": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+          "bytes": 2158264,
+          "matches": true
+        },
+        "gaze-public.onnx": {
+          "sha256": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+          "bytes": 4314328,
+          "matches": true
+        },
+        "gaze-public.json": {
+          "sha256": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431",
+          "bytes": 7021,
+          "matches": true
+        }
+      },
+      "modules": {
+        "agent.vision": {
+          "source_sha256": "f4b73392554ee745aee5babba67fb1e5f085a7ffc0815ab8d0c3fd1810114b17",
+          "bytecode_signature_sha256": "9d21da39bee2854074a396b339e49774394406646b6212efe9d0fe7bcf730a8b",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "agent.client": {
+          "source_sha256": "6d5b17200cb82767584b514b8821fc187c4a196c9a6f346160e84940923446a7",
+          "bytecode_signature_sha256": "49e6716d19c5946f727bc8c07e226850b07863b6e9420d57d6934adc09909557",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "agent.desktop": {
+          "source_sha256": "b0a624ef542ddda070fbf174ee8628082964a11aa012662a68af35048861e6d6",
+          "bytecode_signature_sha256": "df094f8031e8e2e23ec17fe3fe197c54d6112c3be9c5169f3868e107ef8e2d4d",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "agent.selftest": {
+          "source_sha256": "ffbe09a9ea22a7aa0ec52811b8d5df7250b7f219c9c8a7c11529b4a80a40e275",
+          "bytecode_signature_sha256": "c6277d2d5468c71f163cf7eb478ed25dd6748c5dda32827bd8efe2cef777da7f",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "shared.public_gaze": {
+          "source_sha256": "4e3bf416cbfb9ad6eac9c08157e976ad1bb381ae683b42c2d7814f693a8ff925",
+          "bytecode_signature_sha256": "946e4afcf9deecd7efedfdb39c509c746afe4f909eeab4010258891b29e9fdf4",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "shared.head_pose": {
+          "source_sha256": "6a33ad2daf840ecf71a89b29f906ae310cbbd8d12d115ef14b14b6fac8407d05",
+          "bytecode_signature_sha256": "a0e0697a54ab9b8017a362b8bf3d5e34ad0dc3a358c978c0187391b980c69b12",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "shared.head_review": {
+          "source_sha256": "ce9b839c2ef8746343f80a8dba569f2cf4f37e2bf71a353726e9cbfc80a9c835",
+          "bytecode_signature_sha256": "e7cfc8f6d9727ca9c8f6832c1973d52976cc1be96a3910260a6b7b19d807e824",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "shared.gaze_feedback": {
+          "source_sha256": "02d805468f2e29a1049408237f23a2544da361834ee5857086b46c8643f8877c",
+          "bytecode_signature_sha256": "b9d4a5494d0efa7f97ebff664eabf0795b418d91774e4d32472538df03cc198e",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "shared.gaze_display_memory": {
+          "source_sha256": "f769cdd9d82fd034ce176d49873f5169f69d15831b3b66cd330213d00220cc83",
+          "bytecode_signature_sha256": "aa5d9d125ff97aac20d7a242b66d241cdc1c06ef87b77a800239a192a89638a6",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        },
+        "agent.exam_ui": {
+          "source_sha256": "67a31d9c9f079240b3e6abfb87241c1524f0736e887255e4e2265309dcbffb03",
+          "bytecode_signature_sha256": "36f1b49034cf37fd86fab881af2efff580413cc6c167d2defe0b2a883afae52b",
+          "matches_stage_source": true,
+          "matches_current_source": true
+        }
+      },
+      "executable_sha256": "5386b7bd01f2797e573d68335df2ec4c48c4048f139c90d088287c7da1f2a144",
+      "manifest_sha256": "67c4afab5ac98f18f31cd7b2c839dc4360400367450885acd2f56d83c7644962"
+    },
+    "physical_webcam_acceptance": "pending user verification"
+  },
+  "limitations": [
+    "No retraining or improved angular-accuracy claim. The9degree trigger is a demo policy, not a calibrated monitor boundary.",
+    "A displayed estimate can remain uncertain and show a preliminary banner without a strike.",
+    "Recognition remains paused during an existing exam lock. Teacher unlock/end is required before testing the replacement EXE."
+  ],
+  "artifact": {
+    "path": "artifacts/private-builds/deliverables/Qorgau-Hackathon-20261007T194834-14449f/Qorgau-Hackathon.exe",
+    "sha256": "5386b7bd01f2797e573d68335df2ec4c48c4048f139c90d088287c7da1f2a144",
+    "bytes": 403255065
+  },
+  "source_sha256": {
+    "agent/vision.py": "f4b73392554ee745aee5babba67fb1e5f085a7ffc0815ab8d0c3fd1810114b17",
+    "agent/client.py": "6d5b17200cb82767584b514b8821fc187c4a196c9a6f346160e84940923446a7",
+    "agent/desktop.py": "b0a624ef542ddda070fbf174ee8628082964a11aa012662a68af35048861e6d6",
+    "agent/exam_ui.py": "67a31d9c9f079240b3e6abfb87241c1524f0736e887255e4e2265309dcbffb03",
+    "agent/selftest.py": "ffbe09a9ea22a7aa0ec52811b8d5df7250b7f219c9c8a7c11529b4a80a40e275",
+    "shared/public_gaze.py": "4e3bf416cbfb9ad6eac9c08157e976ad1bb381ae683b42c2d7814f693a8ff925",
+    "shared/gaze_feedback.py": "02d805468f2e29a1049408237f23a2544da361834ee5857086b46c8643f8877c"
+  },
+  "publication_redaction": {
+    "host_paths": "replaced_with_logical_artifact_identifiers",
+    "artifact_identifiers_are_download_urls": false,
+    "historical_release_status_preserved": true,
+    "original_report_sha256": "ec29c52ea52b1d1ace36116d3b4986d545e0a9c462a60d7aa70480ee782fb6c1",
+    "embedded_evidence_hashes_scope": "historical original artifacts; a redacted report copy has a different file hash"
+  }
+}

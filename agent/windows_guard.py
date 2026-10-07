@@ -103,6 +103,15 @@ class WindowsGuard:
             raise OSError('Не удалось определить экран теста')
         return info.monitor
 
+    def monitor_handle(self, hwnd):
+        """Native monitor identity, without mixing physical and Qt coordinates."""
+        if not self.u.IsWindow(hwnd):
+            raise OSError('Выбранное окно закрыто')
+        monitor = self.u.MonitorFromWindow(hwnd, 0)  # MONITOR_DEFAULTTONULL
+        if not monitor:
+            raise OSError('Не удалось определить экран теста')
+        return int(monitor)
+
     def toggle_browser_fullscreen(self, hwnd):
         # Send F11 only to the selected browser window, never to the active desktop.
         if not self.u.PostMessageW(hwnd, 0x100, 0x7A, 0x00570001):

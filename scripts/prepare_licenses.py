@@ -12,8 +12,39 @@ sys.path.insert(0, str(ROOT))
 from agent.resources import ffmpeg_executable
 
 
-def main():
-    output = ROOT / 'dist/third-party'
+RESEARCH_NOTICES = (
+    'Gaze360-Research-License.md',
+    'Gaze360-Dataset-Citation.md',
+    'MPIIFaceGaze-CC-BY-NC-SA-4.0.txt',
+    'MPIIFaceGaze-Attribution.md',
+    'Research-Gaze-Notice.md',
+)
+
+
+def copy_research_notices(root, output, manifest):
+    """Package tracked research terms without fetching data or granting rights."""
+    profile = manifest.get('runtime_gaze', 'legacy')
+    if profile not in ('legacy', 'public-gaze-v1'):
+        raise ValueError(f'UNKNOWN_RUNTIME_GAZE_PROFILE: {profile}')
+    if profile == 'legacy':
+        # Avoid carrying these notices into a later legacy build in the same dist.
+        for name in RESEARCH_NOTICES:
+            (output / name).unlink(missing_ok=True)
+        return []
+    sources = [root / 'docs/licenses' / name for name in RESEARCH_NOTICES]
+    for source in sources:
+        if not source.is_file():
+            raise ValueError(f'MISSING_RESEARCH_NOTICE: {source.name}')
+    output.mkdir(parents=True, exist_ok=True)
+    for source in sources:
+        shutil.copyfile(source, output / source.name)
+    return list(RESEARCH_NOTICES)
+
+
+def main(root=ROOT):
+    manifest = json.loads((root / 'model-manifest.json').read_text(encoding='utf-8'))
+    output = root / 'dist/third-party'
+    copy_research_notices(root, output, manifest)
     output.mkdir(parents=True, exist_ok=True)
     packages = []
     for distribution in metadata.distributions():
@@ -46,8 +77,8 @@ def main():
              for argument in ('-version', '-L')]
     (output / 'FFmpeg-build-and-license.txt').write_text('\n'.join(lines), encoding='utf-8')
     (output / 'package-inventory.json').write_text(json.dumps(packages, ensure_ascii=False, indent=2), encoding='utf-8')
-    shutil.copyfile(ROOT / 'THIRD_PARTY_NOTICES.md', output / 'README.md')
-    shutil.copyfile(ROOT / 'model-manifest.json', output / 'model-manifest.json')
+    shutil.copyfile(root / 'THIRD_PARTY_NOTICES.md', output / 'README.md')
+    shutil.copyfile(root / 'model-manifest.json', output / 'model-manifest.json')
     print(f'Notices collected for {len(packages)} installed distributions')
 
 

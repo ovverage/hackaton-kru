@@ -1,0 +1,76 @@
+{
+  "recorded_utc": "2026-10-07T21:13:45.989768+00:00",
+  "version": "0.4.15-hackathon",
+  "user_request": [
+    "Three seconds on each calibration point",
+    "Repeated rejection after all nine points",
+    "Confirm tracking is active during calibration before an exam"
+  ],
+  "findings": [
+    "Existing preview and calibration worker already execute full Camera.read/analyze before an exam; gaze_enabled represents readiness of the calibrated decision profile, not whether the CNN executes.",
+    "Previous capture wrapper discarded failed fit quality and the UI replaced every final reason with a generic message.",
+    "Transition observations could fail spread checks despite a stable majority. A fixed longer settling interval excludes the first0.8seconds from every target without fitting or selecting favorable samples.",
+    "Exact causes of the three reported physical failures are unknown; previous attempts had no persisted diagnostics."
+  ],
+  "calibration": {
+    "targets": 9,
+    "minimum_visible_seconds": 3,
+    "settling_seconds": 0.8,
+    "capture_after_ack_seconds": 2.2,
+    "nominal_sequence_seconds": 27,
+    "sparse_frames_extension_max_visible_seconds": 5,
+    "session_timeout_seconds": 65,
+    "quality_gates": "Unchanged thresholds, affine fit, independent validation and6degree margin",
+    "selection": "Fixed settling window; no quality-driven trimming, no refitting on validation data",
+    "feedback": "Fresh accepted gaze sample count and current tracking status; zero counts do not claim active tracking",
+    "diagnostics": "Five latest local aggregate JSON reports under application folder/calibration-diagnostics; no images or raw gaze vectors",
+    "failures": "Original failure code, failed target, sample counts/spreads, fit/validation metrics and capture rejection counts retained"
+  },
+  "inference_contract": {
+    "baseline_version": "0.4.14-hackathon",
+    "status": "passed",
+    "files": {
+      "agent/vision.py": "b08860d5098ec568e07d08888b476aca05b4e2f5ce262165c4e67da3b1a33c48",
+      "agent/detector.py": "4b543b2c7fed04ab206dc3252b5b11c9b96499785ec8cb2b28d0d3e26b6d8a43",
+      "shared/public_gaze.py": "4e3bf416cbfb9ad6eac9c08157e976ad1bb381ae683b42c2d7814f693a8ff925",
+      "shared/rules.py": "3be22f97f72446a119c99ad4e43c487ba056e9698454fee77e319b7eae636854",
+      "agent/latest_frame.py": "27d33a51b18edcd634a9a9daa4a0df6b707182a5439b4364be126da9ba8344c5"
+    },
+    "camera_methods": {},
+    "full_model_processing_in_preview_and_calibration": true
+  },
+  "validation": {
+    "full_passed": 948,
+    "skipped": 26,
+    "seconds": 51.19,
+    "ruff": "passed",
+    "diff_check": "passed",
+    "frozen_self_test": "PASS",
+    "portable_self_test": "PASS",
+    "archive_assets": 6,
+    "archive_source_modules": 19,
+    "physical_acceptance": "Pending user camera check; no claim that unobserved physical failure is resolved"
+  },
+  "executable": {
+    "path": "artifacts/private-builds/deliverables/Qorgau-Hackathon-20261007T210822-96db86/Qorgau-Hackathon.exe",
+    "sha256": "48c5412f06844545b67b10f999550573af59ab7ef3f673beac1cc57901e14154",
+    "bytes": 403314275
+  },
+  "embedded_assets": {
+    "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+    "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+    "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+    "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+    "gaze-public.onnx": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+    "gaze-public.json": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431"
+  },
+  "distribution": "Private closed noncommercial hackathon prototype; source and license notices included; no public deploy.",
+  "training": "No new training or changes on the GPU server/WSL/services.",
+  "publication_redaction": {
+    "host_paths": "replaced_with_logical_artifact_identifiers",
+    "artifact_identifiers_are_download_urls": false,
+    "historical_release_status_preserved": true,
+    "original_report_sha256": "742576a12edb5d7174f976f434813ee37d48fa7b3eba91eb2b5434b76f6574b1",
+    "embedded_evidence_hashes_scope": "historical original artifacts; a redacted report copy has a different file hash"
+  }
+}

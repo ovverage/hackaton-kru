@@ -1,0 +1,484 @@
+{
+  "recorded_utc": "2026-10-07T20:54:02.903344+00:00",
+  "version": "0.4.14-hackathon",
+  "user_request": [
+    "Five seconds on each calibration target",
+    "Webcam lag in all modes",
+    "Preserve all models and accuracy-related settings"
+  ],
+  "calibration": {
+    "targets": 9,
+    "minimum_visible_seconds": 5,
+    "settling_seconds": 0.4,
+    "capture_after_ack_seconds": 4.6,
+    "nominal_sequence_seconds": 45,
+    "sparse_frames_extension_max_visible_seconds": 7,
+    "session_timeout_seconds": 90,
+    "countdown": "GUI clock from first paint, independent of model processing",
+    "quality_gates": "Unchanged validated personal screen profile and6degree margin"
+  },
+  "camera_fix": {
+    "capture": "Dedicated producer owns native read/release and publishes a one-frame newest slot.",
+    "preview": "GUI polls the newest raw frame at most15Hz; full-model processing remains on its worker.",
+    "inference": "All existing models still run for every analyzed frame, including point calibration.",
+    "timestamps": "Producer timestamp preserved; sequence identifies packets, including equal monotonic clock readings.",
+    "closing": "Bounded joins; native capture released only after its read returns. MediaPipe closes after in-flight inference; no second camera opens while prior close is incomplete.",
+    "unchanged": [
+      "ONNX weights",
+      "Input resolution and preprocessing",
+      "Model thresholds",
+      "ONNX thread settings",
+      "Face and phone detector inference",
+      "CNN gaze estimation",
+      "Decision geometry and penalty rules"
+    ],
+    "tradeoff": "Superseded raw frames are skipped, not replayed late. This changes temporal sampling, not single-frame model inference; brief events can still be missed between analyzed frames."
+  },
+  "inference_contract": {
+    "baseline_version": "0.4.13-hackathon",
+    "status": "passed",
+    "files": {
+      "agent/detector.py": "4b543b2c7fed04ab206dc3252b5b11c9b96499785ec8cb2b28d0d3e26b6d8a43",
+      "shared/public_gaze.py": "4e3bf416cbfb9ad6eac9c08157e976ad1bb381ae683b42c2d7814f693a8ff925",
+      "shared/screen_gaze.py": "9eecd166d6624c58a8e4e3621f81fe3b67856e596c4f4481902795990b4ae2da",
+      "shared/rules.py": "3be22f97f72446a119c99ad4e43c487ba056e9698454fee77e319b7eae636854"
+    },
+    "camera_methods": {
+      "analyze": "4d240cd0041ee9b4c2d5741ffce29ba967c7ef0718b950dea5378be95b11d1ea",
+      "face_features": "3ded6603f43e0315156021c926ca5723bbe1ec670c404cda61f6208115aee807",
+      "_observe_public_gaze": "43a328b932ba6f870961a0f8b431a4376392dd41d4c754bc146cf6d3d1de569e",
+      "phone_observation": "d5c2129711da8f0b36cd3a6e34b88e1c72ff865c9a1c781a16afe4b2175b07db"
+    },
+    "full_model_processing_in_preview_and_calibration": true
+  },
+  "performance": {
+    "scope": "Synthetic CPU latency probe; no live camera, physical FPS, tracking accuracy, or real-face MediaPipe latency measured",
+    "source_release": "0.4.13-hackathon",
+    "stage": "artifacts/private-builds/hackathon-build/20261007T203040-a8d2de",
+    "controls": {
+      "maximum_seconds": 120,
+      "gpu_used": false,
+      "camera_opened": false,
+      "network_used": false,
+      "production_files_modified": false,
+      "priority": "BELOW_NORMAL",
+      "synthetic_frame_shape": [
+        720,
+        1280,
+        3
+      ],
+      "synthetic_landmarks": true,
+      "synthetic_frame_sha256": "f82a7a2c65b7a047bfe35fde19827f511b548effc170a295c509055e3721296c"
+    },
+    "environment": {
+      "platform": "Windows-11-10.0.28000-SP0",
+      "processor": "AMD64 Family 23 Model 113 Stepping 0, AuthenticAMD",
+      "logical_cpus": 16,
+      "opencv_threads": 16,
+      "opencv": "4.13.0",
+      "onnxruntime": "1.24.3",
+      "numpy": "2.5.3",
+      "process_threads_after_mediapipe": 50
+    },
+    "models": {
+      "yolo11n.onnx": {
+        "sha256": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+        "bytes": 10564786
+      },
+      "face_landmarker.task": {
+        "sha256": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+        "bytes": 3758596
+      },
+      "face_yolov8n.onnx": {
+        "sha256": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+        "bytes": 12238336
+      },
+      "gaze-direction.json": {
+        "sha256": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+        "bytes": 2158264
+      },
+      "gaze-public.onnx": {
+        "sha256": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+        "bytes": 4314328
+      },
+      "gaze-public.json": {
+        "sha256": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431",
+        "bytes": 7021
+      }
+    },
+    "mediapipe_no_face": {
+      "samples": 20,
+      "warmup": 3,
+      "median_ms": 1.7,
+      "p95_ms": 1.858,
+      "min_ms": 1.506,
+      "max_ms": 1.935,
+      "process_cpu_seconds_per_wall_second": 0.924
+    },
+    "preprocessing": {
+      "720p_hash_copy": {
+        "samples": 40,
+        "warmup": 3,
+        "median_ms": 7.023,
+        "p95_ms": 7.588,
+        "min_ms": 6.853,
+        "max_ms": 9.819,
+        "process_cpu_seconds_per_wall_second": 0.98
+      },
+      "720p_to_960_resize": {
+        "samples": 40,
+        "warmup": 3,
+        "median_ms": 0.472,
+        "p95_ms": 0.589,
+        "min_ms": 0.41,
+        "max_ms": 0.833,
+        "process_cpu_seconds_per_wall_second": 6.316
+      },
+      "960_bgr_rgb": {
+        "samples": 40,
+        "warmup": 3,
+        "median_ms": 0.309,
+        "p95_ms": 0.449,
+        "min_ms": 0.247,
+        "max_ms": 0.472,
+        "process_cpu_seconds_per_wall_second": 8.47
+      }
+    },
+    "legacy_forest_load_ms": 115.983,
+    "variants": {
+      "production_two_threads_spinning": {
+        "intra_threads_per_yolo_session": 2,
+        "yolo_spinning": true,
+        "gaze_session": "unchanged production 2threads/default spinning",
+        "own_process_threads": 56,
+        "yolo_synthetic_output_parity": {
+          "phone": {
+            "output_shape": [
+              1,
+              5,
+              8400
+            ],
+            "max_absolute_output_difference": 0.0,
+            "mean_absolute_output_difference": 0.0,
+            "allclose_rtol_1e5_atol_1e4": true,
+            "detections_identical": true,
+            "detection_count": 0
+          },
+          "face": {
+            "output_shape": [
+              1,
+              5,
+              8400
+            ],
+            "max_absolute_output_difference": 0.0,
+            "mean_absolute_output_difference": 0.0,
+            "allclose_rtol_1e5_atol_1e4": true,
+            "detections_identical": true,
+            "detection_count": 0
+          }
+        },
+        "phone_yolo_including_preprocess": {
+          "samples": 20,
+          "warmup": 3,
+          "median_ms": 47.813,
+          "p95_ms": 52.15,
+          "min_ms": 45.777,
+          "max_ms": 60.573,
+          "process_cpu_seconds_per_wall_second": 2.018
+        },
+        "face_yolo_including_preprocess": {
+          "samples": 20,
+          "warmup": 3,
+          "median_ms": 51.639,
+          "p95_ms": 52.946,
+          "min_ms": 50.705,
+          "max_ms": 54.207,
+          "process_cpu_seconds_per_wall_second": 1.99
+        },
+        "gaze_cnn_including_synthetic_crop": {
+          "samples": 20,
+          "warmup": 3,
+          "median_ms": 2.946,
+          "p95_ms": 3.131,
+          "min_ms": 2.732,
+          "max_ms": 3.594,
+          "process_cpu_seconds_per_wall_second": 2.38
+        },
+        "sequential_4_stage_lower_bound": {
+          "samples": 20,
+          "warmup": 3,
+          "median_ms": 105.413,
+          "p95_ms": 109.143,
+          "min_ms": 102.345,
+          "max_ms": 109.567,
+          "process_cpu_seconds_per_wall_second": 2.569
+        },
+        "calibration_mesh_gaze_only_lower_bound": {
+          "samples": 20,
+          "warmup": 3,
+          "median_ms": 4.868,
+          "p95_ms": 5.126,
+          "min_ms": 4.651,
+          "max_ms": 5.342,
+          "process_cpu_seconds_per_wall_second": 2.406
+        },
+        "four_frames_with_200ms_idle_gaps": {
+          "wall_seconds": 1.2147,
+          "own_cpu_seconds": 1.0938
+        }
+      },
+      "yolo_two_threads_no_spinning": {
+        "intra_threads_per_yolo_session": 2,
+        "yolo_spinning": false,
+        "gaze_session": "unchanged production 2threads/default spinning",
+        "own_process_threads": 57,
+        "yolo_synthetic_output_parity": {
+          "phone": {
+            "output_shape": [
+              1,
+              5,
+              8400
+            ],
+            "max_absolute_output_difference": 0.0,
+            "mean_absolute_output_difference": 0.0,
+            "allclose_rtol_1e5_atol_1e4": true,
+            "detections_identical": true,
+            "detection_count": 0
+          },
+          "face": {
+            "output_shape": [
+              1,
+              5,
+              8400
+            ],
+            "max_absolute_output_difference": 0.0,
+            "mean_absolute_output_difference": 0.0,
+            "allclose_rtol_1e5_atol_1e4": true,
+            "detections_identical": true,
+            "detection_count": 0
+          }
+        },
+        "phone_yolo_including_preprocess": {
+          "samples": 20,
+          "warmup": 3,
+          "median_ms": 47.869,
+          "p95_ms": 50.418,
+          "min_ms": 46.292,
+          "max_ms": 52.027,
+          "process_cpu_seconds_per_wall_second": 1.919
+        },
+        "face_yolo_including_preprocess": {
+          "samples": 20,
+          "warmup": 3,
+          "median_ms": 50.338,
+          "p95_ms": 51.491,
+          "min_ms": 49.562,
+          "max_ms": 52.18,
+          "process_cpu_seconds_per_wall_second": 1.966
+        },
+        "gaze_cnn_including_synthetic_crop": {
+          "samples": 20,
+          "warmup": 3,
+          "median_ms": 3.318,
+          "p95_ms": 4.563,
+          "min_ms": 3.196,
+          "max_ms": 4.941,
+          "process_cpu_seconds_per_wall_second": 1.751
+        },
+        "sequential_4_stage_lower_bound": {
+          "samples": 20,
+          "warmup": 3,
+          "median_ms": 103.359,
+          "p95_ms": 107.025,
+          "min_ms": 100.471,
+          "max_ms": 117.706,
+          "process_cpu_seconds_per_wall_second": 2.089
+        },
+        "calibration_mesh_gaze_only_lower_bound": {
+          "samples": 20,
+          "warmup": 3,
+          "median_ms": 4.879,
+          "p95_ms": 5.295,
+          "min_ms": 4.659,
+          "max_ms": 5.321,
+          "process_cpu_seconds_per_wall_second": 1.898
+        },
+        "four_frames_with_200ms_idle_gaps": {
+          "wall_seconds": 1.2164,
+          "own_cpu_seconds": 0.8594
+        }
+      },
+      "yolo_one_thread_no_spinning": {
+        "intra_threads_per_yolo_session": 1,
+        "yolo_spinning": false,
+        "gaze_session": "unchanged production 2threads/default spinning",
+        "own_process_threads": 55,
+        "yolo_synthetic_output_parity": {
+          "phone": {
+            "output_shape": [
+              1,
+              5,
+              8400
+            ],
+            "max_absolute_output_difference": 0.0,
+            "mean_absolute_output_difference": 0.0,
+            "allclose_rtol_1e5_atol_1e4": true,
+            "detections_identical": true,
+            "detection_count": 0
+          },
+          "face": {
+            "output_shape": [
+              1,
+              5,
+              8400
+            ],
+            "max_absolute_output_difference": 0.0,
+            "mean_absolute_output_difference": 0.0,
+            "allclose_rtol_1e5_atol_1e4": true,
+            "detections_identical": true,
+            "detection_count": 0
+          }
+        },
+        "phone_yolo_including_preprocess": {
+          "samples": 20,
+          "warmup": 3,
+          "median_ms": 80.871,
+          "p95_ms": 81.574,
+          "min_ms": 80.204,
+          "max_ms": 82.211,
+          "process_cpu_seconds_per_wall_second": 1.033
+        },
+        "face_yolo_including_preprocess": {
+          "samples": 20,
+          "warmup": 3,
+          "median_ms": 90.312,
+          "p95_ms": 91.182,
+          "min_ms": 89.588,
+          "max_ms": 91.819,
+          "process_cpu_seconds_per_wall_second": 1.002
+        },
+        "gaze_cnn_including_synthetic_crop": {
+          "samples": 20,
+          "warmup": 3,
+          "median_ms": 2.855,
+          "p95_ms": 3.02,
+          "min_ms": 2.781,
+          "max_ms": 3.084,
+          "process_cpu_seconds_per_wall_second": 2.177
+        },
+        "sequential_4_stage_lower_bound": {
+          "samples": 20,
+          "warmup": 3,
+          "median_ms": 176.694,
+          "p95_ms": 183.029,
+          "min_ms": 174.979,
+          "max_ms": 183.416,
+          "process_cpu_seconds_per_wall_second": 1.133
+        },
+        "calibration_mesh_gaze_only_lower_bound": {
+          "samples": 20,
+          "warmup": 3,
+          "median_ms": 4.99,
+          "p95_ms": 5.358,
+          "min_ms": 4.731,
+          "max_ms": 5.4,
+          "process_cpu_seconds_per_wall_second": 2.343
+        },
+        "four_frames_with_200ms_idle_gaps": {
+          "wall_seconds": 1.5037,
+          "own_cpu_seconds": 0.9531
+        }
+      }
+    },
+    "elapsed_seconds": 24.875,
+    "caveats": [
+      "The synthetic image has no face: MediaPipe never ran its real face landmark/regression path.",
+      "Synthetic landmarks force the unchanged gaze CNN path for timing only, without an accuracy claim.",
+      "Detectors return few or no synthetic objects: postprocessing can be more expensive on real scenes.",
+      "No camera exposure, driver buffering, image delivery, preview painting, recording, or live end-to-end FPS was measured.",
+      "Thread variants are isolated in this probe process and make no deployment configuration changes.",
+      "Results can be affected by concurrent user applications and BELOW_NORMAL scheduling."
+    ],
+    "scheduling_simulation": {
+      "kind": "deterministic scheduling simulation; no real camera, driver, or physical FPS measurement",
+      "assumptions": "15Hz producer, unbounded FIFO baseline, fixed measured median inference duration; newest-frame slot alternative",
+      "duration_seconds": 8.0,
+      "producer_hz": 15,
+      "inference_ms": 105.413,
+      "same_all_model_inference_calls_in_both_paths": 75,
+      "fifo_last_input_age_at_start_ms": 2867.229,
+      "newest_slot_max_input_age_at_start_ms": 66.092,
+      "fifo_last_result_age_at_completion_ms": 2972.642,
+      "newest_slot_max_result_age_at_completion_ms": 171.505,
+      "independent_raw_preview_age_upper_bound_ms": 66.667,
+      "limits": "Assumes immediate camera delivery and GUI sampling; exposure, USB transfer, actual bounded driver buffers, OS scheduling and paint delay are excluded."
+    },
+    "implementation_decision": {
+      "all_models_remain_active": true,
+      "weights_preprocess_thresholds_resolution_threads_unchanged": true,
+      "skip_detectors_during_calibration": false,
+      "disable_onnx_spinning": false,
+      "recommended_architecture": "Independent latest-frame camera capture and independent raw preview; every existing model runs on each next freshest inference frame.",
+      "basis": "Synthetic serial inference exceeds15Hzperiod. No-spinning showed inconsistent throughput gain across two passes; single-thread YOLO substantially slower."
+    },
+    "first_pass_report": "artifacts/private-builds/0414-performance-first-pass.json",
+    "latest_frame_source_synthetic_probe": {
+      "kind": "Actual LatestFrameSource with synthetic producer requested at15Hz and sleep as inference; no camera or physical FPS",
+      "source_sha256": "b909650bc8df17b97639e7be4e490943a377f6a9f73ebfd6686d2fa4739efbdc",
+      "duration_seconds_per_variant": 3.0,
+      "simulated_inference_ms": 105.413,
+      "fifo_capture_in_consumer": {
+        "inference_calls": 29,
+        "max_synthetic_driver_queue": 14,
+        "maximum_input_age_ms": 938.0,
+        "last_result_age_ms": 1032.0,
+        "maximum_result_age_ms": 1032.0,
+        "independent_preview_max_age_ms": null
+      },
+      "independent_latest_capture": {
+        "inference_calls": 29,
+        "max_synthetic_driver_queue": 1,
+        "maximum_input_age_ms": 78.0,
+        "last_result_age_ms": 172.0,
+        "maximum_result_age_ms": 188.0,
+        "independent_preview_max_age_ms": 94.0
+      },
+      "scheduling_caveat": "Host scheduler and monotonic clock granularity affect generated frame intervals;15Hz is requested, not a measured physical camera rate."
+    }
+  },
+  "validation": {
+    "full_passed": 896,
+    "skipped": 26,
+    "seconds": 54.4,
+    "ruff": "passed",
+    "diff_check": "passed",
+    "frozen_self_test": "PASS",
+    "portable_self_test": "PASS",
+    "archive_assets": 6,
+    "archive_source_modules": 18,
+    "physical_webcam_fps": "not measured",
+    "physical_acceptance": "pending user camera check"
+  },
+  "executable": {
+    "path": "artifacts/private-builds/deliverables/Qorgau-Hackathon-20261007T204854-161766/Qorgau-Hackathon.exe",
+    "sha256": "89740a53e6b2de149b8625fca22b8f5c0f8ab08eb68f243ce1f49d66e7c718e4",
+    "bytes": 403303883
+  },
+  "embedded_assets": {
+    "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+    "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+    "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+    "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+    "gaze-public.onnx": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+    "gaze-public.json": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431"
+  },
+  "distribution": "Private closed noncommercial hackathon prototype; source and license notices included; no public deploy.",
+  "training": "No new training or changes on the GPU server/WSL/services.",
+  "publication_redaction": {
+    "host_paths": "replaced_with_logical_artifact_identifiers",
+    "artifact_identifiers_are_download_urls": false,
+    "historical_release_status_preserved": true,
+    "original_report_sha256": "e1a5dbaf522b950d5551ab1e85e98d85b6cd09f610254fb34cf9621710369d8c",
+    "embedded_evidence_hashes_scope": "historical original artifacts; a redacted report copy has a different file hash"
+  }
+}

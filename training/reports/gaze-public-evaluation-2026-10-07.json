@@ -1,0 +1,221 @@
+{
+  "schema": "qorgau-public-gaze-v1",
+  "best_sha256": "f993cf68d243ef67521869fefca3db635949d51faa92fec4f30c57f8d8eba1e0",
+  "validation": {
+    "gaze360": {
+      "n": 12318,
+      "mean_degrees": 13.09577465057373,
+      "median_degrees": 10.125497817993164,
+      "p90_degrees": 25.322643280029297,
+      "fraction_under_10": 0.49407371326514044,
+      "fraction_under_15": 0.711641500243546,
+      "groups": 8,
+      "group_macro_mean_degrees": 13.275805970847046,
+      "group_macro_bootstrap95_degrees": [
+        11.491892330369973,
+        15.253996251492772
+      ],
+      "group_mean_degrees": {
+        "g360/rec_027": 16.451536701999597,
+        "g360/rec_031": 9.391907051133606,
+        "g360/rec_032": 16.960744432066548,
+        "g360/rec_033": 12.408047598088231,
+        "g360/rec_054": 15.703395545673851,
+        "g360/rec_056": 13.454268332027313,
+        "g360/rec_071": 10.094460385556173,
+        "g360/rec_075": 11.74208772023104
+      }
+    },
+    "mpiifacegaze": {
+      "n": 3802,
+      "mean_degrees": 5.552731513977051,
+      "median_degrees": 5.030631065368652,
+      "p90_degrees": 9.479031562805176,
+      "fraction_under_10": 0.9203051025775908,
+      "fraction_under_15": 0.988427143608627,
+      "groups": 2,
+      "group_macro_mean_degrees": 5.769646095959295,
+      "group_macro_bootstrap95_degrees": [
+        4.627387894226928,
+        6.911904297691661
+      ],
+      "group_mean_degrees": {
+        "mpii/p11": 4.627387894226928,
+        "mpii/p12": 6.911904297691661
+      }
+    },
+    "domain_macro_mean_degrees": 9.32425308227539
+  },
+  "test": {
+    "gaze360": {
+      "n": 17847,
+      "mean_degrees": 13.217338562011719,
+      "median_degrees": 10.635968208312988,
+      "p90_degrees": 24.980680465698242,
+      "fraction_under_10": 0.4640555835714686,
+      "fraction_under_15": 0.6956911525746624,
+      "groups": 15,
+      "group_macro_mean_degrees": 13.418436177275872,
+      "group_macro_bootstrap95_degrees": [
+        12.081032967749618,
+        14.856728257300112
+      ],
+      "group_mean_degrees": {
+        "g360/rec_022": 12.059417582774929,
+        "g360/rec_023": 12.517124681155469,
+        "g360/rec_024": 14.756538723590154,
+        "g360/rec_026": 11.950452701785165,
+        "g360/rec_029": 11.91403263064184,
+        "g360/rec_030": 21.349554575880894,
+        "g360/rec_038": 13.034655875546816,
+        "g360/rec_045": 11.060384925860394,
+        "g360/rec_048": 17.087057626175376,
+        "g360/rec_049": 14.728745035160687,
+        "g360/rec_057": 13.346344025895197,
+        "g360/rec_066": 10.325936145885708,
+        "g360/rec_069": 10.976692727512532,
+        "g360/rec_074": 11.725416658743432,
+        "g360/rec_079": 14.444188742529452
+      }
+    },
+    "mpiifacegaze": {
+      "n": 2997,
+      "mean_degrees": 7.681037902832031,
+      "median_degrees": 7.6147613525390625,
+      "p90_degrees": 12.470322608947754,
+      "fraction_under_10": 0.7410744077410744,
+      "fraction_under_15": 0.9766433099766433,
+      "groups": 2,
+      "group_macro_mean_degrees": 7.679294249885347,
+      "group_macro_bootstrap95_degrees": [
+        5.937779946194224,
+        9.42080855357647
+      ],
+      "group_mean_degrees": {
+        "mpii/p13": 5.937779946194224,
+        "mpii/p14": 9.42080855357647
+      }
+    },
+    "domain_macro_mean_degrees": 10.449188232421875,
+    "training_mean_vector_baseline": {
+      "gaze360": {
+        "n": 17847,
+        "mean_degrees": 37.963343296683696,
+        "median_degrees": 35.509113286933875,
+        "p90_degrees": 65.36043060382426,
+        "fraction_under_10": 0.05648008068582955,
+        "fraction_under_15": 0.13402812797669075,
+        "groups": 15,
+        "group_macro_mean_degrees": 38.65071760979243,
+        "group_macro_bootstrap95_degrees": [
+          35.55900279845195,
+          41.730066921963534
+        ],
+        "group_mean_degrees": {
+          "g360/rec_022": 35.83173906963157,
+          "g360/rec_023": 38.97372307853792,
+          "g360/rec_024": 40.53576807751784,
+          "g360/rec_026": 32.86686421426706,
+          "g360/rec_029": 32.913342307622806,
+          "g360/rec_030": 50.990447584613484,
+          "g360/rec_038": 39.25447954124796,
+          "g360/rec_045": 37.26490549533527,
+          "g360/rec_048": 42.206964666980085,
+          "g360/rec_049": 37.50592181188977,
+          "g360/rec_057": 41.809860987232916,
+          "g360/rec_066": 50.613874659804516,
+          "g360/rec_069": 39.01898220504659,
+          "g360/rec_074": 32.4034114797427,
+          "g360/rec_079": 27.570478967415994
+        }
+      },
+      "mpiifacegaze": {
+        "n": 2997,
+        "mean_degrees": 12.277031801616834,
+        "median_degrees": 11.693848640737036,
+        "p90_degrees": 20.919440465266728,
+        "fraction_under_10": 0.38304971638304974,
+        "fraction_under_15": 0.7073740407073741,
+        "groups": 2,
+        "group_macro_mean_degrees": 12.275805326597398,
+        "group_macro_bootstrap95_degrees": [
+          11.050556782181191,
+          13.501053871013605
+        ],
+        "group_mean_degrees": {
+          "mpii/p13": 11.050556782181191,
+          "mpii/p14": 13.501053871013605
+        }
+      },
+      "domain_macro_mean_degrees": 25.120187549150266
+    }
+  },
+  "training_stop": {
+    "reason": "time_budget",
+    "partial_epoch": true,
+    "epoch": 7,
+    "completed_batches": 276,
+    "budget": {
+      "reason": "max_hours",
+      "remaining_seconds": 1039.8223495807033,
+      "expires_utc": "2026-10-07T17:40:41.845868+00:00",
+      "minimum_finalization_reserve_seconds": 1200.0
+    }
+  },
+  "validation_calibration": {
+    "q90_scale_multiplier": 2.5308046340942383,
+    "by_domain": {
+      "mpiifacegaze": 1.6139260530471802,
+      "gaze360": 2.5308046340942383
+    },
+    "source": "validation only",
+    "caveat": "Empirical interval, not an individual guarantee under domain shift"
+  },
+  "extraction_coverage": {
+    "mpiifacegaze/train/ok": 30768,
+    "mpiifacegaze/train/eyes_closed": 25,
+    "mpiifacegaze/train/face_missing_or_ambiguous": 13,
+    "mpiifacegaze/val/ok": 3802,
+    "mpiifacegaze/val/face_missing_or_ambiguous": 60,
+    "mpiifacegaze/val/eyes_closed": 1,
+    "mpiifacegaze/test/ok": 2997,
+    "mpiifacegaze/test/face_missing_or_ambiguous": 1,
+    "gaze360/train/ok": 94563,
+    "gaze360/train/eyes_closed": 3425,
+    "gaze360/train/face_missing_or_ambiguous": 28681,
+    "gaze360/train/face_too_small": 259,
+    "gaze360/val/ok": 12318,
+    "gaze360/val/face_missing_or_ambiguous": 3987,
+    "gaze360/val/eyes_closed": 701,
+    "gaze360/val/face_too_small": 32,
+    "gaze360/test/ok": 17847,
+    "gaze360/test/eyes_closed": 1329,
+    "gaze360/test/face_missing_or_ambiguous": 6720,
+    "gaze360/test/face_too_small": 73
+  },
+  "runtime_confidence_coverage": {
+    "mpiifacegaze": {
+      "eligible_visible_frames": 2997,
+      "accepted_frames": 2969,
+      "accepted_fraction": 0.9906573239906573,
+      "accepted_mean_angular_degrees": 7.677746772766113,
+      "empirical_error90_coverage": 0.9763096429763096,
+      "note": "Confidence gate only; explicit neutral reference and temporal rules additionally required"
+    },
+    "gaze360": {
+      "eligible_visible_frames": 17847,
+      "accepted_frames": 10206,
+      "accepted_fraction": 0.5718608169440242,
+      "accepted_mean_angular_degrees": 9.969833374023438,
+      "empirical_error90_coverage": 0.8766179189779795,
+      "note": "Confidence gate only; explicit neutral reference and temporal rules additionally required"
+    }
+  },
+  "test_retained_coverage": {
+    "mpiifacegaze": 0.9996664442961974,
+    "gaze360": 0.6872424814201548
+  },
+  "interpretation": "Conditional on exactly one visible Face Mesh face and open eyes; not screen-point accuracy",
+  "mpii_protocol": "Two held-out subjects, not the published 15-fold leave-one-person-out benchmark",
+  "gaze360_protocol": "Official grouped splits, Face Mesh visible-face subset, single-frame model; not full Gaze360 benchmark"
+}

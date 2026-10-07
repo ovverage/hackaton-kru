@@ -1,0 +1,271 @@
+{
+  "schema": 1,
+  "kind": "Final COCO candidate rejection and intermediate gaze execution evidence",
+  "observed_utc": "2026-10-07T16:12:49.591184+00:00",
+  "deadline_utc": "2026-10-07T18:47:54Z",
+  "deadline_user_local": "2026-10-07T23:47:54+05:00",
+  "coco": {
+    "training": "complete",
+    "final_evaluation_finished_utc": "2026-10-07T16:10:28.902633+00:00",
+    "promotion": "rejected; production weights retained",
+    "checkpoint_sha256": "faa3746bed959118cf324e160700d15924f54e2bf691bc1ebcad39c005c3cd94",
+    "dataset_manifest_sha256": "d161ab98dba7e31b5484040da01c7677afc9381d07199ac5e1033c82e39a1e91",
+    "images": 5000,
+    "operating_point_audit": {
+      "cell phone": {
+        "tp": 19,
+        "fp": 0,
+        "fn": 243,
+        "ignored_predictions": 0,
+        "images": 5000,
+        "positive_images": 214,
+        "negative_images": 4786,
+        "negative_image_false_positives": 0,
+        "confidence": 0.8,
+        "iou": 0.5,
+        "precision": 1.0,
+        "recall": 0.07251908396946564,
+        "negative_image_false_positive_rate": 0.0
+      },
+      "person": {
+        "tp": 5076,
+        "fp": 206,
+        "fn": 5701,
+        "ignored_predictions": 129,
+        "images": 5000,
+        "positive_images": 2693,
+        "negative_images": 2307,
+        "negative_image_false_positives": 26,
+        "confidence": 0.55,
+        "iou": 0.5,
+        "precision": 0.9609996213555472,
+        "recall": 0.4710030620766447,
+        "negative_image_false_positive_rate": 0.011270047680970958
+      }
+    },
+    "official_ap50": {
+      "cell phone": 0.2735752113979211,
+      "person": 0.76886669783248
+    },
+    "gate_failures": [
+      "cell phone AP50 missing, non-finite or below 0.40",
+      "cell phone recall missing, non-finite or below 0.25",
+      "person recall missing, non-finite or below 0.50"
+    ],
+    "cpu_parity": {
+      "status": "passed",
+      "images": 32,
+      "provider": "CPUExecutionProvider",
+      "cpu_threads": 2,
+      "max_box_coordinate_error_px": 0.00421142578125,
+      "max_score_error": 1.4886260032653809e-05,
+      "tolerance_coordinate_px": 0.05,
+      "tolerance_score": 0.0005,
+      "inference_median_ms": 494.3722999887541,
+      "inference_p95_ms": 591.7230250430293,
+      "failures": [],
+      "note": "Same letterboxed tensors as runtime; raw FP32 graph parity. Latency excludes camera, preprocessing and NMS and is specific to this CPU.",
+      "versions": {
+        "onnxruntime": "1.24.3",
+        "torch": "2.6.0+cu124"
+      }
+    },
+    "export": {
+      "path": "artifacts/training/20261007/training/runs/budget-coco-v1/person-phone-yolo11n.onnx",
+      "sha256": "9736520166109d6746864d503910fc4cccc9fb21b68b848b52c05d2ba3b54250",
+      "bytes": 10565592,
+      "input": [
+        1,
+        3,
+        640,
+        640
+      ],
+      "opset": 17,
+      "names": {
+        "0": "cell phone",
+        "1": "person"
+      }
+    },
+    "artifact_backup": "Private local artifacts/private-builds/candidates/coco-public-2026-10-07; checkpoint and ONNX SHA256 match final receipt. Remapped prediction identity verified by reversing category mapping and reproducing the original prediction SHA256.",
+    "evaluation_audit": "Pinned original annotations, category mapping, shared receipt values and TP/FP/FN arithmetic verified. No concrete implementation error found.",
+    "independent_saved_prediction_audit": {
+      "schema": 1,
+      "recorded_at_utc": "2026-10-07T16:14:03.559834+00:00",
+      "status": "independent_saved_prediction_audit_matched",
+      "checkpoint_sha256": "faa3746bed959118cf324e160700d15924f54e2bf691bc1ebcad39c005c3cd94",
+      "dataset_manifest_sha256": "d161ab98dba7e31b5484040da01c7677afc9381d07199ac5e1033c82e39a1e91",
+      "sources": {
+        "remapped_predictions": {
+          "path": "artifacts/private-builds/candidates/coco-public-2026-10-07/coco-original-category-predictions.json",
+          "sha256": "432b28a069f7d694213b6a6efe2464f80de995d5e8ea178a584950a7e15c696c",
+          "bytes": 32094211,
+          "rows": 159104
+        },
+        "official_annotations": {
+          "path": "artifacts/host-files/Projects/hackaton-kru/data/datasets/coco2017/raw/annotations/instances_val2017.json",
+          "sha256": "e8c7f7908f1d7278341fae127d0da654f102f11bd7b21d8aeefa635b8c810b6f"
+        },
+        "final_receipt": {
+          "path": "artifacts/host-files/Projects/hackaton-kru/training/reports/coco-public-final-2026-10-07.json",
+          "sha256": "68484a7a58a4e16fa18b7af4ee58eccd33621ab2b4308535e2e1f780275cd4a1"
+        }
+      },
+      "prediction_identity_check": {
+        "method": "Reverse class77->1 and1->2, then json.dumps(defaults), matching pinned Ultralytics8.3.221 json.dump(self.jdict,file). Reconstructed original bytes remain in memory only.",
+        "reconstructed_original_prediction_sha256": "1241d06bf71acd83d16d4163e23f605cca242efecacb2536406b4332ed88e751",
+        "recorded_original_prediction_sha256": "1241d06bf71acd83d16d4163e23f605cca242efecacb2536406b4332ed88e751",
+        "matches": true
+      },
+      "method": "Independent standard-library implementation, no project evaluator imported: source category IDs77/1, inclusive frozen scores0.80/0.55, score-descending one-to-one noncrowd matching at IoU0.50; ignore otherwise-unmatched predictions with intersection/prediction-area>=0.50 against same-class crowd boxes. Includes all5000 images.",
+      "results": {
+        "cell phone": {
+          "counts_and_metrics": {
+            "tp": 19,
+            "fp": 0,
+            "fn": 243,
+            "ignored_predictions": 0,
+            "images": 5000,
+            "positive_images": 214,
+            "negative_images": 4786,
+            "negative_image_false_positives": 0,
+            "confidence": 0.8,
+            "iou": 0.5,
+            "precision": 1.0,
+            "recall": 0.07251908396946564,
+            "negative_image_false_positive_rate": 0.0
+          },
+          "accepted_saved_predictions": 19,
+          "matches_final_receipt_exactly": true,
+          "differences": {}
+        },
+        "person": {
+          "counts_and_metrics": {
+            "tp": 5076,
+            "fp": 206,
+            "fn": 5701,
+            "ignored_predictions": 129,
+            "images": 5000,
+            "positive_images": 2693,
+            "negative_images": 2307,
+            "negative_image_false_positives": 26,
+            "confidence": 0.55,
+            "iou": 0.5,
+            "precision": 0.9609996213555472,
+            "recall": 0.4710030620766447,
+            "negative_image_false_positive_rate": 0.011270047680970958
+          },
+          "accepted_saved_predictions": 5411,
+          "matches_final_receipt_exactly": true,
+          "differences": {}
+        }
+      },
+      "recorded_gate_failures": [
+        "cell phone AP50 missing, non-finite or below 0.40",
+        "cell phone recall missing, non-finite or below 0.25",
+        "person recall missing, non-finite or below 0.50"
+      ],
+      "conclusion": "Saved prediction identity and independent operating-point counts exactly corroborate the reported rejection. No category mapping, threshold, denominator, or TP/FP/FN implementation discrepancy found.",
+      "scope": {
+        "inference_run": false,
+        "ap_recomputed": false,
+        "thresholds_searched_or_changed": false,
+        "checkpoint_selection_changed": false,
+        "source_or_dataset_files_modified": false,
+        "only_output_file": "artifacts/private-builds/budget-evidence/coco-independent-audit-1615.json"
+      }
+    },
+    "test_driven_reselection_or_threshold_adjustment": false,
+    "inference_repeated_after_final_test": false
+  },
+  "gaze": {
+    "status": "running",
+    "latest_logged_epoch": 2,
+    "latest_logged_batch": 200,
+    "completed_epoch": 1,
+    "completed_epoch_seconds": 1868.2970000000205,
+    "development_metrics": {
+      "gaze360": {
+        "n": 12318,
+        "mean_degrees": 14.620039939880371,
+        "median_degrees": 11.682195663452148,
+        "p90_degrees": 27.720741271972656,
+        "fraction_under_10": 0.41272933917843807,
+        "fraction_under_15": 0.640769605455431,
+        "groups": 8,
+        "group_macro_mean_degrees": 14.89086562077705,
+        "group_macro_bootstrap95_degrees": [
+          13.244524881489914,
+          16.76087851567276
+        ],
+        "group_mean_degrees": {
+          "g360/rec_027": 17.78501625596542,
+          "g360/rec_031": 11.503569330297568,
+          "g360/rec_032": 19.06387352253813,
+          "g360/rec_033": 13.241650862972076,
+          "g360/rec_054": 16.889014979494917,
+          "g360/rec_056": 14.381302410870079,
+          "g360/rec_071": 12.568764243493176,
+          "g360/rec_075": 13.693733360585021
+        }
+      },
+      "mpiifacegaze": {
+        "n": 3802,
+        "mean_degrees": 6.143031120300293,
+        "median_degrees": 5.64357852935791,
+        "p90_degrees": 10.58338451385498,
+        "fraction_under_10": 0.8705944239873751,
+        "fraction_under_15": 0.9797475013150974,
+        "groups": 2,
+        "group_macro_mean_degrees": 6.176796970006533,
+        "group_macro_bootstrap95_degrees": [
+          5.998989673767809,
+          6.354604266245257
+        ],
+        "group_mean_degrees": {
+          "mpii/p11": 5.998989673767809,
+          "mpii/p12": 6.354604266245257
+        }
+      },
+      "domain_macro_mean_degrees": 10.381535530090332
+    },
+    "development_metrics_are_final_test_metrics": false,
+    "hard_stage_deadline_utc": "2026-10-07T17:47:54Z",
+    "run_budget_expires_utc": "2026-10-07T17:40:41.845868+00:00",
+    "finalization_reserve_seconds": 1200.0,
+    "distribution": "Research-only private candidate; rights and final evaluation remain pending"
+  },
+  "resources": {
+    "service_observed_utc": "2026-10-07T16:11:21.841923+00:00",
+    "available_ram_gib": 90.9,
+    "guard_status": "monitoring",
+    "guard_updated_utc": "2026-10-07T16:12:35.287096+00:00",
+    "non_qorgau_service_changes": false,
+    "protected_service_http_status": 200,
+    "borrowed_resources_unload_verified": true,
+    "resources_restore_required": true
+  },
+  "wider": {
+    "promotion": "previously rejected; production weights retained",
+    "final_test_repeated": false
+  },
+  "deployment": {
+    "version": "0.4.8",
+    "commit": "65125c5b6d65743869289a18e6a575e70d7dad8b",
+    "new_weights_promoted_this_check": false,
+    "windows_rebuilt": false,
+    "physical_webcam_acceptance": "pending"
+  },
+  "evidence_sha256": {
+    "coco-public-final-2026-10-07.json": "68484a7a58a4e16fa18b7af4ee58eccd33621ab2b4308535e2e1f780275cd4a1",
+    "coco-public-heldout-2026-10-07.json": "9412c076b30b2e439830b1296a0c9025287b8207a52ad16b724331f2068283f7",
+    "coco-independent-audit-1615.json": "33905d952f37b0bd8da7763fbde771336fcce73b37e9b3f968542ebc24be2cd9"
+  },
+  "publication_redaction": {
+    "host_paths": "replaced_with_logical_artifact_identifiers",
+    "artifact_identifiers_are_download_urls": false,
+    "historical_release_status_preserved": true,
+    "unrelated_service_details_omitted": true,
+    "original_report_sha256": "1269824310b2073fbb9e697b964e5001593dd0960c369a8c72ea56eab14fb0ee",
+    "embedded_evidence_hashes_scope": "historical original artifacts; a redacted report copy has a different file hash"
+  }
+}

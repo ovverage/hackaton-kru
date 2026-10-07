@@ -48,6 +48,8 @@ class CapturePump:
                     item = self.camera.read(analyze=recognize)
                 if item[1] is not None:
                     captured_at = item[1].get("captured_at", captured_at)
+                elif isinstance(getattr(self.camera, 'last_captured_at', None), (int, float)):
+                    captured_at = self.camera.last_captured_at
             except Exception as error:
                 item = error
                 self.stop.wait(.1)

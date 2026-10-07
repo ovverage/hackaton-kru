@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "kind": "Intermediate execution and quality-gate evidence; not permission to promote models",
+  "observed_utc": "2026-10-07T11:18:16.194105+00:00",
+  "deadline_utc": "2026-10-07T18:47:54Z",
+  "queue_status": "running",
+  "queue_heartbeat_utc": "2026-10-07T11:18:13.905686+00:00",
+  "coco": {
+    "status": "running",
+    "epoch_from_log": 2,
+    "planned_epochs_from_log": 7,
+    "batch_from_log": 43,
+    "batches_per_epoch": 3512,
+    "batch_size": 32,
+    "workers": 4,
+    "final_evaluation": "pending"
+  },
+  "gaze": {
+    "prepared": true,
+    "training": "pending"
+  },
+  "wider": {
+    "training": "complete",
+    "final_evaluation": "failed_quality_gate",
+    "candidate_promotion": "rejected",
+    "selected_checkpoint_sha256": "5f8658a4344ea33bda13825cace151f6272d7865709c14fd642abcd3cd720a40",
+    "confidence": 0.55,
+    "iou": 0.5,
+    "true_positive": 13636,
+    "false_positive": 364,
+    "false_negative": 25476,
+    "precision": 0.974,
+    "recall": 0.34863980364082636,
+    "minimum_recall": 0.5,
+    "onnx_parity": "passed",
+    "audit": {
+      "kind": "Read-only review of evaluator, existing receipts and annotations; no repeated inference",
+      "images": 3226,
+      "source_boxes": 39708,
+      "invalid_boxes": 585,
+      "degenerate_boxes": 11,
+      "evaluated_boxes": 39112,
+      "category_image_and_box_conventions": "consistent with Ultralytics 8.3.221",
+      "relevant_tests_passed": 11,
+      "checkpoint_or_threshold_changes_after_test": false,
+      "conclusion": "No metric implementation error found; existing production face weights retained"
+    },
+    "limitations": [
+      "Generic AP diagnostics are not official WIDER easy/medium/hard AP",
+      "Four negative images cannot establish webcam false-alarm performance",
+      "No physical EXE webcam acceptance has been performed"
+    ],
+    "final_receipt": "wider-public-final-2026-10-07.json",
+    "heldout_receipt": "wider-public-heldout-2026-10-07.json"
+  },
+  "resources": {
+    "available_ram_gib": 90.7,
+    "guard_status": "monitoring",
+    "guard_updated_utc": "2026-10-07T11:17:47.384521+00:00",
+    "protected_service_http_status": 200,
+    "borrowed_resources_unload_verified": true,
+    "resources_restore_required": true
+  },
+  "deployment": {
+    "status": "passed_after_user_disk_cleanup",
+    "commit": "65125c5b6d65743869289a18e6a575e70d7dad8b",
+    "run_id": 37609155637,
+    "attempt": 2,
+    "completed_utc": "2026-10-07T11:12:41Z",
+    "version": "0.4.8",
+    "windows_rebuilt": false,
+    "student_sha256": "052423f11b4ec33a5db849fe45e107fc8232c91d6b3aabebb786c6ba299f72ed",
+    "evidence": "../../docs/evidence/deployment-retry-2026-10-07.json"
+  },
+  "publication_redaction": {
+    "host_paths": "replaced_with_logical_artifact_identifiers",
+    "artifact_identifiers_are_download_urls": false,
+    "historical_release_status_preserved": true,
+    "unrelated_service_details_omitted": true,
+    "original_report_sha256": "7af2af1f9cd1617217910ffdf41c3623b926fd31886e0c31fc67eb6c7d4e5b26",
+    "embedded_evidence_hashes_scope": "historical original artifacts; a redacted report copy has a different file hash"
+  }
+}

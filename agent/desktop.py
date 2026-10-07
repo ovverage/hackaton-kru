@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QComboBox,
+    QScrollArea,
     QStackedWidget,
     QSystemTrayIcon,
     QVBoxLayout,
@@ -82,6 +83,121 @@ def card():
     layout.setContentsMargins(24, 22, 24, 22)
     layout.setSpacing(13)
     return widget, layout
+
+
+def public_gaze_status_text(gaze, *, active=False, gaze_seconds=0):
+    """Keep camera motion feedback separate from a strict gaze decision."""
+    import math
+
+    def finite_angle(value):
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return None
+        try:
+            return float(value) if math.isfinite(value) else None
+        except (OverflowError, ValueError):
+            return None
+
+    def axis_text(value, positive, negative, axis):
+        value = finite_angle(value)
+        if value is None:
+            return f'{axis} недоступна'
+        if abs(value) < .05:
+            return f'{axis} 0.0°'
+        return f'{positive if value > 0 else negative} {abs(value):.1f}°'
+
+    names = {"SCREEN": "на экран", "CENTER": "на экран", "LEFT": "влево", "RIGHT": "вправо",
+             "DOWN": "вниз", "UP": "вверх"}
+    observed = gaze.get("gaze_observed_direction", "UNKNOWN")
+    feedback_reason = gaze.get('gaze_feedback_reason')
+    held = bool(gaze.get('gaze_display_stale') or feedback_reason == 'blink_hold')
+    if not held and gaze.get('gaze_tracking_status') not in (None, 'tracked'):
+        observed = 'UNKNOWN'
+    text = "Взгляд (по изображению камеры): "
+    if not gaze.get("reference_ready"):
+        text += ("не настроен. Повторите настройку по точкам на своём мониторе."
+                 if gaze.get('gaze_decision_policy') == 'adaptive_screen' else
+                 "не настроен. Повторно включите камеру и посмотрите в центр экрана.")
+    elif observed not in names:
+        reason = {
+            'blink': 'моргание или закрытые глаза.',
+            'eye_state_missing': 'не удалось оценить видимость глаз.',
+            'face_landmarks_missing': 'ориентиры лица потеряны.',
+            'multiple_faces': 'в кадре несколько лиц.',
+            'invalid_crop': 'лицо слишком маленькое или плохо видно.',
+        }.get(gaze.get('gaze_tracking_status'), 'направление сейчас не определено.')
+        if gaze.get('screen_reason') == 'boundary_margin':
+            text += 'у края личной зоны экрана; замечание не начисляется.'
+        else:
+            text += 'не отслеживается — ' + reason
+    else:
+        text += names[observed]
+        if held:
+            text += ' · моргание, показана последняя оценка.'
+        elif gaze.get("gaze_observation_uncertain", True):
+            if feedback_reason in ('uncertain_observation', 'model_uncertain'):
+                text += ' · модель не уверена в направлении; замечание не начисляется.'
+            elif feedback_reason in ('strict_unknown', 'strict_mismatch'):
+                text += ' · направление оценено, но не подтверждено для замечания.'
+            else:
+                text += " · оценка неуверенная, замечание не начисляется."
+        elif active and gaze.get('direction') in ('DOWN', 'LEFT', 'RIGHT'):
+            text += f" · {gaze_seconds:.1f} / 5 с"
+
+    current_gaze = (gaze.get('reference_ready')
+                    and gaze.get('gaze_tracking_status') in (None, 'tracked')
+                    and feedback_reason not in ('invalid_observation', 'observation_missing', 'reference_missing'))
+    if gaze.get('reference_ready') and (held or current_gaze):
+        yaw = gaze.get('gaze_display_yaw_degrees', gaze.get('relative_yaw_degrees'))
+        pitch = gaze.get('gaze_display_pitch_degrees', gaze.get('relative_pitch_degrees'))
+        angle_label = 'предыдущая оценка углов от центра' if held else 'углы от центра'
+        text += (f" · {angle_label}: "
+                 + axis_text(yaw, 'влево', 'вправо', 'горизонталь') + '; '
+                 + axis_text(pitch, 'вверх', 'вниз', 'вертикаль') + '.')
+    else:
+        text += ' · углы недоступны.'
+    threshold = finite_angle(gaze.get('gaze_decision_threshold_degrees'))
+    if (gaze.get('gaze_decision_policy') == 'demo_sensitivity'
+            and threshold is not None and threshold > 0):
+        text += f' · чувствительность: {threshold:g}°.'
+    elif gaze.get('gaze_decision_policy') == 'adaptive_screen':
+        margin = finite_angle(gaze.get('screen_margin_degrees'))
+        if margin is not None:
+            text += f' · личная зона экрана + запас {margin:g}°.'
+
+    head_names = dict(names, SCREEN="прямо", CENTER="прямо")
+    head_direction = gaze.get("head_direction", "UNKNOWN")
+    current_head = (gaze.get('head_reference_ready')
+                    and gaze.get('head_tracking_status') in (None, 'tracked'))
+    yaw = finite_angle(gaze.get('head_yaw')) if current_head else None
+    pitch = finite_angle(gaze.get('head_pitch')) if current_head else None
+    if not gaze.get("head_reference_ready"):
+        head_text = "не настроено."
+    elif not current_head:
+        head_text = "не отслеживается — текущий угол неизвестен."
+    elif head_direction == 'UNKNOWN' and gaze.get('head_warning'):
+        if yaw is not None and pitch is not None:
+            if abs(yaw) > abs(pitch):
+                turn, magnitude = ('вправо' if yaw > 0 else 'влево'), abs(yaw)
+            else:
+                turn, magnitude = ('вниз' if pitch > 0 else 'вверх'), abs(pitch)
+            head_text = f"небольшой поворот {turn}, {magnitude:.0f}° (по изображению камеры)."
+        else:
+            head_text = "направление сейчас не определено."
+    elif head_direction not in head_names:
+        head_text = "не отслеживается — текущий угол неизвестен."
+    else:
+        prefix = 'сильный поворот ' if gaze.get('head_extreme') else ''
+        head_text = prefix + head_names[head_direction] + " (по изображению камеры)."
+    if current_head:
+        head_text += (' · углы от центра: '
+                      + axis_text(yaw, 'вправо', 'влево', 'горизонталь') + '; '
+                      + axis_text(pitch, 'вниз', 'вверх', 'вертикаль') + '.')
+    else:
+        head_text += ' · углы недоступны.'
+    text += "\nПоложение головы: " + head_text
+    if (gaze.get("interval_ms") or 0) > 750:
+        text += "\nКадры поступают редко — таймер отвлечения сброшен."
+    return text
 
 
 def icon():
@@ -163,7 +279,9 @@ class StudentWindow(QWidget):
         self.setObjectName("window")
         self.setWindowTitle("Qorgau — агент аудитории")
         self.setWindowIcon(icon())
-        self.resize(560, 450)
+        screen = QApplication.primaryScreen()
+        available_height = screen.availableGeometry().height() - 60 if screen else 640
+        self.resize(560, min(640, max(400, available_height)))
         self.setMinimumSize(480, 400)
         self.setStyleSheet(STYLE)
         root = QHBoxLayout(self)
@@ -275,7 +393,14 @@ class StudentWindow(QWidget):
         layout.addWidget(self.runtime_error)
         layout.addStretch()
         layout.addWidget(label("Во время теста фиксируются события и видео с камеры. Звук не записывается.", "small"))
-        return page
+        self.dashboard_scroll = QScrollArea()
+        self.dashboard_scroll.setObjectName('dashboard-scroll')
+        self.dashboard_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.dashboard_scroll.setWidgetResizable(True)
+        self.dashboard_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.dashboard_scroll.setWidget(page)
+        page.setAutoFillBackground(False)
+        return self.dashboard_scroll
 
     def register(self):
         if self.shutting_down or self.agent:
@@ -348,6 +473,7 @@ class StudentWindow(QWidget):
     def refresh(self):
         if not self.agent:
             return
+        self.check_calibrated_monitor()
         snap = self.agent.snapshot()
         model = present(snap)
         state = snap["state"]
@@ -411,6 +537,10 @@ class StudentWindow(QWidget):
             gaze_text = "Распознавание приостановлено. Продолжение разрешает преподаватель."
         elif not snap.get("camera") or snap.get("camera_fault"):
             gaze_text = ""
+        elif gaze.get("source") == "public_gaze_model":
+            gaze_text = public_gaze_status_text(
+                gaze, active=active, gaze_seconds=snap.get("gaze_seconds", 0),
+            )
         elif not gaze.get("reference_ready"):
             gaze_text = "Определяем исходное положение. Посмотрите на экран."
         else:
@@ -422,6 +552,22 @@ class StudentWindow(QWidget):
             if (gaze.get("interval_ms") or 0) > 750:
                 gaze_text += " Кадры поступают редко — таймер отвлечения сброшен."
         self.gaze_status.setText(gaze_text)
+
+    def check_calibrated_monitor(self):
+        """Screen geometry/DPI is read only on the GUI thread."""
+        camera = getattr(self.agent, 'camera', None)
+        signature = getattr(camera, 'screen_signature', None)
+        if signature is None or not getattr(camera, 'gaze_enabled', False):
+            return
+        from .screen_calibration import screen_signature
+        if any(screen_signature(screen) == signature for screen in QApplication.screens()):
+            return
+        camera.request_screen_invalidation('SCREEN_CHANGED')
+        with self.agent.mutex:
+            self.agent.capabilities['gaze'] = False
+            if (self.agent.engine.state.lifecycle == 'RUNNING'
+                    and self.agent.engine.state.access == 'OPEN'):
+                self.agent.security_event('DISPLAY_CHANGED')
 
     def open_exam(self):
         if not self.agent:

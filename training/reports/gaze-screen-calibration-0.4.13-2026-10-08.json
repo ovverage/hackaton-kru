@@ -1,0 +1,153 @@
+{
+  "recorded_utc": "2026-10-07T20:35:53.089425+00:00",
+  "version": "0.4.13-hackathon",
+  "user_request": "Automatic roughly ten-second 5–9 point personal monitor calibration, then 5–7 degree margin and sustained distraction timer.",
+  "implementation": {
+    "targets": 9,
+    "fit_targets": [
+      [
+        "fit_center",
+        0.5,
+        0.5
+      ],
+      [
+        "fit_top_left",
+        0.05,
+        0.05
+      ],
+      [
+        "fit_top_right",
+        0.95,
+        0.05
+      ],
+      [
+        "fit_bottom_right",
+        0.95,
+        0.95
+      ],
+      [
+        "fit_bottom_left",
+        0.05,
+        0.95
+      ]
+    ],
+    "independent_validation_targets": [
+      [
+        "validation_top",
+        0.5,
+        0.05
+      ],
+      [
+        "validation_right",
+        0.95,
+        0.5
+      ],
+      [
+        "validation_bottom",
+        0.5,
+        0.95
+      ],
+      [
+        "validation_left",
+        0.05,
+        0.5
+      ]
+    ],
+    "settling_ms": 400,
+    "capture_seconds_per_target": 0.75,
+    "nominal_target_sequence_seconds": 10.35,
+    "capture_max_seconds_per_target": 1.35,
+    "minimum_fresh_samples_per_target": 3,
+    "total_session_timeout_seconds": 25,
+    "acknowledgement": "Only after GUI paint, visible target and settle; unique pixel digest, fresh timestamp and selected-screen signature required.",
+    "profile": "Affine angle-to-screen mapping for validation/display; convex polygon of four measured corner medians for angular boundary distance.",
+    "head": "Do not add head pose to CNN gaze ray. Independent measured head pose supplies optional stability checks; known unstable pose rejects capture.",
+    "decision": "Inside polygon SCREEN; outside <=6 degrees UNKNOWN/no strike; beyond6 degrees directional. LEFT/RIGHT/DOWN use existing5second rule; UP display only.",
+    "uncertainty": "Finite uncertain observations may display a preliminary direction, never a strict gaze strike.",
+    "gates": {
+      "min_samples": 3,
+      "margin_degrees": 6.0,
+      "max_model_error_degrees": 20.0,
+      "max_sample_spread_degrees": 4.0,
+      "min_yaw_span_degrees": 4.0,
+      "min_pitch_span_degrees": 3.0,
+      "max_condition_number": 30.0,
+      "max_fit_error": 0.18,
+      "max_validation_median_error": 0.12,
+      "max_validation_error": 0.22,
+      "max_sample_screen_spread": 0.18
+    },
+    "quality_scope": "Engineering heuristics for this prototype, not independently validated statistical accuracy or intent of cheating.",
+    "persistence": "Session-local angles only; no calibration images or personal screen profile written to disk.",
+    "display_changes": "Invalidate on monitor identity/geometry/DPI changes or exam target monitor mismatch; fresh point calibration required before START/UNLOCK.",
+    "inference": "CNN crop, preprocessing, ONNX weights and raw angle estimation unchanged; builder verifies original inference AST."
+  },
+  "validation": {
+    "checked_utc": "2026-10-07T20:33:18.398069+00:00",
+    "full_suite_passed": true,
+    "full_passed": 830,
+    "full_skipped": 26,
+    "full_seconds": 45.07,
+    "additional_tests_passed": 22,
+    "additional_seconds": 2.19,
+    "additional_scope": "Native exam monitor selection/recovery, authenticated adaptive gaze event delivery and no-strike controls; added after full-suite collection.",
+    "ruff_passed": true,
+    "diff_check_passed": true,
+    "ui": "Real Qt synthetic camera flow and independently rendered1280x720 introductory/point views.",
+    "native_monitor": "Read-only Windows Qt native HMONITOR vs foreground window probe passed; multiple displays/DPI only mocked.",
+    "physical_webcam_acceptance": "pending",
+    "full_log": "artifacts/private-builds/0413-full-tests.log",
+    "focused_log": "artifacts/private-builds/0413-final-focused-tests.log"
+  },
+  "artifact": {
+    "executable": "artifacts/private-builds/deliverables/Qorgau-Hackathon-20261007T203040-a8d2de/Qorgau-Hackathon.exe",
+    "sha256": "786f8afeee843a7f2a88202573980943236054cfd16edda1234563e87e10c551",
+    "bytes": 403295914,
+    "frozen_self_test": "PASS",
+    "isolated_portable_self_test": "PASS",
+    "archive_model_count": 6,
+    "archive_source_module_count": 16,
+    "embedded_models": {
+      "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+      "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+      "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+      "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+      "gaze-public.onnx": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+      "gaze-public.json": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431"
+    }
+  },
+  "rendered_own_dialog_previews": [
+    "artifacts/private-builds/calibration-intro.png",
+    "artifacts/private-builds/calibration-target.png"
+  ],
+  "source_sha256": {
+    "agent.vision": "a6e5a7a5edea9d6dbddefd4bafe3235ff4581578c012b49571bb4720cc5d7424",
+    "agent.client": "c303e4af50a08e6a191208ae02443a38193fda81a117ace4ddfe9fdda0c1c14c",
+    "agent.desktop": "20ed3f32f25858f812d2ddb45089549d0431d79b906e5b33bd7255c171af7be7",
+    "agent.selftest": "90c54fda590d6b9a41aaa9d72793d037b3de211624428860249d5eb124f77890",
+    "shared.public_gaze": "4e3bf416cbfb9ad6eac9c08157e976ad1bb381ae683b42c2d7814f693a8ff925",
+    "shared.head_pose": "92022411f31e445abed39c21b98c03724e8b26a3e5cfb0f6656d37a48d9646e2",
+    "shared.head_review": "ce9b839c2ef8746343f80a8dba569f2cf4f37e2bf71a353726e9cbfc80a9c835",
+    "shared.gaze_feedback": "02d805468f2e29a1049408237f23a2544da361834ee5857086b46c8643f8877c",
+    "shared.gaze_display_memory": "f769cdd9d82fd034ce176d49873f5169f69d15831b3b66cd330213d00220cc83",
+    "agent.exam_ui": "272c47dc8f932cd27536aac847ccba84cceb86ddc002ee70b941ef7749ff147a",
+    "agent.camera_setup": "55e8788c720a80ec986d5af06d74bbe7b71926fd08debddb520b47bd0515fdba",
+    "agent.screen_capture": "6708b88a042c7aa925203cf1832d874667e2deaff9ae9cf8c37fe54f0586dbb3",
+    "agent.screen_calibration": "966fbc766bd15a13d9b90fc4fa82b77822b4d0f2735e47fe3762bbc98462228c",
+    "agent.student_state": "73d17633615f5f7fe228f2006bb8c6b9ab599b1ac33409819fb42ff82c36f5d7",
+    "agent.windows_guard": "c14162f6d4b799782f3aa30bcabb8f6f48ad10691aa43141762b72f4181ee653",
+    "shared.screen_gaze": "9eecd166d6624c58a8e4e3621f81fe3b67856e596c4f4481902795990b4ae2da"
+  },
+  "physical_acceptance": "Pending actual webcam and user following targets. Synthetic tests, UI rendering, native monitor read-only probes and portable self-test are not physical acceptance.",
+  "distribution": "Private closed noncommercial hackathon prototype; retained research license notices and source archive bundled. Public download remains0.4.8.",
+  "training": "No new training, checkpoint selection, test-set use, GPU server or WSL/service changes for this UI/runtime release.",
+  "methodology_reference": "https://www.developer.tobiipro.com/commonconcepts/calibration.html",
+  "reference_scope": "General separation of calibration/validation targets only; no Tobii hardware/SDK or accuracy claim.",
+  "publication_redaction": {
+    "host_paths": "replaced_with_logical_artifact_identifiers",
+    "artifact_identifiers_are_download_urls": false,
+    "historical_release_status_preserved": true,
+    "original_report_sha256": "00ecfd09989ae8b121db7d2486edc1f5397edb8668d25fecd3473ce8ff0eca23",
+    "embedded_evidence_hashes_scope": "historical original artifacts; a redacted report copy has a different file hash"
+  }
+}

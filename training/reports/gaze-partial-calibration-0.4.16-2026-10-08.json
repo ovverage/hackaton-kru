@@ -1,0 +1,65 @@
+{
+  "recorded_utc": "2026-10-07T21:45:50.136169+00:00",
+  "version": "0.4.16-hackathon",
+  "user_request": "Automatically re-present a failed calibration point until it passes, preserving other points.",
+  "behavior": {
+    "target_seconds": 3,
+    "settle_seconds": 0.8,
+    "first_pass_seconds": 27,
+    "retry_limit": null,
+    "cancellation": "Esc checked in each sampling/presentation loop",
+    "retries": "Insufficient fresh frames, unstable eye/head measurements or a specific failed final check repeat only that target.",
+    "replacement": "Newest complete accepted target exposure replaces the failed exposure; no maximum angle or best sample selection.",
+    "safety": "Distinct presentation tokens and fresh capture timestamps; original head reference fixed across centre-eye retries.",
+    "memory": "At most nine target windows and bounded per-point counters; frame digest set reset for each exposure.",
+    "diagnostics": "Five compact local session reports, aggregate retry counts and latest failure per target.",
+    "global_failure": "Collapsed angular span, contradictory geometry, degenerate transform or inconsistent affine fit stop with a specific explanation; these do not reliably identify one causal bad point.",
+    "statistical_scope": "Repeated personal setup checks are adaptive, not an independent accuracy evaluation. Four check targets never enter the fit formula."
+  },
+  "inference_contract": {
+    "baseline_version": "0.4.15-hackathon",
+    "status": "passed",
+    "files": {
+      "agent/vision.py": "b08860d5098ec568e07d08888b476aca05b4e2f5ce262165c4e67da3b1a33c48",
+      "agent/detector.py": "4b543b2c7fed04ab206dc3252b5b11c9b96499785ec8cb2b28d0d3e26b6d8a43",
+      "shared/public_gaze.py": "4e3bf416cbfb9ad6eac9c08157e976ad1bb381ae683b42c2d7814f693a8ff925",
+      "shared/rules.py": "3be22f97f72446a119c99ad4e43c487ba056e9698454fee77e319b7eae636854",
+      "agent/latest_frame.py": "27d33a51b18edcd634a9a9daa4a0df6b707182a5439b4364be126da9ba8344c5"
+    },
+    "full_model_processing_in_preview_and_calibration": true
+  },
+  "validation": {
+    "full_passed": 1002,
+    "skipped": 26,
+    "seconds": 64.97,
+    "ruff": "passed",
+    "diff_check": "passed",
+    "frozen_self_test": "PASS",
+    "portable_self_test": "PASS",
+    "archive_assets": 6,
+    "archive_source_modules": 19,
+    "physical_acceptance": "Pending user webcam check; synthetic calibration and packaging checks do not establish webcam accuracy."
+  },
+  "executable": {
+    "path": "artifacts/private-builds/deliverables/Qorgau-Hackathon-20261007T214009-c2aedc/Qorgau-Hackathon.exe",
+    "sha256": "9e778326b87c1d9ac28081a3ba17755df5db9a42eaebd0a54d13a41ff7cc162f",
+    "bytes": 403322255
+  },
+  "embedded_assets": {
+    "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+    "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+    "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+    "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+    "gaze-public.onnx": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+    "gaze-public.json": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431"
+  },
+  "distribution": "Private closed noncommercial hackathon prototype; source and license notices included; no public deploy.",
+  "training": "No training or GPU-server/WSL/service changes.",
+  "publication_redaction": {
+    "host_paths": "replaced_with_logical_artifact_identifiers",
+    "artifact_identifiers_are_download_urls": false,
+    "historical_release_status_preserved": true,
+    "original_report_sha256": "f683329a9212567916f0cdc73f1473ed31b18ec8653520efb184bf78edb2b315",
+    "embedded_evidence_hashes_scope": "historical original artifacts; a redacted report copy has a different file hash"
+  }
+}

@@ -132,6 +132,8 @@ class Agent:
         self.last_observation = None
         self.last_observation_at = None
         self.gaze_diagnostics = None
+        from shared.head_review import HeadPoseReview
+        self.head_review = HeadPoseReview()
         self.recognition_paused = False
         self._paused_camera = None
         self._recognition_after = self.origin
@@ -213,6 +215,8 @@ class Agent:
             self.last_observation_at = None
             self._paused_camera = None
         self.recognition_paused = paused
+        if paused and getattr(self, 'head_review', None) is not None:
+            self.head_review.reset()
         return changed
 
     def phone_review_mode(self):
@@ -247,6 +251,13 @@ class Agent:
                 and command.get("expected_version") != self.engine.state.version
             ):
                 raise ValueError("STATE_CONFLICT")
+            if (kind in ("START", "UNLOCK")
+                    and getattr(self.camera, "screen_calibration_required", False) is True
+                    and getattr(self.camera, "requires_gaze_reference", True)):
+                # Includes a queued GUI monitor change, before the capture
+                # thread has removed the old profile. Teacher consent cannot
+                # make an invalid monitor reference usable again.
+                raise ValueError("SCREEN_CALIBRATION_REQUIRED")
             if kind == "START":
                 if self.camera_preparing:
                     raise ValueError("CAMERA_PREPARING")
@@ -602,6 +613,15 @@ class Agent:
                 **{key: diagnostics.get(key) for key in (
                     "offscreen_probability", "head_yaw", "head_pitch", "source", "reference_ready",
                     "attention_away", "attention_direction",
+                    "relative_yaw_degrees", "relative_pitch_degrees", "error90_degrees", "reference_progress",
+                    "head_direction", "head_reference_ready", "head_reference_error", "head_away", "head_warning",
+                    "gaze_observed_direction", "gaze_observation_uncertain", "gaze_feedback_reason",
+                    "gaze_tracking_status", "gaze_display_yaw_degrees", "gaze_display_pitch_degrees",
+                    "gaze_display_threshold_degrees", "gaze_display_stale", "gaze_display_age_ms",
+                    "head_tracking_status", "head_extreme",
+                    "gaze_decision_policy", "gaze_decision_threshold_degrees", "gaze_decision_reason",
+                    "screen_ready", "screen_x", "screen_y", "screen_direction", "screen_observed_direction",
+                    "screen_side", "screen_reason", "screen_margin_degrees", "screen_distance_degrees", "screen_quality",
                 )},
                 "interval_ms": interval_ms,
             }
@@ -610,7 +630,24 @@ class Agent:
             before = self.engine.state.version
             aiming = phone_aiming and not self.phone_aim_consumed(phone_episode_id, at)
             events = self.engine.observe(t, direction, phone_confidence, faces, aiming)
+            head_review = self.head_review.observe(
+                t, diagnostics, faces,
+                self.engine.state.lifecycle == 'RUNNING' and self.engine.state.access == 'OPEN',
+                (self.journal.get('exam_id'), self.engine.state.epoch),
+            )
+            if head_review:
+                events.append(self.engine.event('HEAD_TURN_REVIEW', t, **head_review))
             for event in events:
+                if (event.get('category') == 'GAZE_STRIKE'
+                        and diagnostics.get('gaze_decision_policy') in ('demo_sensitivity', 'adaptive_screen')):
+                    event['gaze_decision_policy'] = diagnostics['gaze_decision_policy']
+                    event['gaze_threshold_degrees'] = diagnostics.get('gaze_decision_threshold_degrees')
+                    event['gaze_relative_yaw'] = diagnostics.get('gaze_display_yaw_degrees')
+                    event['gaze_relative_pitch'] = diagnostics.get('gaze_display_pitch_degrees')
+                    event['gaze_error90_degrees'] = diagnostics.get('error90_degrees')
+                    if event['gaze_decision_policy'] == 'adaptive_screen':
+                        event['screen_distance_degrees'] = diagnostics.get('screen_distance_degrees')
+                        event['screen_margin_degrees'] = diagnostics.get('screen_margin_degrees')
                 if event.get("type") == "PHONE_AIM_REVIEW":
                     event["phone_episode_id"] = phone_episode_id
                     self._last_phone_aim = {"episode_id": phone_episode_id, "at": at}
@@ -1006,7 +1043,10 @@ def main():
         agent.recorder = ClipRecorder(args.data / "clips")
         agent.capabilities.update(
             camera=True, recording=True, gaze=bool(agent.camera.centres) or bool(getattr(agent.camera, 'gaze_enabled', False)),
-            vision="experimental-calibrated-iris" if agent.camera.centres else "yolo11n-phone/yolov8n-face/mediapipe-auto-gaze"
+            vision="yolo11n-phone/yolov8n-face/public-gaze-v1"
+            if getattr(agent.camera, 'public_gaze', None) is not None
+            else "experimental-calibrated-iris" if agent.camera.centres
+            else "yolo11n-phone/yolov8n-face/mediapipe-auto-gaze"
         )
     stop = threading.Event()
     if args.headless:

@@ -1,9 +1,9 @@
 {
-  "version": "2026.10.06.2",
-  "application_version": "0.4.6",
-  "architecture": "YOLO11n phone / YOLOv8n face / MediaPipe Face Mesh + ExtraTrees gaze",
+  "version": "2026.10.07.gaze-demo",
+  "application_version": "0.4.16",
+  "architecture": "YOLO11n phone / YOLOv8n face / MediaPipe landmarks and head pose / MobileNetV3 gaze with personal screen calibration",
   "runtime": "local CPU; no Torch, training service or recognition API required",
-  "model_card": "docs/MODEL_CARD_2026_10_06.md",
+  "model_card": "docs/MODEL_CARD_2026_10_07.md",
   "initial_phone_weights": {
     "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt",
     "sha256": "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1",
@@ -25,7 +25,7 @@
   "files": [
     {
       "file": "yolo11n.onnx",
-      "url": "https://github.com/ovverage/hackaton-kru/releases/download/models-2026.10.06.2/yolo11n.onnx",
+      "url": "https://raw.githubusercontent.com/sergeynak/qorgau-models/bd38593c6860fe5140122ae58ccbd7e57bfd3092/yolo11n.onnx",
       "license": "AGPL-3.0",
       "role": "phone",
       "architecture": "YOLO11n",
@@ -39,7 +39,7 @@
     },
     {
       "file": "face_landmarker.task",
-      "url": "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+      "url": "https://raw.githubusercontent.com/sergeynak/qorgau-models/bd38593c6860fe5140122ae58ccbd7e57bfd3092/face_landmarker.task",
       "license": "Apache-2.0",
       "role": "face mesh, iris landmarks, head rotation and blendshapes",
       "fine_tuned": false,
@@ -48,7 +48,7 @@
     },
     {
       "file": "face_yolov8n.onnx",
-      "url": "https://github.com/ovverage/hackaton-kru/releases/download/models-2026.10.06.2/face_yolov8n.onnx",
+      "url": "https://raw.githubusercontent.com/sergeynak/qorgau-models/bd38593c6860fe5140122ae58ccbd7e57bfd3092/face_yolov8n.onnx",
       "license": "Apache-2.0 (upstream model card); Ultralytics exporter AGPL-3.0",
       "role": "face",
       "architecture": "YOLOv8n",
@@ -63,7 +63,7 @@
     },
     {
       "file": "gaze-direction.json",
-      "url": "https://github.com/ovverage/hackaton-kru/releases/download/models-2026.10.06.2/gaze-direction.json",
+      "url": "https://raw.githubusercontent.com/sergeynak/qorgau-models/bd38593c6860fe5140122ae58ccbd7e57bfd3092/gaze-direction.json",
       "role": "direction classifier over MediaPipe features",
       "architecture": "ExtraTrees, 300 trees, depth 10",
       "feature_version": "iris-head-blend-v2",
@@ -83,6 +83,67 @@
       "training_report": "training/reports/gaze-v2.json",
       "sha256": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
       "bytes": 2158264
+    },
+    {
+      "file": "gaze-public.onnx",
+      "sha256": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+      "bytes": 4314328,
+      "role": "research gaze estimation",
+      "license": "Gaze360 Research License / MPIIFaceGaze CC-BY-NC-SA-4.0; retained notices",
+      "source": "https://github.com/sergeynak/qorgau-models/tree/bd38593c6860fe5140122ae58ccbd7e57bfd3092",
+      "url": "https://raw.githubusercontent.com/sergeynak/qorgau-models/bd38593c6860fe5140122ae58ccbd7e57bfd3092/gaze-public.onnx"
+    },
+    {
+      "file": "gaze-public.json",
+      "sha256": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431",
+      "bytes": 7021,
+      "role": "research gaze calibration and provenance",
+      "license": "Gaze360 Research License / MPIIFaceGaze CC-BY-NC-SA-4.0; retained notices",
+      "source": "https://github.com/sergeynak/qorgau-models/tree/bd38593c6860fe5140122ae58ccbd7e57bfd3092",
+      "url": "https://raw.githubusercontent.com/sergeynak/qorgau-models/bd38593c6860fe5140122ae58ccbd7e57bfd3092/gaze-public.json"
     }
-  ]
+  ],
+  "runtime_gaze": "public-gaze-v1",
+  "research_gaze": {
+    "explicit_screen_calibration": true,
+    "center_reference_from_fit_target": true,
+    "original_evaluation_sha256": "75819259c2bafb163b42d57c19db2126a6f69a43aac8994021fa5281e74a4fe5",
+    "checkpoint_sha256": "f993cf68d243ef67521869fefca3db635949d51faa92fec4f30c57f8d8eba1e0",
+    "runtime_contract_sha256": "4e3bf416cbfb9ad6eac9c08157e976ad1bb381ae683b42c2d7814f693a8ff925",
+    "validated_original_contract_sha256": "dc1b27857c429ea514c6d64ad74ad959ab9b5a638ab815b7b25d7cb20bae1b7b",
+    "input_routing_change": "Explicit measured blink pair; independent head transform; CNN inference AST unchanged",
+    "screen_calibration_runtime_sha256": "4d85c8a32150f3f413a439bf1bf7876976dbeafed2baa664f2274ecaa6cb04be",
+    "adaptive_screen_policy": {
+      "angular_polygon_margin_degrees": 6,
+      "duration_seconds": 5,
+      "per_frame_error90_limit": 20,
+      "fit_targets": 5,
+      "check_targets_not_used_for_fit": 4,
+      "target_visible_seconds": 3,
+      "nominal_calibration_seconds": 27,
+      "settling_seconds": 0.8,
+      "target_retry": "Automatically replace only the failed complete point window until success or Esc; preserve other windows",
+      "retry_limit": null,
+      "global_geometry_error": "Specific stop when no single failed target can be identified",
+      "calibration_diagnostics": "Last five aggregate local attempts; no images or raw gaze vectors",
+      "capture_transport": "Independent latest-frame producer; original capture timestamp; no FIFO backlog",
+      "inference_schedule": "All existing models run on every analyzed frame, including point calibration",
+      "state_scope": "Ephemeral camera session bound to selected monitor identity, geometry and DPI",
+      "penalty_directions": [
+        "LEFT",
+        "RIGHT",
+        "DOWN"
+      ],
+      "up_direction": "Banner only",
+      "raw_cnn_inference_unchanged": true,
+      "scope": "Personal screen geometry with adaptive setup checks; repeated targets are not an independent statistical accuracy evaluation"
+    },
+    "additional_cpu_parity_sha256": "0dac7e4149ca5778295c95bc8067cea9a9f137e07c962611ef4ab155f378f07c"
+  },
+  "purpose": "Noncommercial hackathon research prototype",
+  "model_repository": {
+    "repository": "sergeynak/qorgau-models",
+    "commit": "bd38593c6860fe5140122ae58ccbd7e57bfd3092",
+    "url": "https://github.com/sergeynak/qorgau-models"
+  }
 }

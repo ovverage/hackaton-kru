@@ -1,0 +1,125 @@
+{
+  "recorded_utc": "2026-10-07T18:51:13.998037+00:00",
+  "user_report": "0.4.9: no visible head-turn response; downward gaze and camera-left/user-right gaze poorly recognized",
+  "confirmed_causes": [
+    "Public CNN branch bypassed independent head pose processing.",
+    "Absolute uncertainty sums cause strict gaze abstention below approximately29-40degrees; UI hid these observations."
+  ],
+  "changes": [
+    "Separate head orientation from the same explicitly confirmed25centreframes, fixed reference, stable valid rotations only.",
+    "Visible small head turns and full direction independently of eye confidence/blinks; missing or multiple faces remain unknown.",
+    "HEAD_TURN_REVIEW after5s of sustained full turn during active exam; no eye-gaze strikes or locks from head-only signal.",
+    "Display-only eye direction outside existing10/8degree central zone with explicit uncertainty; strict decisions unchanged.",
+    "Labels explicitly use camera-image axes."
+  ],
+  "validation": {
+    "full_suite": "418 passed,26 skipped before final small-turn text adjustment",
+    "final_focused": "31 passed: display feedback and actual Agent/server head review path",
+    "ruff": "passed",
+    "frozen_selftest": {
+      "result": "PASS",
+      "status": "passed",
+      "version": "0.4.10-hackathon",
+      "platform": "Windows-11-10.0.28000-SP0",
+      "frozen": true,
+      "browser_renderer": true,
+      "kind": "synthetic packaging test; no webcam or accuracy claim",
+      "installer_mutex": true,
+      "models_verified": true,
+      "onnx_inference": true,
+      "face_landmarker": true,
+      "yolo_face_inference": true,
+      "gaze_forest": true,
+      "model_version": "2026.10.07.gaze-demo",
+      "model_files": {
+        "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+        "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+        "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+        "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+        "gaze-public.onnx": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+        "gaze-public.json": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431"
+      },
+      "h264_encode_decode": true,
+      "phone_cpu_median_ms": 47.39,
+      "public_gaze": {
+        "onnx_inference": true,
+        "explicit_reference_required": true,
+        "separate_head_pose": true,
+        "uncertain_gaze_feedback": true,
+        "kind": "synthetic packaged CPU smoke; no physical calibration or accuracy claim"
+      }
+    },
+    "portable_selftest": {
+      "checked_utc": "2026-10-07T18:51:13.941329+00:00",
+      "status": "passed",
+      "executable_sha256": "41ec712c0e5d58302cbdedbb25fd49cada0156607ccd5f00003b5caa316c7654",
+      "working_directory": "artifacts/private-builds/portable-check/d2df024deda4",
+      "only_executable_supplied": true,
+      "external_models_directory": false,
+      "python_on_path": false,
+      "path": "environment-identifiers/portable-self-test-system-path",
+      "result": {
+        "result": "PASS",
+        "status": "passed",
+        "version": "0.4.10-hackathon",
+        "platform": "Windows-11-10.0.28000-SP0",
+        "frozen": true,
+        "browser_renderer": true,
+        "kind": "synthetic packaging test; no webcam or accuracy claim",
+        "installer_mutex": true,
+        "models_verified": true,
+        "onnx_inference": true,
+        "face_landmarker": true,
+        "yolo_face_inference": true,
+        "gaze_forest": true,
+        "model_version": "2026.10.07.gaze-demo",
+        "model_files": {
+          "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+          "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+          "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+          "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+          "gaze-public.onnx": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+          "gaze-public.json": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431"
+        },
+        "h264_encode_decode": true,
+        "phone_cpu_median_ms": 46.69,
+        "public_gaze": {
+          "onnx_inference": true,
+          "explicit_reference_required": true,
+          "separate_head_pose": true,
+          "uncertain_gaze_feedback": true,
+          "kind": "synthetic packaged CPU smoke; no physical calibration or accuracy claim"
+        }
+      },
+      "scope": "Frozen EXE in isolated working directory; not a clean OS or physical camera acceptance"
+    },
+    "physical_webcam_acceptance": "pending user verification"
+  },
+  "limitations": [
+    "No new training or test-set tuning.",
+    "Eye-only recognition improvement is not established by display feedback.",
+    "Centre calibration does not establish individual monitor boundaries."
+  ],
+  "artifact": {
+    "path": "artifacts/private-builds/deliverables/Qorgau-Hackathon-20261007T184657-474120/Qorgau-Hackathon.exe",
+    "sha256": "41ec712c0e5d58302cbdedbb25fd49cada0156607ccd5f00003b5caa316c7654",
+    "bytes": 403242317
+  },
+  "source_sha256": {
+    "agent/vision.py": "da584ccef22063e647429d5e0008a4f436e54468236fd6b765e2bc74969e1e94",
+    "agent/client.py": "51e3f8a054e589881db88c9e0b5428b7274766290116772737e1b79412077786",
+    "agent/desktop.py": "24e42c8251b7051bce4affdb97ad645991aad05339e3bfbfed0ef43d9dc5deef",
+    "agent/selftest.py": "02aa8d8f19e722498629f0ea7ff497513be1bed48faae46f34d881504a474a42",
+    "agent/exam_ui.py": "853ce49e4e8156d781cbd401539fe0744e0cb787d36b535d7f16e49c7c13ebe5",
+    "shared/head_pose.py": "7a50e09d83d673b6aae4192d88b9c96c970992e39982220410dd69b26ba616ba",
+    "shared/head_review.py": "130c870fb0119e1a3dc1625bb57d68cfe65c69c6e2eafe010d5c37833dc7295d",
+    "shared/gaze_feedback.py": "65603797110035297f4c18e9307149623c3ed9af7e80bd84c5dac84510e0eb7b"
+  },
+  "publication_redaction": {
+    "host_paths": "replaced_with_logical_artifact_identifiers",
+    "artifact_identifiers_are_download_urls": false,
+    "historical_release_status_preserved": true,
+    "original_report_sha256": "131b7b68411bb6de046cbc2af05208d867fa5c9a177671b78c3c885c06875837",
+    "embedded_evidence_hashes_scope": "historical original artifacts; a redacted report copy has a different file hash"
+  }
+}
