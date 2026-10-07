@@ -609,6 +609,13 @@ def create_app(data_dir=None, *, allow_demo=False):
                     )
                 if env["kind"] == "DESKTOP" and not d["capabilities"].get("desktop_monitor"):
                     raise HTTPException(409, f"{d['name']}: обновите приложение Qorgau")
+                if body.mode == "GUARDED" and env["kind"] == "DESKTOP":
+                    selected = next((t for t in d["targets"] if t["id"] == "primary-window"), None)
+                    if selected and selected.get("guardable") is False:
+                        raise HTTPException(
+                            409,
+                            "Для сайта выберите Qorgau Browser: обычное окно браузера сохраняет доступ к вкладкам",
+                        )
                 if body.mode == "GUARDED" and env["kind"] != "DESKTOP":
                     target = next(
                         t for t in d["targets"] if t["id"] == env["target_id"]

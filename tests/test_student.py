@@ -121,6 +121,9 @@ def test_desktop_first_run_and_locked_actions(application, tmp_path):
     window = StudentWindow(tmp_path, agent=agent, run_worker=False)
     assert window.pages.currentIndex() == 1
     assert all(button.text().strip() for button in window.findChildren(QPushButton))
+    # The built-in exam browser is assigned later by the teacher; preparing
+    # the camera must not require an unrelated external application window.
+    assert window.camera_button.isEnabled()
     agent.engine.start()
     window.refresh()
     assert not window.target_button.isEnabled()

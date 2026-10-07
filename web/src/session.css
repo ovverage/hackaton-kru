@@ -1,0 +1,310 @@
+.session-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.overview-card {
+  padding: 18px 20px;
+  border: 1px solid #e1e6ef;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 3px 12px #19365b03;
+}
+.overview-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #586579;
+  font-size: 12px;
+  font-weight: 550;
+}
+.overview-card strong {
+  display: block;
+  margin: 12px 0 5px;
+  color: #223651;
+  font-size: 32px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.overview-card small {
+  color: #667387;
+  font-size: 11px;
+}
+.overview-card.blue .overview-label svg {
+  color: #2859bc;
+}
+.overview-card.green .overview-label svg {
+  color: #24714e;
+}
+.overview-card.red {
+  background: #fffafa;
+  border-color: #f0d9d6;
+}
+.overview-card.red strong,
+.overview-card.red .overview-label svg {
+  color: #ae453e;
+}
+.overview-card.amber {
+  background: #fffdf8;
+  border-color: #ecdfbd;
+}
+.overview-card.amber strong,
+.overview-card.amber .overview-label svg {
+  color: #8c611a;
+}
+.class-session,
+.class-roster {
+  border-radius: 10px;
+}
+.session-roster .roster-table {
+  min-width: 850px;
+}
+.control-signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.control-signal {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 7px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.control-signal.ready {
+  color: #286348;
+  background: #edf6f0;
+  border-color: #dcece2;
+}
+.control-signal.attention {
+  color: #885b16;
+  background: #fff5df;
+  border-color: #eee0c1;
+}
+.control-signal.idle {
+  color: #667184;
+  background: #f1f3f6;
+  border-color: #e1e5eb;
+}
+.device-model-version {
+  margin-top: 10px;
+}
+.session-review {
+  margin-top: 22px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+.session-review > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+}
+.session-review h2 {
+  font-size: 16px;
+}
+.session-review header p {
+  margin-top: 4px;
+  font-size: 12px;
+}
+.session-review header > svg {
+  color: #8b9bb4;
+}
+.session-review-list {
+  border-top: 1px solid #e9edf2;
+}
+.session-review-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  background: #fff;
+  border: 0;
+  border-bottom: 1px solid #edf0f5;
+  padding: 14px 20px;
+  text-align: left;
+  color: #28374d;
+}
+.session-review-item:last-child {
+  border-bottom: 0;
+}
+.session-review-item:hover,
+.session-review-item:focus-visible {
+  background: #f5f8fd;
+}
+.session-review-item:focus-visible {
+  outline-offset: -3px;
+}
+.review-item-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  color: #88631f;
+  background: #fbf3df;
+}
+.review-item-main {
+  min-width: 0;
+  flex: 1;
+}
+.review-item-main strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+.review-item-main small,
+.review-item-meta small {
+  display: block;
+  color: #68758a;
+  margin-top: 4px;
+  font-size: 11px;
+}
+.review-item-meta {
+  text-align: right;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.review-queue-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px 20px;
+  color: #63748c;
+  font-size: 13px;
+}
+.review-queue-empty svg {
+  color: #4c8063;
+}
+.review-queue-note {
+  padding: 12px 20px;
+  font-size: 12px;
+  background: #f8fafc;
+  border-top: 1px solid #edf0f5;
+}
+.environment-choice {
+  padding: 0;
+  margin: 22px 0;
+  border: 0;
+  min-width: 0;
+}
+.environment-choice legend {
+  font-size: 13px;
+  font-weight: 550;
+  margin-bottom: 10px;
+}
+.environment-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.environment-options label {
+  flex-direction: row;
+  align-items: flex-start;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  padding: 13px;
+  margin: 0;
+  cursor: pointer;
+}
+.environment-options label.selected {
+  background: #f2f6fe;
+  border-color: #6e90d2;
+}
+.environment-options input {
+  width: 16px;
+  height: 16px;
+  margin: 1px 0 0;
+  accent-color: #2859bc;
+  flex-shrink: 0;
+}
+.environment-options strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.environment-options small {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: #64738a;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+.field-help {
+  color: #64738a;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.evidence-context {
+  margin-top: 18px;
+}
+@media (max-width: 1200px) {
+  .session-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .session-overview {
+    gap: 8px;
+  }
+  .overview-card {
+    padding: 13px;
+    border-radius: 8px;
+  }
+  .overview-label {
+    font-size: 11px;
+    align-items: flex-start;
+  }
+  .overview-label svg {
+    width: 15px;
+  }
+  .overview-card strong {
+    font-size: 28px;
+  }
+  .overview-card small {
+    font-size: 10px;
+  }
+  .session-review > header,
+  .session-review-item {
+    padding: 14px;
+  }
+  .session-review-item {
+    gap: 10px;
+  }
+  .review-item-icon {
+    display: none;
+  }
+  .review-item-main strong {
+    font-size: 12px;
+  }
+  .review-item-meta {
+    font-size: 11px;
+  }
+  .review-item-meta small {
+    font-size: 10px;
+  }
+  .environment-options {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

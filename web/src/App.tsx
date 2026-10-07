@@ -1,6 +1,20 @@
 import Classroom from "./Classroom";
-import { endExam, sendDeviceCommand, sendGroupCommand, type CommandType } from "./commands";
-import { useEffect, useState, type ReactNode, type FormEvent } from "react";
+import ControlStatus from "./ControlStatus";
+import { preparationIssue, type TestEnvironment } from "./sessionStatus";
+import { useDialogFocus } from "./useDialogFocus";
+import {
+  endExam,
+  sendDeviceCommand,
+  sendGroupCommand,
+  type CommandType,
+} from "./commands";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type FormEvent,
+} from "react";
 import {
   ShieldCheck,
   LayoutDashboard,
@@ -66,13 +80,8 @@ function Modal({
   onClose: () => void;
   wide?: boolean;
 }) {
-  useEffect(() => {
-    const fn = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", fn);
-    return () => window.removeEventListener("keydown", fn);
-  }, [onClose]);
+  const dialog = useRef<HTMLElement>(null);
+  useDialogFocus(dialog, onClose);
   return (
     <div
       className="overlay"
@@ -81,6 +90,8 @@ function Modal({
       }}
     >
       <section
+        ref={dialog}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -231,9 +242,10 @@ export default function App() {
     [newExam, setNewExam] = useState(false),
     [deviceId, setDeviceId] = useState<string | null>(null),
     [eventId, setEventId] = useState<string | null>(null);
-  const [action, setAction] = useState<{ device: Device; type: CommandType | "REVOKE" } | null>(
-      null,
-    ),
+  const [action, setAction] = useState<{
+      device: Device;
+      type: CommandType | "REVOKE";
+    } | null>(null),
     [reason, setReason] = useState("");
   const [receivedAt, setReceivedAt] = useState(0),
     [now, setNow] = useState(Date.now());
@@ -555,15 +567,27 @@ export default function App() {
                   busy={busy}
                   onExam={setExamId}
                   onDevice={setDeviceId}
+                  onEvent={setEventId}
                   lockedOnly={page === "blocked"}
                   onStart={() =>
-                    run(() => sendGroupCommand(
-                      devices.filter((d) => d.online && d.state.lifecycle === "READY"),
-                      "START", "", receive,
-                    ), "Компьютеры подтвердили начало теста")
+                    run(
+                      () =>
+                        sendGroupCommand(
+                          devices.filter(
+                            (d) => d.online && d.state.lifecycle === "READY",
+                          ),
+                          "START",
+                          "",
+                          receive,
+                        ),
+                      "Компьютеры подтвердили начало теста",
+                    )
                   }
                   onEnd={() =>
-                    run(() => endExam(exam, receive), "Компьютеры подтвердили завершение сеанса")
+                    run(
+                      () => endExam(exam, receive),
+                      "Компьютеры подтвердили завершение сеанса",
+                    )
                   }
                 />
               )}
@@ -903,6 +927,12 @@ export default function App() {
                 </span>
               )}
             </div>
+            <ControlStatus device={selectedDevice} />
+            {typeof selectedDevice.capabilities.model_version === "string" && (
+              <p className="fine device-model-version">
+                Модели: {selectedDevice.capabilities.model_version}
+              </p>
+            )}
             {gazeEnabled(selectedDevice) && <Counters d={selectedDevice} />}
             <div className="button-row">
               {selectedDevice.exam_id === exam?.id &&
@@ -1284,15 +1314,9 @@ function NewExam({
       (!d.exam_id || d.state.lifecycle === "COMPLETED") &&
       !d.capabilities.recording_tail,
   );
-  const ready = (d: Device) =>
-    Boolean(
-      d.capabilities.selected_window &&
-      d.capabilities.desktop_monitor &&
-      d.capabilities.window_guard &&
-      d.capabilities.camera &&
-      d.capabilities.recording &&
-      !d.capabilities.camera_fault,
-    );
+  const [environment, setEnvironment] = useState<TestEnvironment>("BROWSER");
+  const [testUrl, setTestUrl] = useState("");
+  const ready = (d: Device) => preparationIssue(d, environment) === null;
   const [selected, setSelected] = useState<string[]>(
     available.filter(ready).map((d) => d.id),
   );
@@ -1316,6 +1340,14 @@ function NewExam({
         ),
         mode: "GUARDED",
         require_camera: true,
+        environment:
+          environment === "BROWSER"
+            ? {
+                kind: "BROWSER",
+                target_id: "qorgau-browser",
+                url: testUrl.trim(),
+              }
+            : { kind: "DESKTOP" },
       });
     } catch (e) {
       setError((e as Error).message);
@@ -1326,7 +1358,7 @@ function NewExam({
   return (
     <Modal
       title="Новый сеанс контроля"
-      subtitle="Выберите подготовленные компьютеры. Окно теста откроется на весь экран."
+      subtitle="Выберите среду тестирования и подготовленные компьютеры."
       onClose={onClose}
       wide
     >
@@ -1342,6 +1374,67 @@ function NewExam({
             onChange={(e) => setTitle(e.target.value)}
           />
         </label>
+        <fieldset className="environment-choice">
+          <legend>Где проходит тест</legend>
+          <div className="environment-options">
+            {(
+              [
+                [
+                  "BROWSER",
+                  "Сайт в Qorgau Browser",
+                  "Одно окно без вкладок, переходы в пределах сайта",
+                ],
+                [
+                  "WINDOW",
+                  "Окно приложения",
+                  "Окно программы, выбранное на компьютере ученика",
+                ],
+              ] as const
+            ).map(([kind, label, description]) => (
+              <label
+                className={environment === kind ? "selected" : ""}
+                key={kind}
+              >
+                <input
+                  type="radio"
+                  name="test-environment"
+                  value={kind}
+                  checked={environment === kind}
+                  onChange={() => {
+                    setEnvironment(kind);
+                    setSelected(
+                      available
+                        .filter((d) => preparationIssue(d, kind) === null)
+                        .map((d) => d.id),
+                    );
+                  }}
+                />
+                <span>
+                  <strong>{label}</strong>
+                  <small>{description}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        {environment === "BROWSER" && (
+          <label>
+            Адрес теста
+            <input
+              type="url"
+              required
+              pattern="https?://.+"
+              value={testUrl}
+              onChange={(e) => setTestUrl(e.target.value)}
+              placeholder="https://example.kz/test"
+              autoComplete="url"
+            />
+            <span className="field-help">
+              Используйте прямую ссылку на тест. Переходы на другой сайт и новые
+              окна блокируются.
+            </span>
+          </label>
+        )}
         <h3 className="subheading">
           Компьютеры онлайн <span className="count">{chosen.length}</span>
         </h3>
@@ -1369,11 +1462,7 @@ function NewExam({
                   />
                   <strong>{d.name}</strong>
                   {!ready(d) && (
-                    <small>
-                      {!d.capabilities.selected_window
-                        ? "Выберите окно в Qorgau 0.4.4"
-                        : "Включите камеру в Qorgau"}
-                    </small>
+                    <small>{preparationIssue(d, environment)}</small>
                   )}
                 </label>
                 <input
@@ -1393,16 +1482,17 @@ function NewExam({
         <div className="notice">
           <Eye size={17} />
           <span>
-            Каждый компьютер откроет выбранное в Qorgau окно на весь экран. При
-            блокировке продолжить сможет только преподаватель. Ctrl+Alt+Q
+            {environment === "BROWSER"
+              ? "На каждом компьютере откроется сайт теста в Qorgau Browser."
+              : "Каждый компьютер откроет выбранное в Qorgau окно на весь экран."}{" "}
+            При блокировке продолжить сможет только преподаватель. Ctrl+Alt+Q
             вызывает преподавателя.
           </span>
         </div>
         {chosen.some((d) => !gazeEnabled(d)) && (
           <div className="notice">
             У части компьютеров контроль взгляда выключен. Обновите приложение
-            Qorgau и включите камеру. В актуальной версии ручная калибровка не
-            требуется.
+            Qorgau и подготовьте контроль взгляда перед началом теста.
           </div>
         )}
         {error && <div className="error">{error}</div>}
@@ -1481,6 +1571,7 @@ function EventReview({
           <>
             <video
               className="evidence-video"
+              aria-label={`Запись события: ${eventNames[e.type] || e.type}`}
               key={e.media[index]?.id}
               controls
               preload="metadata"
@@ -1538,6 +1629,16 @@ function EventReview({
             </span>
           )}
         </div>
+        {e.type === "PHONE_AIM_REVIEW" && (
+          <div className="notice evidence-context">
+            <Smartphone size={18} />
+            <span>
+              Система отметила подъём и удержание телефона. По этому событию
+              нельзя установить направление объектива или факт снимка —
+              проверьте запись.
+            </span>
+          </div>
+        )}
         <p className="fine">
           Время указано от начала контроля. Автоматическое событие — основание
           для проверки; оно не является доказательством нарушения само по себе.

@@ -243,7 +243,7 @@ class StudentWindow(QWidget):
         self.target_button = QPushButton("Выбрать открытое окно")
         self.target_button.clicked.connect(self.select_target)
         layout.addWidget(self.target_button)
-        self.target_status = label("Откройте тест в браузере или приложении.", "small")
+        self.target_status = label("Для Qorgau Browser тест откроет преподаватель. Окно выбирайте только для отдельного приложения.", "small")
         layout.addWidget(self.target_status)
         layout.addWidget(label("Камера", "field"))
         self.camera_choice = QComboBox()
@@ -263,7 +263,7 @@ class StudentWindow(QWidget):
         self.camera_button.setObjectName("primary")
         self.camera_button.clicked.connect(self.prepare_camera)
         layout.addWidget(self.camera_button)
-        self.camera_status = label("Выберите окно и камеру, затем нажмите «Готово», глядя на экран.", "small")
+        self.camera_status = label("Выберите камеру и нажмите «Готово», глядя на экран. Для Qorgau Browser окно выбирать не нужно.", "small")
         layout.addWidget(self.camera_status)
         self.gaze_status = label("", "small")
         self.gaze_status.setWordWrap(True)
@@ -389,16 +389,16 @@ class StudentWindow(QWidget):
         self.agent.capabilities["selected_window"] = bool(selected)
         self.target_button.setEnabled(not active)
         self.target_button.setText("Изменить окно" if selected else "Выбрать открытое окно")
-        self.target_status.setText(selected["name"] if selected else "Откройте тест в браузере или приложении.")
+        self.target_status.setText(selected["name"] if selected else "Для Qorgau Browser тест откроет преподаватель. Окно выбирайте только для отдельного приложения.")
         self.camera_choice.setEnabled(not active and not snap.get("camera_preparing"))
-        self.camera_button.setEnabled(bool(selected) and model["can_calibrate"] and not self.failure)
+        self.camera_button.setEnabled(model["can_calibrate"] and not self.failure)
         self.camera_button.setText("Изменить камеру" if snap.get("camera") else "Готово")
         self.camera_status.setText(
             "Камера недоступна — выберите её повторно" if snap.get("camera_fault")
             else "Включаем камеру…" if snap.get("camera_preparing")
             else "Камера включена. Ждём преподавателя." if snap.get("camera") and not active
             else model["title"] if active
-            else "Выберите окно и камеру, затем нажмите «Готово», глядя на экран."
+            else "Выберите камеру и нажмите «Готово», глядя на экран. Для Qorgau Browser окно выбирать не нужно."
         )
         session = snap.get("session") or {}
         self.assignment_title.setText(session.get("title", ""))

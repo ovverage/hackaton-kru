@@ -6,7 +6,13 @@ import {
   Play,
   Search,
   X,
+  ClipboardCheck,
+  LockKeyhole,
+  Wifi,
+  Video,
 } from "lucide-react";
+import ControlStatus from "./ControlStatus";
+import { pendingEvents, sessionSummary } from "./sessionStatus";
 import {
   clock,
   eventNames,
@@ -24,11 +30,14 @@ type Props = {
   busy: boolean;
   onExam: (id: string) => void;
   onDevice: (id: string) => void;
+  onEvent: (id: string) => void;
   onStart: () => void;
   onEnd: () => Promise<boolean>;
 };
 
 export default function Classroom(p: Props) {
+  const summary = sessionSummary(p.devices, p.events);
+  const reviewQueue = pendingEvents(p.events);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [ending, setEnding] = useState(false);
@@ -47,6 +56,47 @@ export default function Classroom(p: Props) {
   }, [p.exam.id, p.lockedOnly]);
   return (
     <>
+      <section className="session-overview" aria-label="Сводка сеанса">
+        {[
+          {
+            icon: Wifi,
+            value: summary.online,
+            label: "На связи",
+            detail: `из ${p.devices.length} компьютеров`,
+            tone: "blue",
+          },
+          {
+            icon: Play,
+            value: summary.running,
+            label: "Выполняют тест",
+            detail: "онлайн, доступ открыт",
+            tone: "green",
+          },
+          {
+            icon: LockKeyhole,
+            value: summary.locked,
+            label: "Заблокированы",
+            detail: "нужно решение преподавателя",
+            tone: summary.locked ? "red" : "neutral",
+          },
+          {
+            icon: ClipboardCheck,
+            value: summary.pending,
+            label: "Ожидают проверки",
+            detail: "события текущего сеанса",
+            tone: summary.pending ? "amber" : "neutral",
+          },
+        ].map((item) => (
+          <article className={`overview-card ${item.tone}`} key={item.label}>
+            <div className="overview-label">
+              <span>{item.label}</span>
+              <item.icon size={18} aria-hidden="true" />
+            </div>
+            <strong>{item.value}</strong>
+            <small>{item.detail}</small>
+          </article>
+        ))}
+      </section>
       <section className="class-session" aria-label="Текущий сеанс">
         <span className="session-status">
           <i
@@ -116,6 +166,7 @@ export default function Classroom(p: Props) {
               <tr>
                 <th>Компьютер / ученик</th>
                 <th>Состояние</th>
+                <th>Контроль</th>
                 <th>
                   {p.lockedOnly ? "Причина блокировки" : "Последнее событие"}
                 </th>
@@ -129,7 +180,9 @@ export default function Classroom(p: Props) {
               {filtered
                 .slice(currentPage * 8, currentPage * 8 + 8)
                 .map((d, i) => {
-                  const events = p.events.filter((e) => e.device_id === d.id);
+                  const events = p.events
+                    .filter((e) => e.device_id === d.id)
+                    .sort((a, b) => b.created_at - a.created_at);
                   const locked = d.state.access === "LOCKED";
                   const reason = locked ? d.state.reason : events[0]?.type;
                   return (
@@ -170,6 +223,9 @@ export default function Classroom(p: Props) {
                         {locked && !d.online && (
                           <small>Нет связи с компьютером</small>
                         )}
+                      </td>
+                      <td>
+                        <ControlStatus device={d} />
                       </td>
                       <td>
                         {reason ? eventNames[reason] || reason : "Нет событий"}
@@ -229,6 +285,68 @@ export default function Classroom(p: Props) {
             </button>
           </div>
         </footer>
+      </section>
+      <section
+        className="session-review"
+        aria-labelledby="session-review-title"
+      >
+        <header>
+          <div>
+            <h2 id="session-review-title">
+              Требуют внимания <span className="count">{summary.pending}</span>
+            </h2>
+            <p>Откройте запись и проверьте контекст события.</p>
+          </div>
+          <ClipboardCheck size={22} aria-hidden="true" />
+        </header>
+        {reviewQueue.length ? (
+          <div className="session-review-list">
+            {reviewQueue.map((event) => (
+              <button
+                className="session-review-item"
+                key={event.id}
+                onClick={() => p.onEvent(event.id)}
+              >
+                <span className="review-item-icon">
+                  <Video size={18} aria-hidden="true" />
+                </span>
+                <span className="review-item-main">
+                  <strong>{eventNames[event.type] || event.type}</strong>
+                  <small>
+                    {event.student} · {event.device_name}
+                  </small>
+                </span>
+                <span className="review-item-meta">
+                  <time
+                    dateTime={new Date(event.created_at * 1000).toISOString()}
+                  >
+                    {clock(event.created_at)}
+                  </time>
+                  <small>
+                    {event.media.length
+                      ? "Видео доступно"
+                      : event.media_expired_at
+                        ? "Срок записи истёк"
+                        : "Без записи"}
+                  </small>
+                </span>
+                <ChevronRight size={17} aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="review-queue-empty">
+            <ClipboardCheck size={21} />
+            <span>Все события проверены. Новые появятся здесь.</span>
+          </div>
+        )}
+        {summary.pending > reviewQueue.length && (
+          <p className="review-queue-note">
+            Показаны {reviewQueue.length} последних событий. После решения
+            появятся следующие; все записи также доступны в карточках
+            компьютеров.
+          </p>
+        )}
       </section>
       {ending && (
         <div className="overlay">

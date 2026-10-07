@@ -303,6 +303,8 @@ class Agent:
         if env.get("kind") == "DESKTOP":
             selected = next((t for t in self.targets if t.get("id") == "primary-window"), None)
             if selected:
+                if self.guarded and selected.get("guardable") is False:
+                    raise ValueError("BROWSER_REQUIRES_QORGAU_BROWSER")
                 from .windows_guard import WindowsGuard, WindowTarget
                 target = WindowTarget(**selected["window"])
                 if not WindowsGuard().valid(target):
@@ -321,6 +323,10 @@ class Agent:
         )
         if not target:
             raise ValueError("TARGET_UNAVAILABLE")
+        if self.guarded and (target.get("guardable") is False or (
+            env.get("kind") == "BROWSER" and target["id"] != "qorgau-browser"
+        )):
+            raise ValueError("BROWSER_REQUIRES_QORGAU_BROWSER")
         if target.get("window"):
             from .windows_guard import WindowsGuard, WindowTarget
 

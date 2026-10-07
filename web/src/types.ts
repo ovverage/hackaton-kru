@@ -9,7 +9,12 @@ export type SessionState = {
   locks: number;
   counts: Record<Direction, number>;
 };
-export type Target = { id: string; name: string; kind: "BROWSER" | "APP" };
+export type Target = {
+  id: string;
+  name: string;
+  kind: "BROWSER" | "APP";
+  guardable?: boolean;
+};
 export type Device = {
   id: string;
   name: string;
@@ -24,14 +29,22 @@ export type Device = {
   revoked_at?: number;
 };
 // Historical exam entries are deliberately smaller than live device records.
-export type Participant = Pick<Device, "id" | "name" | "student" | "state" | "simulated"> & {
+export type Participant = Pick<
+  Device,
+  "id" | "name" | "student" | "state" | "simulated"
+> & {
   last_seen?: number;
 };
 export function gazeEnabled(device: Device): boolean {
-  return Boolean(device.capabilities.camera) && !device.capabilities.camera_fault && (
-    device.capabilities.gaze === true ||
-    (device.capabilities.gaze === undefined &&
-      ["yolo11n-onnx/mediapipe-personal-calibration", "experimental-calibrated-iris"].includes(String(device.capabilities.vision)))
+  return (
+    Boolean(device.capabilities.camera) &&
+    !device.capabilities.camera_fault &&
+    (device.capabilities.gaze === true ||
+      (device.capabilities.gaze === undefined &&
+        [
+          "yolo11n-onnx/mediapipe-personal-calibration",
+          "experimental-calibrated-iris",
+        ].includes(String(device.capabilities.vision))))
   );
 }
 export type Exam = {
