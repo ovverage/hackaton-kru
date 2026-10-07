@@ -128,6 +128,13 @@ def test_one_click_camera_enables_auto_gaze_and_recovery_keeps_lock(
     ):
         callbacks[0]()
         deadline = time.monotonic() + 10
+        while not dialog.preview_ready and time.monotonic() < deadline:
+            application.processEvents()
+            time.sleep(0.01)
+        assert dialog.preview_ready
+        assert dialog.preview.pixmap() and not dialog.preview.pixmap().isNull()
+        assert dialog.start_button.text() == "Использовать эту камеру"
+        dialog.start_button.click()
         while dialog.preparing and time.monotonic() < deadline:
             application.processEvents()
             time.sleep(0.01)
@@ -169,6 +176,10 @@ def test_one_click_camera_enables_auto_gaze_and_recovery_keeps_lock(
     with patch("agent.vision.Camera", FakeCamera):
         callbacks[0]()
         deadline = time.monotonic() + 10
+        while not recovery.preview_ready and time.monotonic() < deadline:
+            application.processEvents()
+            time.sleep(0.01)
+        recovery.start_button.click()
         while recovery.preparing and time.monotonic() < deadline:
             application.processEvents()
             time.sleep(0.01)

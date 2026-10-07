@@ -99,6 +99,7 @@ def application():
 
 def test_desktop_first_run_and_locked_actions(application, tmp_path):
     from agent.desktop import StudentWindow
+    from PySide6.QtWidgets import QPushButton
 
     window = StudentWindow(tmp_path, run_worker=False)
     assert window.pages.currentIndex() == 0
@@ -119,6 +120,7 @@ def test_desktop_first_run_and_locked_actions(application, tmp_path):
     agent = Agent(tmp_path)
     window = StudentWindow(tmp_path, agent=agent, run_worker=False)
     assert window.pages.currentIndex() == 1
+    assert all(button.text().strip() for button in window.findChildren(QPushButton))
     agent.engine.start()
     window.refresh()
     assert not window.target_button.isEnabled()

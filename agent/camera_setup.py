@@ -24,11 +24,13 @@ class CameraStartWorker(QThread):
 
     frame = Signal(QImage)
     message = Signal(str)
+    ready = Signal()
 
     def __init__(self, index, phone, face, folder):
         super().__init__()
         self.index, self.phone, self.face, self.folder = index, phone, face, folder
         self.stop = threading.Event()
+        self.confirm = threading.Event()
         self.result = None
         self.error = ""
 
@@ -41,20 +43,31 @@ class CameraStartWorker(QThread):
             if self.stop.is_set():
                 return
             camera = Camera(self.index, self.phone, self.face, calibrate=False)
-            frame, _ = camera.read()
+            first = True
+            while not self.stop.is_set():
+                frame, _ = camera.read()
+                rgb = camera.cv2.cvtColor(frame, camera.cv2.COLOR_BGR2RGB)
+                height, width = rgb.shape[:2]
+                self.frame.emit(
+                    QImage(
+                        rgb.data,
+                        width,
+                        height,
+                        int(rgb.strides[0]),
+                        QImage.Format.Format_RGB888,
+                    ).copy()
+                )
+                if first:
+                    first = False
+                    self.ready.emit()
+                if self.confirm.wait(0.08):
+                    break
             if self.stop.is_set():
                 return
-            rgb = camera.cv2.cvtColor(frame, camera.cv2.COLOR_BGR2RGB)
-            height, width = rgb.shape[:2]
-            self.frame.emit(
-                QImage(
-                    rgb.data,
-                    width,
-                    height,
-                    int(rgb.strides[0]),
-                    QImage.Format.Format_RGB888,
-                ).copy()
-            )
+            # The first frame after confirmation establishes the automatic
+            # reference while the student is looking at the monitor.
+            if getattr(camera, "gaze", None):
+                camera.gaze.reference = None
             self.result, camera = camera, None
         except Exception as error:
             self.error = str(error)
@@ -138,11 +151,14 @@ class CameraSetup(QDialog):
         self.worker = None
         self.cancelled = False
         self.preparing = False
+        self.preview_ready = False
         self.setWindowTitle(
             "Qorgau — настройка взгляда" if calibrate else "Qorgau — включение камеры"
         )
-        self.resize(560, 520)
-        self.setMinimumWidth(480)
+        # Leave enough vertical room at Windows display scaling so the preview,
+        # instructions and button labels never overlap or get clipped.
+        self.resize(640, 620)
+        self.setMinimumSize(520, 580)
         from .desktop import STYLE, label
 
         self.setStyleSheet(STYLE)
@@ -223,9 +239,9 @@ class CameraSetup(QDialog):
         self.capture.clicked.connect(self.capture_position)
         self.capture.hide()
         buttons.addWidget(self.capture)
-        self.start_button = QPushButton("Включить камеру и начать")
+        self.start_button = QPushButton("Включить камеру")
         self.start_button.setObjectName("primary")
-        self.start_button.clicked.connect(self.start)
+        self.start_button.clicked.connect(self.primary_action)
         buttons.addWidget(self.start_button)
         layout.addLayout(buttons)
         if not calibrate:
@@ -286,6 +302,8 @@ class CameraSetup(QDialog):
                 self.agent.camera = None
             self.agent.capabilities.update(camera=False, recording=False, gaze=False)
         self.start_button.setEnabled(False)
+        self.start_button.setText("Проверяем камеру…")
+        self.preview_ready = False
         self.phone.setEnabled(False)
         self.face.setEnabled(False)
         self.index.setEnabled(False)
@@ -294,11 +312,38 @@ class CameraSetup(QDialog):
             self.index.value(), phone.resolve(), face.resolve(), self.agent.folder
         )
         self.worker.frame.connect(self.show_frame)
+        if not self.calibrate:
+            self.worker.ready.connect(self.camera_ready)
         if self.calibrate:
             self.worker.phase.connect(self.phase)
         self.worker.message.connect(self.feedback.setText)
         self.worker.finished.connect(self.finished_calibration)
         self.worker.start()
+
+    def primary_action(self):
+        if (
+            not self.calibrate
+            and self.worker
+            and self.worker.isRunning()
+            and self.preview_ready
+        ):
+            self.start_button.setEnabled(False)
+            self.start_button.setText("Подключаем камеру…")
+            self.feedback.setText("Сохраняем выбранную камеру…")
+            self.worker.confirm.set()
+            return
+        self.start()
+
+    def camera_ready(self):
+        if self.cancelled or self.calibrate:
+            return
+        self.preview_ready = True
+        self.instruction.setText(
+            "Убедитесь, что лицо хорошо видно, посмотрите на монитор и подтвердите камеру."
+        )
+        self.feedback.setText("Предпросмотр работает. Изображение остаётся только на этом компьютере.")
+        self.start_button.setText("Использовать эту камеру")
+        self.start_button.setEnabled(True)
 
     def show_frame(self, image):
         self.preview.setPixmap(
@@ -393,6 +438,8 @@ class CameraSetup(QDialog):
         self.feedback.setText(
             self.worker.error or "Подготовку нужно повторить до начала сеанса."
         )
+        self.preview_ready = False
+        self.start_button.setText("Повторить проверку камеры")
         self.start_button.setEnabled(True)
         self.phone.setEnabled(True)
         self.face.setEnabled(True)

@@ -31,6 +31,62 @@ def text(value, size=14):
     return widget
 
 
+def gaze_warning_active(snap):
+    """A visual nudge is immediate; rule strikes still use the five-second timer."""
+    gaze = snap.get("gaze_diagnostics") or {}
+    return bool(
+        snap["state"]["lifecycle"] == "RUNNING"
+        and snap["state"]["access"] == "OPEN"
+        and snap.get("camera")
+        and not snap.get("camera_fault")
+        and not snap.get("recognition_paused")
+        and gaze.get("reference_ready")
+        and (
+            gaze.get("attention_away")
+            or gaze.get("direction") in ("DOWN", "LEFT", "RIGHT", "UP")
+        )
+    )
+
+
+class GazeWarning(QWidget):
+    """Click-through topmost banner shown without taking focus from the exam."""
+
+    def __init__(self):
+        super().__init__()
+        self.setObjectName("gazeWarning")
+        self.setWindowTitle("Qorgau — верните взгляд на монитор")
+        self.setWindowFlags(
+            Qt.WindowType.Tool
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.WindowDoesNotAcceptFocus
+            | Qt.WindowType.WindowTransparentForInput
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setStyleSheet(
+            "QWidget#gazeWarning {background:#ffd34f;border:2px solid #9d6b00;border-radius:12px;}"
+            "QLabel {background:transparent;color:#2b2100;font-family:'Segoe UI';font-size:24px;font-weight:700;}"
+        )
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(26, 15, 26, 15)
+        self.message = QLabel("Верните взгляд на монитор")
+        self.message.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.message.setTextFormat(Qt.TextFormat.PlainText)
+        layout.addWidget(self.message)
+
+    def place(self, screen):
+        geometry = screen.geometry()
+        width = min(720, max(360, geometry.width() - 48))
+        height = 68
+        self.setGeometry(
+            geometry.x() + (geometry.width() - width) // 2,
+            geometry.y() + 28,
+            width,
+            height,
+        )
+
+
 class UnlockWorker(QThread):
     done = Signal(str)
 
@@ -68,8 +124,8 @@ class LockScreen(QWidget):
         self.setStyleSheet(
             "QWidget {background:#101a2c;color:#eef3ff;font-family:'Segoe UI';}"
             "QLineEdit {background:#1e304d;border:1px solid #536987;border-radius:8px;padding:14px;}"
-            "QPushButton {background:#376ad8;border:0;border-radius:8px;padding:14px;color:white;}"
-            "QPushButton:disabled {background:#33415b;}"
+            "QPushButton {background:#376ad8;border:0;border-radius:8px;padding:14px;color:white;font-size:15px;font-weight:600;min-height:20px;}"
+            "QPushButton:disabled {background:#33415b;color:#cbd5e1;}"
         )
         root = QHBoxLayout(self)
         root.setContentsMargins(60, 50, 60, 50)
@@ -323,6 +379,7 @@ class ExamController(QObject):
         self.browser_exam = None
         self.completed_browsers = []
         self.surfaces = []
+        self.gaze_warnings = []
         self.active_exam = None
         self.displays = 0
         agent.targets.insert(
@@ -359,6 +416,8 @@ class ExamController(QObject):
         self.agent.capabilities["guard_active"] = False
         for surface in self.surfaces:
             surface.hide()
+        for warning in self.gaze_warnings:
+            warning.hide()
         # Keep surfaces alive while a password request finishes.
         self.active_exam = None
         if self.browser:
@@ -390,11 +449,24 @@ class ExamController(QObject):
                 self.agent.guard_target = self.guard.info(
                     int(self.browser.winId())
                 ).public()
+        screens = QApplication.screens()
+        while len(self.gaze_warnings) < len(screens):
+            self.gaze_warnings.append(GazeWarning())
+        warn_about_gaze = gaze_warning_active(snap)
+        for i, screen in enumerate(screens):
+            warning = self.gaze_warnings[i]
+            if warn_about_gaze:
+                warning.place(screen)
+                warning.show()
+                warning.raise_()
+            else:
+                warning.hide()
+        for extra in self.gaze_warnings[len(screens) :]:
+            extra.hide()
         if snap["state"]["lifecycle"] != "RUNNING" or not snap["guarded"]:
             if self.active_exam:
                 self.release()
             return
-        screens = QApplication.screens()
         desktop = bool((self.agent.guard_target or {}).get("desktop"))
         locked = snap["state"]["access"] == "LOCKED"
         if not self.active_exam:
@@ -492,6 +564,9 @@ class ExamController(QObject):
                 self.guard.u.SetWindowPos(self.guard.target.hwnd, -1, 0, 0, 0, 0, 0x13)
                 if previous:
                     self.guard.u.SetForegroundWindow(self.guard.target.hwnd)
+            if warn_about_gaze:
+                for warning in self.gaze_warnings[: len(screens)]:
+                    warning.raise_()
         except (OSError, ValueError):
             self.agent.capabilities["guard_active"] = False
             self.agent.capabilities["guard_fault"] = "GUARD_UNAVAILABLE"

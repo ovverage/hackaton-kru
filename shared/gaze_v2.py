@@ -27,6 +27,8 @@ BLEND_NAMES = (
 FEATURE_VERSION = "iris-head-blend-v2"
 HEAD_YAW_AWAY_DEGREES = 22.0
 HEAD_DOWN_AWAY_DEGREES = 18.0
+HEAD_YAW_WARNING_DEGREES = 10.0
+HEAD_PITCH_WARNING_DEGREES = 8.0
 
 
 def relative_head_angles(vector, reference):
@@ -168,6 +170,8 @@ class GazeClassifier:
                 "direction": "UNKNOWN",
                 "offscreen_probability": None,
                 "reference_ready": self.reference is not None,
+                "attention_away": False,
+                "attention_direction": None,
             }
         # Do not establish the initial reference on closed eyes. Once referenced,
         # the trained model can still use the visible head pose during a blink.
@@ -176,12 +180,16 @@ class GazeClassifier:
                 "direction": "UNKNOWN",
                 "offscreen_probability": None,
                 "reference_ready": self.reference is not None,
+                "attention_away": False,
+                "attention_direction": None,
             }
         if self.reference is None:
             self.reference = list(vector)
         probs = self.probabilities([v - r for v, r in zip(vector, self.reference)])
         off = 1 - probs[0]
         strongest = max(range(1, 5), key=lambda i: probs[i])
+        attention_direction = self.model["classes"][strongest]
+        attention_away = off >= self.model["threshold"] - 0.15
         direction = "UNKNOWN"
         if (
             off >= self.model["threshold"]
@@ -194,6 +202,12 @@ class GazeClassifier:
         angles = relative_head_angles(vector, self.reference)
         if angles:
             yaw, pitch = angles
+            if abs(yaw) >= HEAD_YAW_WARNING_DEGREES:
+                attention_away = True
+                attention_direction = "RIGHT" if yaw > 0 else "LEFT"
+            elif abs(pitch) >= HEAD_PITCH_WARNING_DEGREES:
+                attention_away = True
+                attention_direction = "DOWN" if pitch > 0 else "UP"
             # A clear physical turn must not be vetoed by a forest learned on
             # only two people. Eye-only departures still use the trained model.
             if abs(yaw) >= HEAD_YAW_AWAY_DEGREES:
@@ -205,6 +219,8 @@ class GazeClassifier:
             "direction": direction,
             "offscreen_probability": off,
             "reference_ready": True,
+            "attention_away": attention_away,
+            "attention_direction": attention_direction if attention_away else None,
             "source": source,
             "head_yaw": round(angles[0], 2) if angles else None,
             "head_pitch": round(angles[1], 2) if angles else None,

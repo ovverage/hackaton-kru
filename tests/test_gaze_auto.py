@@ -33,6 +33,15 @@ def test_camera_start_pose_is_removed_from_head_angles(tmp_path):
     assert gaze.observe(pose_vector(yaw=40))['direction'] == 'RIGHT'
 
 
+def test_small_head_turn_warns_before_it_becomes_a_counted_direction(tmp_path):
+    gaze = GazeClassifier(write_model(tmp_path))
+    assert not gaze.observe(pose_vector())["attention_away"]
+    observation = gaze.observe(pose_vector(yaw=12))
+    assert observation["direction"] == "SCREEN"
+    assert observation["attention_away"]
+    assert observation["attention_direction"] == "RIGHT"
+
+
 def write_model(tmp_path, *, cycle=False):
     tree = {
         "left": [0 if cycle else 1, -1, -1],

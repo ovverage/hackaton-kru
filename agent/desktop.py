@@ -54,12 +54,12 @@ QLabel#countDanger {font-size:32px;font-weight:600;color:#b95f4b;}
 QLineEdit {background:white;border:1px solid #dce3ef;border-radius:7px;padding:11px 12px;color:#34415a;selection-background-color:#5480d4;}
 QLineEdit:focus {border:1px solid #5480d4;}
 QLineEdit:disabled {background:#f2f4f8;color:#9aa8bd;}
-QPushButton {background:white;border:1px solid #d9e2f1;border-radius:7px;padding:11px 15px;color:#526c94;font-weight:500;}
+QPushButton {background:white;border:1px solid #d9e2f1;border-radius:7px;padding:11px 15px;color:#405a82;font-size:13px;font-weight:600;min-height:20px;}
 QPushButton:hover {background:#edf3fc;border-color:#a3b9dc;}
-QPushButton:disabled {background:#f0f2ec;color:#a7b29b;border-color:#e0e6d8;}
+QPushButton:disabled {background:#e7ebf2;color:#5e6e85;border-color:#d6dde8;}
 QPushButton#primary {background:#2859bc;color:white;border-color:#2859bc;}
 QPushButton#primary:hover {background:#214b9f;}
-QPushButton#primary:disabled {background:#a2b6d7;border-color:#a2b6d7;color:#f2f6fd;}
+QPushButton#primary:disabled {background:#a9bbd7;border-color:#9bafce;color:#243b5d;}
 QScrollArea {border:0;background:transparent;}
 QScrollBar:vertical {background:#f3f6fb;width:9px;border:0;}
 QScrollBar::handle:vertical {background:#d5deed;border-radius:4px;min-height:30px;}

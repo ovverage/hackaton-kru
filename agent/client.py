@@ -565,6 +565,7 @@ class Agent:
                 "direction": direction,
                 **{key: diagnostics.get(key) for key in (
                     "offscreen_probability", "head_yaw", "head_pitch", "source", "reference_ready",
+                    "attention_away", "attention_direction",
                 )},
                 "interval_ms": interval_ms,
             }

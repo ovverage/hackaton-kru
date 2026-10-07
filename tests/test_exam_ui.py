@@ -78,6 +78,32 @@ def test_native_browser_navigation_uses_exact_origin():
     assert len(reports) == 8
 
 
+def test_gaze_warning_is_also_visible_in_observe_mode(app, tmp_path):
+    from PySide6.QtWidgets import QWidget
+    from agent.exam_ui import ExamController
+
+    atomic_json(tmp_path / 'config.json', {'server': 'http://localhost:8000', 'token': 'fixture'})
+    agent = Agent(tmp_path)
+    agent.environment = {'kind': 'DESKTOP', 'guarded': False}
+    agent.journal['exam_id'] = 'observe-test'
+    agent.capabilities.update(camera=True, gaze=True)
+    agent.gaze_diagnostics = {
+        'direction': 'SCREEN', 'reference_ready': True,
+        'attention_away': True, 'attention_direction': 'LEFT',
+    }
+    parent = QWidget()
+    controller = ExamController(agent, parent)
+    controller.timer.stop()
+    agent.engine.start()
+    controller.tick()
+    assert controller.gaze_warnings and all(w.isVisible() for w in controller.gaze_warnings)
+    agent.gaze_diagnostics.update(attention_away=False, attention_direction=None)
+    controller.tick()
+    assert not any(w.isVisible() for w in controller.gaze_warnings)
+    controller.release()
+    agent.http.close()
+
+
 def test_desktop_overlay_only_during_lock_and_release_after_end(app, tmp_path):
     from unittest.mock import Mock
     from PySide6.QtWidgets import QWidget
@@ -101,11 +127,23 @@ def test_desktop_overlay_only_during_lock_and_release_after_end(app, tmp_path):
     controller.guard = guard
     agent.engine.start()
     agent.last_synced_at = __import__('time').monotonic()
+    agent.capabilities.update(camera=True, gaze=True)
+    agent.gaze_diagnostics = {
+        'direction': 'SCREEN', 'reference_ready': True,
+        'attention_away': True, 'attention_direction': 'RIGHT',
+    }
     controller.tick()
     assert controller.surfaces and not any(s.isVisible() for s in controller.surfaces)
+    assert controller.gaze_warnings and all(w.isVisible() for w in controller.gaze_warnings)
+    assert all(w.message.text() == 'Верните взгляд на монитор' for w in controller.gaze_warnings)
+    agent.gaze_diagnostics.update(attention_away=False, attention_direction=None)
+    controller.tick()
+    assert not any(w.isVisible() for w in controller.gaze_warnings)
     agent.engine.lock('PHONE_DETECTED')
     controller.tick()
+    app.processEvents()
     assert all(s.isVisible() for s in controller.surfaces)
+    assert not any(w.isVisible() for w in controller.gaze_warnings)
     assert all(s.isFullScreen() for s in controller.surfaces)
     assert guard.tick.call_args.kwargs['locked'] is True
     agent.engine.unlock(agent.engine.state.lock_id, agent.engine.state.version)
@@ -146,6 +184,7 @@ def test_selected_window_overlay_hides_and_focus_returns_after_remote_unlock(app
     assert not any(s.isVisible() for s in controller.surfaces)
     agent.engine.lock('PHONE_DETECTED')
     controller.tick()
+    app.processEvents()
     assert all(s.isVisible() and s.isFullScreen() for s in controller.surfaces)
     agent.apply({'id': 'remote-unlock', 'type': 'UNLOCK', 'exam_id': 'selected-test',
                  'expires_at': time.time() + 30, 'expected_version': agent.engine.state.version,
@@ -179,6 +218,7 @@ def test_lock_without_target_still_installs_input_guard(app, tmp_path):
     agent.engine.lock('TARGET_CLOSED')
     agent.last_synced_at = time.monotonic()
     controller.tick()
+    app.processEvents()
     guard.start.assert_called_once_with(desktop=True)
     assert guard.tick.call_args.kwargs['locked'] is True
     assert all(s.isVisible() and s.isFullScreen() for s in controller.surfaces)
