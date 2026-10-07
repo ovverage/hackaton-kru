@@ -1,0 +1,119 @@
+{
+  "status": "PASS",
+  "version": "0.4.8",
+  "model_version": "2026.10.06.2",
+  "source_commit": "fa2c5412096893797bd27feb6ed7a679aced22c4",
+  "workflow": "https://github.com/ovverage/hackaton-kru/actions/runs/37603161719",
+  "publication_workflow": "https://github.com/ovverage/hackaton-kru/actions/runs/37606728520",
+  "release": "https://github.com/ovverage/hackaton-kru/releases/tag/v0.4.8",
+  "tag": "v0.4.8",
+  "tag_commit": "fa2c5412096893797bd27feb6ed7a679aced22c4",
+  "published_at": "2026-10-07T10:21:34Z",
+  "prerelease": true,
+  "release_body_sha256": "695cee2a94f178052367af7e5610783a3ea4b81b5466ef70dd15300c04f964db",
+  "release_body_matches_048_notes": true,
+  "jobs": {
+    "windows": "success",
+    "verify": "success",
+    "deploy": "success",
+    "release": "skipped"
+  },
+  "publication_jobs": {
+    "publish": "success"
+  },
+  "assets": [
+    {
+      "name": "installer-selftest.json",
+      "size": 2002,
+      "digest": "sha256:d22e67ca2009a571adfbb12505687cc949786337f1e160c569f25ce557dc99cb",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.8/installer-selftest.json"
+    },
+    {
+      "name": "packaged-selftest.json",
+      "size": 906,
+      "digest": "sha256:f2aed4efca940fcd77d4469edfc1ef0fdfc20d8b16128fccf87df4cc53ac22b6",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.8/packaged-selftest.json"
+    },
+    {
+      "name": "plain-first-run.json",
+      "size": 411,
+      "digest": "sha256:cb3c22c0d47cd060c2a3d8cf15ccd9f9aa6f0c95656f043787fdce4d04c5e972",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.8/plain-first-run.json"
+    },
+    {
+      "name": "portable-selftest.json",
+      "size": 906,
+      "digest": "sha256:3980b9acfd64772d24c2f1b84b2bc34200fbe900c041ba335127ed2b9967965e",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.8/portable-selftest.json"
+    },
+    {
+      "name": "Qorgau-Student-Setup-0.4.8-x64.exe",
+      "size": 354151170,
+      "digest": "sha256:3d4623b47aada9f51ccf60d7630f6f452c6f753a67158cd0c6de6a41a2c79a40",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.8/Qorgau-Student-Setup-0.4.8-x64.exe"
+    },
+    {
+      "name": "Qorgau-Student-Windows-x64.zip",
+      "size": 412140641,
+      "digest": "sha256:304cd5381905fb35b1871de882dde0b4fc0007ea9c178f467556ad4f0fa790ab",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.8/Qorgau-Student-Windows-x64.zip"
+    },
+    {
+      "name": "Qorgau-Student.exe",
+      "size": 398657193,
+      "digest": "sha256:052423f11b4ec33a5db849fe45e107fc8232c91d6b3aabebb786c6ba299f72ed",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.8/Qorgau-Student.exe"
+    },
+    {
+      "name": "Qorgau-Web.zip",
+      "size": 98304,
+      "digest": "sha256:14bfae2491798fbda17d88241a1f29f70dc400867c9fed7bad5a1f258993be13",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.8/Qorgau-Web.zip"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "size": 286,
+      "digest": "sha256:98b22a097f749a6bec349d06909bd50a86e400bf59be4f670de2659e823d851e",
+      "browser_download_url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.4.8/SHA256SUMS.txt"
+    }
+  ],
+  "downloaded_small_asset_sha256": {
+    "SHA256SUMS.txt": "98b22a097f749a6bec349d06909bd50a86e400bf59be4f670de2659e823d851e",
+    "installer-selftest.json": "d22e67ca2009a571adfbb12505687cc949786337f1e160c569f25ce557dc99cb",
+    "packaged-selftest.json": "f2aed4efca940fcd77d4469edfc1ef0fdfc20d8b16128fccf87df4cc53ac22b6",
+    "plain-first-run.json": "cb3c22c0d47cd060c2a3d8cf15ccd9f9aa6f0c95656f043787fdce4d04c5e972",
+    "portable-selftest.json": "3980b9acfd64772d24c2f1b84b2bc34200fbe900c041ba335127ed2b9967965e"
+  },
+  "checksums": {
+    "Qorgau-Student-Windows-x64.zip": "304cd5381905fb35b1871de882dde0b4fc0007ea9c178f467556ad4f0fa790ab",
+    "Qorgau-Student.exe": "052423f11b4ec33a5db849fe45e107fc8232c91d6b3aabebb786c6ba299f72ed",
+    "Qorgau-Student-Setup-0.4.8-x64.exe": "3d4623b47aada9f51ccf60d7630f6f452c6f753a67158cd0c6de6a41a2c79a40"
+  },
+  "installer_checks": [
+    "per-user installation and uninstall registration",
+    "Start menu and requested desktop shortcuts",
+    "same-version repair/reinstall",
+    "running-client mutex blocks install and uninstall",
+    "installed browser, CV models and H264 runtime",
+    "ordinary installed app auto-registers two profiles and restarts without a code or enrollment trailer",
+    "uninstall removes app, shortcuts and registration",
+    "user data retained"
+  ],
+  "model_files": {
+    "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+    "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+    "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+    "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1"
+  },
+  "model_manifest_unchanged_from_prior_release": true,
+  "ci_tests": {
+    "windows": [
+      "2026-10-07T09:52:23.9011053Z 317 passed, 22 skipped, 1 warning in 66.50s (0:01:06)"
+    ],
+    "verify": [
+      "2026-10-07T09:51:49.9719501Z 356 passed, 17 skipped, 1 warning, 3 subtests passed in 21.04s"
+    ],
+    "deploy": []
+  },
+  "scope": "Verified CI/Windows packaged and installed runtime. Existing model bundle 2026.10.06.2 preserved; newly trained candidate models and local inference adapter commit 1d9c270 are not part of release fa2c541. No physical-camera accuracy claim."
+}

@@ -86,6 +86,8 @@ def verified_manifest(data: Path) -> dict:
 
 
 def check_resume(previous: dict, current: dict, checkpoint: Path, output: Path) -> None:
+    if (output / "final-selection-marker.json").exists():
+        raise ValueError("Final checkpoint selection is frozen; this run cannot resume training")
     for key in ("dataset", "dataset_manifest_sha256", "versions"):
         if previous[key] != current[key]:
             raise ValueError(f"Cannot resume with changed {key}")
@@ -220,6 +222,8 @@ def stage_initialization(parent_output: Path, weights: Path, data_manifest_sha25
     if weights.resolve() != parent_output / "fit" / "weights" / "best.pt":
         raise ValueError("A continuation stage must use the parent's dev-selected best.pt")
     with run_lock(parent_output):
+        if (parent_output / "final-selection-marker.json").exists():
+            raise ValueError("Parent final checkpoint selection is frozen; another stage is forbidden")
         receipt = parent_output / "training.json"
         parent = json.loads(receipt.read_text(encoding="utf-8"))
         if parent["dataset_manifest_sha256"] != data_manifest_sha256:
@@ -291,6 +295,71 @@ def select_stage_checkpoint(parent: Path, candidate: Path, parent_sha256: str,
     return receipt
 
 
+def freeze_stage_parent(parent_output: Path, stage_output: Path) -> dict:
+    """Bind an original parent to its selected descendant's immutable receipt.
+
+    Safe after normal selection, including while the descendant is evaluating:
+    this reads only existing provenance/checkpoint bytes and appends a parent
+    marker. It does not read or rerun held-out predictions or metrics.
+    """
+    parent_output, stage_output = parent_output.resolve(), stage_output.resolve()
+    if parent_output == stage_output:
+        raise ValueError("Parent and selected stage must be different runs")
+    with run_lock(parent_output):
+        parent_receipt, stage_receipt = parent_output/"training.json", stage_output/"training.json"
+        stage_receipt_sha = sha256(stage_receipt)
+        parent_config = json.loads(parent_receipt.read_text("utf-8"))
+        stage_config = json.loads(stage_receipt.read_text("utf-8"))
+        initial = stage_config["initialization"]
+        if (initial.get("kind") != "new_optimizer_continuation_stage"
+                or Path(initial["parent_run"]).resolve() != parent_output
+                or initial["parent_training_receipt_sha256"] != sha256(parent_receipt)):
+            raise ValueError("Parent freeze lacks unchanged declared continuation provenance")
+        if (parent_config["dataset_manifest_sha256"] != stage_config["dataset_manifest_sha256"]
+                or parent_config["dataset"] != stage_config["dataset"]
+                or parent_config["versions"] != stage_config["versions"]
+                or parent_config["versions"].get("ultralytics") != "8.3.221"
+                or initial.get("original_pretraining_sha256") != INITIAL_SHA256):
+            raise ValueError("Parent freeze dataset/version/initializer lineage mismatch")
+        receipt = stage_output/"stage-selection.json"
+        selection_sha = sha256(receipt)
+        selection = json.loads(receipt.read_text("utf-8"))
+        if (selection.get("status") != "selected_before_final_evaluation"
+                or selection.get("ultralytics_version") != "8.3.221"
+                or selection.get("fitness_weights_P_R_AP50_AP50_95") != [0, 0, 0, 1]):
+            raise ValueError("Parent freeze requires a complete pinned dev-selection receipt")
+        parent = selection["parent"]
+        child = selection["child"]
+        parent_path = parent_output/"fit/weights/best.pt"
+        child_path = stage_output/"fit/weights/child-best.pt"
+        selected_path = stage_output/"fit/weights/best.pt"
+        for item, path in ((parent, parent_path), (child, child_path)):
+            if Path(item["path"]).resolve() != path or sha256(path) != item["sha256"]:
+                raise ValueError("Parent freeze source checkpoint identity changed")
+            value = item["dev_fitness"]
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 1:
+                raise ValueError("Parent freeze requires finite development fitness")
+        if initial["sha256"] != parent["sha256"] or initial.get("parent_dev_fitness") != parent["dev_fitness"]:
+            raise ValueError("Parent freeze fitness/checkpoint disagrees with pretraining stage receipt")
+        expected_source = "child" if child["dev_fitness"] > parent["dev_fitness"] else "parent"
+        if (selection["selected_source"] != expected_source
+                or selection["selected_sha256"] != selection[expected_source]["sha256"]
+                or Path(selection["selected_checkpoint"]).resolve() != selected_path
+                or sha256(selected_path) != selection["selected_sha256"] or sha256(receipt) != selection_sha
+                or sha256(stage_receipt) != stage_receipt_sha):
+            raise ValueError("Parent freeze selected checkpoint is inconsistent")
+        marker = {"selection": str(receipt), "selection_sha256": selection_sha,
+                  "selected_checkpoint": str(selected_path), "selected_sha256": selection["selected_sha256"]}
+        path = parent_output/"final-selection-marker.json"
+        if path.exists():
+            if json.loads(path.read_text("utf-8")) != marker:
+                raise FileExistsError("Parent already belongs to another frozen final selection")
+        else:
+            with path.open("x", encoding="utf-8") as stream:
+                json.dump(marker, stream, indent=2)
+        return {"marker": str(path), "marker_sha256": sha256(path), **marker}
+
+
 class BenchmarkComplete(Exception):
     """Intentional end before epoch-end validation or saving a candidate."""
 
@@ -348,11 +417,63 @@ def benchmark(args):
             _benchmark_locked(args, scan_info)
 
 
+def benchmark_worker_settings(requested: int, windows_cap: int | None = None,
+                              platform: str | None = None, *, batch: int = 64) -> dict:
+    """Limit Windows spawn serialization cost only for short hardware pilots."""
+    for value in (requested, *(() if windows_cap is None else (windows_cap,))):
+        if type(value) is not int or value < 0:
+            raise ValueError("Benchmark workers and Windows worker cap must be non-negative integers")
+    if type(batch) is not int or batch <= 0:
+        raise ValueError("Benchmark batch size must be a positive integer")
+    platform = os.name if platform is None else platform
+    automatic = windows_cap is None
+    resolved_cap = (8 if batch >= 128 else 4) if automatic else windows_cap
+    limited = platform == "nt" and resolved_cap > 0 and requested > resolved_cap
+    effective = resolved_cap if limited else requested
+    return {"requested_workers": requested, "effective_workers": effective,
+            "windows_worker_cap": resolved_cap, "requested_windows_worker_cap": windows_cap,
+            "worker_cap_policy": "automatic_batch_candidate" if automatic else "explicit",
+            "candidate_batch": batch, "platform": platform,
+            "reason": ((f"Automatic Windows hardware candidate: batch {batch} uses cap {resolved_cap}. "
+                        if automatic else f"Explicit Windows pilot worker cap {resolved_cap}. ")
+                       + ("Windows spawn serializes the full training labels into each worker; cap short-pilot startup cost without changing data."
+                          if limited else "Cap is disabled, inapplicable to this platform, or already satisfied."))}
+
+
+def train_only_pilot_trainer():
+    """Native training batches without unused dev workers; fail if pilot escapes."""
+    import ultralytics
+    from ultralytics.models.yolo.detect import DetectionTrainer
+    if ultralytics.__version__ != "8.3.221":
+        raise ValueError("Train-only pilot loader contract requires Ultralytics 8.3.221")
+
+    class TrainOnlyPilotTrainer(DetectionTrainer):
+        def get_dataloader(self, dataset_path, batch_size=16, rank=0, mode="train"):
+            if mode == "val":
+                if self.args.val:
+                    raise ValueError("Train-only pilot requires val=False")
+                self.pilot_skipped_dev_loader = True
+                return None
+            return super().get_dataloader(dataset_path, batch_size, rank, mode)
+
+        def validate(self):
+            raise RuntimeError("Train-only pilot reached validation unexpectedly")
+
+        def final_eval(self):
+            raise RuntimeError("Train-only pilot reached final evaluation unexpectedly")
+
+        def save_model(self):
+            raise RuntimeError("Train-only pilot reached checkpoint saving unexpectedly")
+
+    return TrainOnlyPilotTrainer
+
+
 def _benchmark_locked(args, scan_info=None):
     import torch
     import ultralytics
     from ultralytics import YOLO
     started = time.time()
+    worker_setup = benchmark_worker_settings(args.workers, getattr(args, "windows_worker_cap", None), batch=args.batch)
     data, output = args.data.resolve(), args.output.resolve()
     manifest = verified_manifest(data)
     if sha256(args.weights) != INITIAL_SHA256:
@@ -364,6 +485,11 @@ def _benchmark_locked(args, scan_info=None):
     measurement = BatchBenchmark(args.steps, args.warmup_steps, args.batch)
 
     def start_measurement(trainer):
+        if trainer.test_loader is not None or not getattr(trainer, "pilot_skipped_dev_loader", False):
+            raise RuntimeError("Train-only pilot unexpectedly constructed a development loader")
+        # Native CPU/device limits may further reduce workers. Report what was measured.
+        worker_setup["effective_workers"] = trainer.train_loader.num_workers
+        settings["workers"] = trainer.train_loader.num_workers
         if len(trainer.train_loader) <= args.steps:
             raise ValueError("Pilot must stop strictly before a full training epoch")
         if trainer.device.type == "cuda":
@@ -373,17 +499,20 @@ def _benchmark_locked(args, scan_info=None):
     model.add_callback("on_train_start", start_measurement)
     model.add_callback("on_train_batch_start", measurement.start)
     model.add_callback("on_train_batch_end", measurement.end)
-    settings = fit_settings(data, output, epochs=1, batch=args.batch, workers=args.workers,
+    settings = fit_settings(data, output, epochs=1, batch=args.batch, workers=worker_setup["effective_workers"],
                             device=args.device, seed=args.seed, patience=20, cache=args.cache)
     settings.update(val=False, save=False, plots=False, save_period=-1)
     report = {"status": "running", "purpose": "TRAIN-only hardware pilot; no candidate or final-test metrics",
               "dataset": manifest["dataset"], "dataset_manifest_sha256": sha256(data.parent / "manifest.json"),
-              "loader_setup": scan_info,
+              "initialization": {"path": str(args.weights.resolve()), "sha256": INITIAL_SHA256},
+              "loader_setup": {**(scan_info or {}), "development_loader": "not_constructed_train_only_pilot",
+                               "validation_checkpoint_export": "forbidden_by_pilot_trainer"},
+              "worker_setup": worker_setup,
               "settings": settings, "versions": {"torch": torch.__version__, "ultralytics": ultralytics.__version__},
               "note": "Steady timings include synchronized compute plus loader/logging gaps; startup/cache cost is separately included in wall time. An exception ends the pilot before epoch validation/checkpoint saving."}
     write_json(output / "benchmark.json", report)
     try:
-        model.train(**settings)
+        model.train(trainer=train_only_pilot_trainer(), **settings)
         raise RuntimeError("Hardware pilot unexpectedly reached normal training completion")
     except BenchmarkComplete:
         report.update({"status": "completed_train_only_pilot", **measurement.report(), "wall_seconds_including_setup": time.time() - started})
@@ -734,6 +863,7 @@ def _train_locked(args, scan_info=None):
         config["stage_selection"] = select_stage_checkpoint(
             args.weights.resolve(), checkpoint, initialization["sha256"],
             initialization["parent_dev_fitness"], model.trainer.best_fitness, out)
+        config["parent_final_selection"] = freeze_stage_parent(Path(initialization["parent_run"]), out)
         config["best_checkpoint_sha256"] = sha256(checkpoint)
     config["status"] = "trained_pending_final_evaluation"
     write_json(configuration, config)
@@ -785,12 +915,16 @@ def main():
     export.add_argument("--data", type=Path, required=True)
     export.add_argument("--checkpoint", type=Path, required=True)
     export.add_argument("--output", type=Path, required=True)
+    freeze = commands.add_parser("freeze-parent", help="Freeze an original parent from an existing normal dev-selection receipt; never read final-test data")
+    freeze.add_argument("--parent-run", type=Path, required=True)
+    freeze.add_argument("--stage-run", type=Path, required=True)
     pilot = commands.add_parser("benchmark", help="Bounded train-only hardware pilot; no final test, export or candidate checkpoint")
     pilot.add_argument("--data", type=Path, required=True)
     pilot.add_argument("--weights", type=Path, required=True)
     pilot.add_argument("--output", type=Path, required=True)
     pilot.add_argument("--batch", type=int, default=64)
     pilot.add_argument("--workers", type=int, default=16)
+    pilot.add_argument("--windows-worker-cap", type=int, default=None, help="Benchmark-only Windows spawn cap: auto 4 below batch128, auto 8 otherwise; 0 disables")
     pilot.add_argument("--scan-threads", type=int, default=8, help="Native image/label verification threads (1..48), independent of DataLoader workers")
     pilot.add_argument("--device", default="0")
     pilot.add_argument("--seed", type=int, default=SEED)
@@ -812,6 +946,8 @@ def main():
         from .public_detection_eval import evaluate
         evaluate(args.data.resolve(), args.checkpoint.resolve(), args.output.resolve(),
                  args.device, args.batch, args.workers, args.parity_images)
+    elif args.command == "freeze-parent":
+        print(json.dumps(freeze_stage_parent(args.parent_run, args.stage_run), indent=2))
     else:
         from .public_detection_eval import recover_export
         recover_export(args.data.resolve(), args.checkpoint.resolve(), args.output.resolve())

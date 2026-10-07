@@ -163,8 +163,41 @@ raises/catches a dedicated completion exception at batch 64. It exits before
 epoch-end validation, saving a checkpoint, or exporting a candidate. It records
 images per second, synchronized batch time, time between batches (loader/logging),
 peak allocated/reserved GPU memory, and total startup/cache wall time in
-`benchmark.json`. Internal development loader setup may occur, but neither
-development scores nor final-test data select the hardware configuration.
+`benchmark.json`. A benchmark-only DetectionTrainer subclass skips constructing
+the development loader, avoiding Windows spawning and label-cache work for an
+unused split. The native DetectionValidator accepts a missing loader at
+construction; pilot validation, final evaluation and checkpoint saving are
+explicitly forbidden and fail if reached. A real CPU smoke test trains two
+batches with an unreadable dev image, proving that the unused split is not
+scanned. This contract is pinned to Ultralytics 8.3.221; ordinary training retains
+its full development loader and validation. Neither development scores nor
+final-test data select the hardware configuration.
+
+Short Windows pilots choose their worker cap automatically when the CLI option
+is omitted: batches below 128 (including 32/64) cap at four workers, and batches
+128 or larger cap at eight. These are joint batch/worker hardware candidates:
+Windows spawn serializes the full label dataset separately for every worker,
+while the larger batch candidate tests whether eight workers reduce loader idle
+time enough to justify startup cost. The scheduling cap changes no dataset split,
+labels or augmentation recipe; exact random augmentation sequences may differ.
+Linux keeps the requested worker count. Explicit `--windows-worker-cap 4` or `8`
+overrides automatic selection, and `0` disables the cap. `worker_setup` records
+requested/effective counts, automatic or explicit policy and the reason, while
+`settings.workers` records the actual loader count used for throughput selection.
+Training has no implicit cap; it uses the worker setting chosen from the report.
+
+The restarted budget queue may explicitly use `--reuse-completed-pilots`. It
+accepts only completed reports with the exact current dataset manifest, pinned
+initializer, runtime versions, settings, 48 total/12 warmup batches, full measured
+image coverage, finite consistent throughput and allocator memory at most 39 GiB.
+Older reports bind the already-enforced pinned initializer through the native
+`fit/args.yaml` model path; new reports record its SHA256 directly. Reuse records
+the report SHA256 and evidence in the new journal. Partial, failed or incompatible
+outputs require explicit operator inspection/archival; no incomplete run is
+silently resumed or overwritten. Existing v3 pilots explicitly retain cap four.
+A separate `coco128-w8` output measures batch 128 with eight workers. Both batch
+128 candidates require a completed batch64 pilot with finite peak allocation
+reservation no greater than 20 GiB; hardware selection compares both candidates.
 
 Batch 32/64 preserve nominal batch 64 through Ultralytics gradient accumulation;
 batch 128 changes effective optimizer batch size. Batch changes can change batch
@@ -262,3 +295,60 @@ development fitness values and the selected source before final evaluation.
 Child completed/partial epoch counts still describe the actual new training,
 even when the older parent checkpoint wins. Final evaluation runs once on the
 selected checkpoint only.
+
+Normal continuation-stage completion also freezes the **original parent** with
+an append-only `final-selection-marker.json` pointing to the descendant's
+`stage-selection.json` SHA256 and selected checkpoint SHA256. This prevents a
+later resume or new stage from the parent when its selected copy is evaluated
+under the descendant's output directory. The normal completion path writes this
+marker before returning control to the queue.
+
+For an already completed stage from an older code version, the explicit command
+below adds the same protection without repeating selection or reading any
+held-out metrics. It checks both checkpoints, unchanged parent provenance, shared
+dataset/versions and the recorded strict dev winner, then takes only the parent
+run lock. The child may legitimately be holding its own final-evaluation lock.
+Repeated calls with identical evidence preserve the original marker bytes;
+conflicting selection evidence is refused.
+
+```powershell
+python -m training.public_detection freeze-parent --parent-run C:/QorgauTraining/20261007/training/runs/public-wider-v1 --stage-run C:/QorgauTraining/20261007/training/runs/budget-wider-v1
+```
+
+### Explicit fallback after a failed or timed-out continuation stage
+
+`training.public_detection_fallback` is a separately invoked recovery tool, not
+an automatic queue action. Preparation requires a queue receipt marking the exact
+stage `failed` or `timed_out`, a recorded stage process identity confirmed gone,
+and nonblocking OS locks on both historical runs. Every recorded queue identity
+must be gone or verified as part of another currently running job's live process
+tree. Unverified identities and surviving unattributed workers reject fallback;
+this audit does not stop other jobs and explicitly covers recorded processes.
+It verifies matching manifests, unchanged parent receipt
+and weights, pinned initialization lineage, versions and checkpoint dev metrics.
+The child's preserved `child-best.pt` is preferred as its candidate when present;
+otherwise its `best.pt` is considered. Native stripped checkpoints require their
+recognizable stripped state and matching retained fitness/mAP50–95 metrics.
+Missing child weights retain the parent; inconsistent metrics fail preparation.
+
+Strict dev improvement selects the child; ties retain the parent. The selected
+bytes go to a **new** output's `selected.pt`, with `selection.json` binding both
+source hashes, historical receipt hashes and the failure reason. Each original
+run receives an exclusively created `final-selection-marker.json` linking that
+selection receipt and checkpoint hashes. These markers prevent resume and new
+continuation stages even though the final-test receipt lives elsewhere. Existing
+training reports and checkpoints are not overwritten. A partially written set
+of markers fails closed and requires inspection rather than a fresh selection.
+
+```powershell
+python -m training.public_detection_fallback prepare --data C:/QorgauTraining/20261007/data/public-detection/wider/data.yaml --stage C:/QorgauTraining/20261007/training/runs/budget-wider-v1 --journal C:/QorgauTraining/20261007/budget-training-status.json --output C:/QorgauTraining/20261007/training/runs/wider-fallback-final
+python -m training.public_detection_fallback evaluate --output C:/QorgauTraining/20261007/training/runs/wider-fallback-final
+```
+
+Evaluation verifies both markers and the frozen checkpoint/data/history before
+the existing one-shot final evaluator runs on CPU. Preparation alone reads no
+final-test images or metrics. An existing final-evaluation receipt is never
+discarded; export-only recovery uses the existing `public_detection export`
+command with the frozen checkpoint. Run fallback evaluation only under an
+external deadline/process supervisor and within the available CPU capacity.
+The helper's presence does not mean fallback or final evaluation has occurred.

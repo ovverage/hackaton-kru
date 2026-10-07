@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from training.public_detection import BatchBenchmark, BenchmarkComplete, INITIAL_SHA256, TimedRun, check_resume, dev_members, fit_settings, label_scan_threads, normalized_box, prepare_coco, prepare_wider, read_wider, resumed_budget, run_lock, runtime_budget, select_stage_checkpoint, sha256, stage_initialization, stage_parent_fitness, write_json
+from training.public_detection import BatchBenchmark, BenchmarkComplete, INITIAL_SHA256, TimedRun, benchmark_worker_settings, check_resume, dev_members, fit_settings, label_scan_threads, normalized_box, prepare_coco, prepare_wider, read_wider, resumed_budget, run_lock, runtime_budget, select_stage_checkpoint, sha256, stage_initialization, stage_parent_fitness, train_only_pilot_trainer, write_json
 from training.public_detection_eval import MIN_AP50, MIN_PRECISION, MIN_RECALL, THRESHOLDS, evaluate, image_gate_failures, load_heldout_receipt, official_coco, operating_audit, operating_counts, recover_export, select_parity_images
 
 
@@ -13,6 +13,89 @@ def tiny_image(path):
     Image = pytest.importorskip("PIL.Image")
     path.parent.mkdir(parents=True, exist_ok=True)
     Image.new("RGB", (20, 10)).save(path)
+
+
+@pytest.mark.parametrize("platform,requested,cap,effective", [
+    ("nt", 16, 4, 4), ("nt", 24, 4, 4), ("nt", 16, 0, 16),
+    ("nt", 2, 4, 2), ("nt", 0, 4, 0), ("posix", 16, 4, 16),
+])
+def test_benchmark_windows_worker_cap_preserves_other_platforms_and_explicit_disable(platform, requested, cap, effective):
+    result = benchmark_worker_settings(requested, cap, platform)
+    assert result["requested_workers"] == requested
+    assert result["effective_workers"] == effective
+    assert result["windows_worker_cap"] == cap
+    assert result["reason"]
+
+
+@pytest.mark.parametrize("batch,platform,requested,cap,effective", [
+    (32, "nt", 16, None, 4), (64, "nt", 16, None, 4),
+    (128, "nt", 24, None, 8), (256, "nt", 24, None, 8),
+    (128, "nt", 24, 4, 4), (32, "nt", 16, 8, 8),
+    (128, "nt", 24, 0, 24), (128, "posix", 24, None, 24),
+])
+def test_benchmark_automatic_batch_worker_candidates_and_explicit_overrides(batch, platform, requested, cap, effective):
+    result = benchmark_worker_settings(requested, cap, platform, batch=batch)
+    assert result["effective_workers"] == effective
+    assert result["requested_windows_worker_cap"] == cap
+    assert result["worker_cap_policy"] == ("automatic_batch_candidate" if cap is None else "explicit")
+    assert result["candidate_batch"] == batch
+    if cap is None:
+        assert result["windows_worker_cap"] == (8 if batch >= 128 else 4)
+        assert "Automatic" in result["reason"]
+
+
+@pytest.mark.parametrize("requested,cap", [(-1, 4), (16, -1), (True, 4), (16, 1.5)])
+def test_benchmark_worker_cap_rejects_invalid_scheduler_counts(requested, cap):
+    with pytest.raises(ValueError, match="non-negative integers"):
+        benchmark_worker_settings(requested, cap, "nt")
+
+
+def test_train_only_pilot_real_cpu_batches_skip_poisoned_dev_and_never_save(tmp_path, monkeypatch):
+    ultralytics = pytest.importorskip("ultralytics")
+    if ultralytics.__version__ != "8.3.221":
+        pytest.skip("Native pilot contract is pinned to Ultralytics 8.3.221")
+    import torch
+    from PIL import Image
+    from ultralytics.data import utils as data_utils
+    from ultralytics.utils import checks
+    monkeypatch.setattr(checks, "check_pip_update_available", lambda: False)
+    monkeypatch.setattr(checks, "check_font", lambda *args, **kwargs: None)
+    monkeypatch.setattr(data_utils, "check_font", lambda *args, **kwargs: None)
+    train = tmp_path / "images" / "train"
+    labels = tmp_path / "labels" / "train"
+    train.mkdir(parents=True)
+    labels.mkdir(parents=True)
+    for index in range(10):
+        Image.new("RGB", (64, 64), (100, index, 50)).save(train / f"{index}.jpg")
+        (labels / f"{index}.txt").write_text("0 .5 .5 .3 .3\n")
+    dev = tmp_path / "images" / "val"
+    dev.mkdir()
+    (dev / "poison.jpg").write_bytes(b"not an image: must never be scanned")
+    data = tmp_path / "data.yaml"
+    data.write_text(f"path: {tmp_path.as_posix()}\ntrain: images/train\nval: images/val\nnames: {{0: object}}\n")
+    previous_threads = torch.get_num_threads()
+    torch.set_num_threads(2)
+    try:
+        model = ultralytics.YOLO("yolo11n.yaml")
+        counter = BatchBenchmark(2, 0, 2)
+        model.add_callback("on_train_batch_start", counter.start)
+        model.add_callback("on_train_batch_end", counter.end)
+        with pytest.raises(BenchmarkComplete):
+            model.train(trainer=train_only_pilot_trainer(), data=str(data), imgsz=64, batch=2,
+                        workers=0, device="cpu", epochs=1, amp=False, pretrained=False,
+                        val=False, save=False, plots=False, project=str(tmp_path / "pilot"), name="fit",
+                        optimizer="AdamW", verbose=False)
+        assert counter.count == 2
+        assert model.trainer.test_loader is None
+        assert model.trainer.validator.dataloader is None
+        assert model.trainer.pilot_skipped_dev_loader
+        assert not list((tmp_path / "pilot").rglob("*.pt"))
+        assert not (tmp_path / "labels" / "val.cache").exists()
+        for forbidden in (model.trainer.validate, model.trainer.final_eval, model.trainer.save_model):
+            with pytest.raises(RuntimeError, match="unexpectedly"):
+                forbidden()
+    finally:
+        torch.set_num_threads(previous_threads)
 
 
 def test_scan_pool_is_bounded_versioned_and_restored_after_failure():

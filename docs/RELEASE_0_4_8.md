@@ -1,8 +1,15 @@
 # Qorgau 0.4.8 — фиксация подъёма телефона после блокировки
 
 7 октября 2026. Приложение **0.4.8**, правила **3.1**, модели **2026.10.06.2**.
-Статус этой записи: исходники подготовлены; сборка и публикация ещё не подтверждены.
-Публичный проверенный выпуск на этот момент — [0.4.7](RELEASE_0_4_7.md).
+Выпуск [v0.4.8](https://github.com/ovverage/hackaton-kru/releases/tag/v0.4.8)
+опубликован 7 октября в 10:21:34 UTC и помечен на GitHub как **prerelease**.
+Проверенный коммит: `fa2c5412096893797bd27feb6ed7a679aced22c4`.
+[Сборка и развёртывание](https://github.com/ovverage/hackaton-kru/actions/runs/37603161719)
+и [публикация проверенных артефактов](https://github.com/ovverage/hackaton-kru/actions/runs/37606728520)
+завершились успешно. Сервер возвращает версию 0.4.8; полный публичный EXE,
+коммит развёртывания и ресурсы сайта проверены:
+[публичная проверка](evidence/public-0.4.8.json),
+[свидетельство публикации](evidence/github-release-0.4.8.json).
 
 Раньше телефон мог заблокировать тест после двух кадров, до завершения
 наблюдения за его подъёмом. В течение максимум 2,5 секунды после такой блокировки
@@ -23,8 +30,29 @@ RuleEngine, пропуски ранних кадров и защиту от по
 проверками. Отдельный набор обучения и управления ресурсами: **117 passed**.
 Ruff прошёл. Проверка исходного runtime 0.4.8 подтвердила ONNX, Face Landmarker,
 gaze, QtWebEngine и кодирование H.264 без физической камеры.
-Проверка собранного EXE и публикация фиксируются после завершения CI.
-Физическая камера и новый участник необходимы для окончательной приёмки.
+
+| Проверка выпуска | Результат | Свидетельство и границы |
+| --- | --- | --- |
+| CI verify | **356 passed, 17 skipped, 3 subtests passed**, 1 warning; 21,04 с | [Job verify](https://github.com/ovverage/hackaton-kru/actions/runs/37603161719/job/112732193692) |
+| Windows CI | **317 passed, 22 skipped**, 1 warning; 66,50 с | [Job windows](https://github.com/ovverage/hackaton-kru/actions/runs/37603161719/job/112732193190) |
+| Исходники, onedir и portable EXE | **PASS** | [Onedir](evidence/packaged-selftest-0.4.8.json), [portable](evidence/portable-selftest-0.4.8.json): QtWebEngine, ONNX, Face Landmarker, gaze и H.264; без физической камеры |
+| Установщик | **PASS** | [Отчёт](evidence/installer-selftest-0.4.8.json): установка, repair/reinstall, mutex, комплектный runtime и удаление с сохранением данных |
+| Первый запуск | **PASS** | [Отчёт](evidence/plain-first-run-0.4.8.json): два изолированных профиля, синхронизация и повторный запуск без дубля; проверка через тестовый API |
+| Развёртывание | **SUCCESS** | [Job deploy](https://github.com/ovverage/hackaton-kru/actions/runs/37603161719/job/112737818358), точный коммит `fa2c541` |
+| Публичные файлы | **PASS** | Девять артефактов релиза; полный серверный EXE совпал с CI/GitHub SHA-256, JS/CSS сайта совпали с локальной сборкой побайтно |
+
+[Portable EXE](https://github.com/ovverage/hackaton-kru/releases/download/v0.4.8/Qorgau-Student.exe):
+**398 657 193 байта**, SHA-256
+`052423f11b4ec33a5db849fe45e107fc8232c91d6b3aabebb786c6ba299f72ed`.
+[Установщик](https://github.com/ovverage/hackaton-kru/releases/download/v0.4.8/Qorgau-Student-Setup-0.4.8-x64.exe):
+**354 151 170 байт**, SHA-256
+`3d4623b47aada9f51ccf60d7630f6f452c6f753a67158cd0c6de6a41a2c79a40`
+по контрольной сумме публикации и проверкам CI.
+
+Четыре хеша моделей совпадают с выпуском 0.4.7. Обновление сайта не заменяет
+уже запущенный EXE: для нового окна фиксации телефона требуется приложение 0.4.8.
+Пропущенные тесты не считаются прошедшими. Физическая камера и новый участник
+необходимы для окончательной приёмки; эти проверки не измеряют новую CV-точность.
 
 ## Обучение
 

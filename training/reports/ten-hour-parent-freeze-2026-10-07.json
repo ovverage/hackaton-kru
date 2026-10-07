@@ -1,0 +1,18 @@
+{
+  "status": "parent_frozen",
+  "observed_utc": "2026-10-07T10:37:12.701881+00:00",
+  "old_source_sha256": "fc44866d5d92cefa0b96faf7ef177df0156eb1f988e533e6512c26433b65c159",
+  "new_source_sha256": "835e31959f7efa02da0f669e73454387d7ef4aa64636663027122887fe28599a",
+  "scope": "Append-only normal-stage parent marker and future resume/new-stage guards; active COCO/CPU evaluation processes were not restarted and retain their loaded code",
+  "selected_sha256": "5f8658a4344ea33bda13825cace151f6272d7865709c14fd642abcd3cd720a40",
+  "marker": {
+    "marker": "C:\\QorgauTraining\\20261007\\training\\runs\\public-wider-v1\\final-selection-marker.json",
+    "marker_sha256": "4ab3516556f63b111b1407ccdc96ceeaae900a6ea0f3317c5b34633d82435c2c",
+    "selection": "C:\\QorgauTraining\\20261007\\training\\runs\\budget-wider-v1\\stage-selection.json",
+    "selection_sha256": "643d71ed071114aecb0628d3f08faefb2c70c1c55968d64a27b94ccdf1c0e33f",
+    "selected_checkpoint": "C:\\QorgauTraining\\20261007\\training\\runs\\budget-wider-v1\\fit\\weights\\best.pt",
+    "selected_sha256": "5f8658a4344ea33bda13825cace151f6272d7865709c14fd642abcd3cd720a40"
+  },
+  "heldout_used_for_selection": false,
+  "queue_status": "running"
+}

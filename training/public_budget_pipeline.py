@@ -97,31 +97,113 @@ def choose_hardware(reports):
     if not coco:
         raise RuntimeError("No successful COCO hardware pilot; refusing an unmeasured GPU configuration")
     name, best = max(coco, key=lambda pair: pair[1]["images_per_second"])
-    face_batch = max(wider, key=lambda pair: pair[1]["images_per_second"])[1]["settings"]["batch"] if wider else 32
+    face_settings = max(wider, key=lambda pair: pair[1]["images_per_second"])[1]["settings"] if wider else {"batch": 32, "workers": 4}
     return dict(selected_pilot=name, coco_batch=best["settings"]["batch"],
-                coco_workers=best["settings"]["workers"], wider_batch=face_batch,
-                wider_workers=16, gaze_batch=256, gaze_workers=12,
-                reason="Train-only measured throughput with <=39 GiB allocator peak; WIDER falls back to conservative batch32 if its batch64 pilot fails.",
+                coco_workers=best["settings"]["workers"], wider_batch=face_settings["batch"],
+                wider_workers=face_settings["workers"], gaze_batch=256, gaze_workers=12,
+                reason="Train-only measured batch/workers throughput with <=39 GiB allocator peak; WIDER falls back to batch32/workers4 if its pilot fails.",
                 data_fraction=1.0, image_size=640, test_used_for_selection=False)
+
+
+def validate_reusable_pilot(job, weights, versions):
+    """Accept only an exact completed hardware experiment, never a partial run."""
+    from training.public_detection import INITIAL_SHA256, benchmark_worker_settings, fit_settings, run_lock, sha256, verified_manifest
+    command = job["command"]
+    def argument(flag):
+        return command[command.index(flag)+1]
+    data, output = Path(argument("--data")).resolve(), Path(argument("--output")).resolve()
+    report_path = Path(job["report"])
+    with run_lock(output):
+        report = json.loads(report_path.read_text("utf-8"))
+        if not isinstance(report, dict) or report.get("status") != "completed_train_only_pilot":
+            raise FileExistsError("Pilot is not completed; operator must inspect/archive its output before rerunning")
+        manifest = verified_manifest(data)
+        if report.get("dataset") != manifest["dataset"] or report.get("dataset_manifest_sha256") != sha256(data.parent/"manifest.json"):
+            raise ValueError("Reusable pilot dataset/manifest mismatch")
+        if report.get("versions") != versions or versions.get("ultralytics") != "8.3.221":
+            raise ValueError("Reusable pilot runtime version mismatch")
+        if Path(argument("--weights")).resolve() != weights.resolve() or sha256(weights) != INITIAL_SHA256:
+            raise ValueError("Reusable pilot initializer mismatch")
+        initialization = report.get("initialization")
+        if initialization is not None:
+            if initialization != {"path": str(weights.resolve()), "sha256": INITIAL_SHA256}:
+                raise ValueError("Reusable pilot recorded initializer mismatch")
+            binding = "explicit_report_initializer_sha256"
+        else:
+            # Older pinned entrypoint rejected all non-official initializers before
+            # writing a completed report. Bind its native args to that exact path.
+            import yaml
+            native = yaml.safe_load((output/"fit/args.yaml").read_text("utf-8"))
+            if not isinstance(native, dict) or Path(str(native.get("model", ""))).resolve() != weights.resolve():
+                raise ValueError("Legacy reusable pilot native initializer path mismatch")
+            binding = "legacy_pinned_entrypoint_and_native_args_model_path"
+        batch, requested = int(argument("--batch")), int(argument("--workers"))
+        cap = int(argument("--windows-worker-cap"))
+        workers = benchmark_worker_settings(requested, cap, batch=batch)["effective_workers"]
+        settings = fit_settings(data, output, epochs=1, batch=batch, workers=workers,
+                                device="0", seed=20261007, patience=20, cache=argument("--cache"))
+        settings.update(val=False, save=False, plots=False, save_period=-1)
+        if report.get("settings") != settings:
+            raise ValueError("Reusable pilot training settings mismatch")
+        steps, warmup = int(argument("--steps")), int(argument("--warmup-steps"))
+        if steps != 48 or warmup != 12:
+            raise ValueError("Reusable pilot requires the declared 48/12 batch protocol")
+        counts = {"completed_batches": steps, "warmup_batches": warmup,
+                  "measured_batches": steps-warmup, "measured_images": (steps-warmup)*batch}
+        if any(type(report.get(key)) is not int or report[key] != value for key,value in counts.items()):
+            raise ValueError("Reusable pilot measurement coverage mismatch")
+        for key in ("images_per_second", "measured_seconds", "peak_reserved_gib", "peak_allocated_gib",
+                    "wall_seconds_including_setup", "mean_synchronized_batch_seconds", "mean_loader_and_logging_gap_seconds"):
+            value = report.get(key)
+            if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or value < 0 or (key != "mean_loader_and_logging_gap_seconds" and value == 0):
+                raise ValueError("Reusable pilot has invalid measured throughput/memory/timing")
+        if report["peak_allocated_gib"] > report["peak_reserved_gib"] or report["peak_reserved_gib"] > 39:
+            raise ValueError("Reusable pilot exceeds the allowed allocator memory budget")
+        if not math.isclose(report["images_per_second"], counts["measured_images"]/report["measured_seconds"], rel_tol=1e-8):
+            raise ValueError("Reusable pilot throughput disagrees with measured coverage")
+        return {"report": str(report_path.resolve()), "report_sha256": sha256(report_path),
+                "initializer_sha256": INITIAL_SHA256, "initializer_binding": binding,
+                "dataset_manifest_sha256": report["dataset_manifest_sha256"], "versions": versions,
+                "settings": settings, "validated_utc": utc_now()}
+
+
+def reuse_completed_pilots(jobs, weights, versions):
+    for job in jobs.values():
+        if not job["name"].startswith("pilot-"):
+            continue
+        output = Path(job["report"]).parent
+        if Path(job["report"]).exists():
+            evidence = validate_reusable_pilot(job, weights, versions)
+            job.update(status="complete", exit_code=0, reused_completed_pilot=evidence, finished_utc=utc_now())
+        elif (output/"fit").exists():
+            raise FileExistsError("Incomplete pilot output exists; operator must inspect/archive before rerunning: " + str(output))
+
+
+def batch128_has_headroom(report):
+    memory = report.get("peak_reserved_gib") if isinstance(report, dict) else None
+    return (isinstance(report, dict) and report.get("status") == "completed_train_only_pilot"
+            and not isinstance(memory, bool) and isinstance(memory, (int, float))
+            and math.isfinite(memory) and 0 < memory <= 20)
 
 
 def make_plan(root, args):
     prepared = root / "data/public-detection"
     runs = root / "training/runs"
-    pilot_root = runs / "budget-hardware-v2"
+    pilot_root = runs / "budget-hardware-v3"
     def job(name, resource, command, depends=(), **extra):
         return dict(name=name, resource=resource, command=command, depends=list(depends), status="pending", **extra)
     jobs = [job("extract-gaze", "cpu", ["-m", "training.public_gaze_prepare", "extract", "--output", str(root/"data/public-gaze"),
                "--model", str(args.landmarker), "--workers", "16", "--disable-audio"],
                hard_deadline=args.gaze_deadline)]
-    for name, dataset, batch, workers in (("coco32", "coco", 32, 16), ("coco64", "coco", 64, 16), ("coco128", "coco", 128, 24), ("wider64", "wider", 64, 16)):
+    for name, dataset, batch, workers in (("coco32", "coco", 32, 16), ("coco64", "coco", 64, 16), ("coco128", "coco", 128, 24), ("wider64", "wider", 64, 16), ("coco128-w8", "coco", 128, 8)):
         jobs.append(job("pilot-"+name, "gpu", ["-m", "training.public_detection", "benchmark", "--data", str(prepared/dataset/"data.yaml"),
             "--weights", str(args.weights), "--output", str(pilot_root/name), "--batch", str(batch), "--workers", str(workers),
-            "--steps", "48", "--warmup-steps", "12", "--cache", "none", "--scan-threads", "32"],
-            ["pilot-coco64"] if name == "coco128" else [],
+            "--steps", "48", "--warmup-steps", "12", "--cache", "none", "--scan-threads", "32",
+            "--windows-worker-cap", "8" if name == "coco128-w8" else "4"],
+            ["pilot-coco64"] if name.startswith("coco128") else [],
             require_success=False, report=str(pilot_root/name/"benchmark.json"), max_seconds=2400 if name=="coco32" else 900,
             hard_deadline=args.wider_deadline))
-    jobs.append(job("select-hardware", "control", [], ["pilot-coco32", "pilot-coco64", "pilot-coco128", "pilot-wider64"], require_success=False))
+    jobs.append(job("select-hardware", "control", [], ["pilot-coco32", "pilot-coco64", "pilot-coco128", "pilot-wider64", "pilot-coco128-w8"], require_success=False))
     for dataset, hours, cutoff in (("wider", .65, args.wider_deadline), ("coco", 5.25, args.coco_deadline)):
         output = runs/("budget-"+dataset+"-v1")
         initial = args.wider_parent/"fit/weights/best.pt" if dataset == "wider" else args.weights
@@ -175,6 +257,7 @@ def main():
     parser.add_argument("--coco-deadline", required=True)
     parser.add_argument("--gaze-deadline", required=True)
     parser.add_argument("--plan-only", action="store_true")
+    parser.add_argument("--reuse-completed-pilots", action="store_true", help="Validate and reuse completed exact-match pilot reports; incomplete outputs require operator archival")
     args = parser.parse_args()
     args.root, args.weights, args.landmarker, args.wider_parent = (p.resolve() for p in (args.root,args.weights,args.landmarker,args.wider_parent))
     root = args.root
@@ -201,6 +284,9 @@ def main():
     with process_lock(root/".budget-training.lock"):
         if receipt.exists():
             raise FileExistsError("A budget journal already exists; inspect and recover explicitly")
+        if args.reuse_completed_pilots:
+            from importlib.metadata import version
+            reuse_completed_pilots(jobs, args.weights, {"torch": version("torch"), "ultralytics": version("ultralytics")})
         state = dict(status="running", started_utc=utc_now(), deadline_utc=args.deadline_utc,
             parent=identity(psutil.Process()), jobs=jobs, processes=[], heartbeat_utc=utc_now(),
             source_sha256={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in Path(__file__).parent.glob("public_*.py")},
@@ -263,10 +349,10 @@ def main():
                         continue
                     if job["resource"]=="gpu" and not guard_ready(guard,root,cutoffs[-1],time.time()):
                         continue
-                    if job["name"]=="pilot-coco128":
+                    if job["name"] in {"pilot-coco128", "pilot-coco128-w8"}:
                         prior_path=Path(jobs["pilot-coco64"]["report"])
                         prior=json.loads(prior_path.read_text("utf-8")) if prior_path.exists() else {}
-                        if prior.get("status")!="completed_train_only_pilot" or prior.get("peak_reserved_gib",999)>20:
+                        if not batch128_has_headroom(prior):
                             job.update(status="skipped",reason="batch64 pilot leaves insufficient tested headroom for batch128")
                             continue
                     if job["name"]=="select-hardware":
