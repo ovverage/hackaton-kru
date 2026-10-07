@@ -1,6 +1,7 @@
 """Actual Qt setup/target/worker/session integration, with synthetic camera data."""
 
 import os
+import threading
 import time
 from types import SimpleNamespace
 
@@ -19,22 +20,63 @@ def app():
     yield QApplication.instance() or QApplication([])
 
 
-def until(app, condition, seconds=5):
+def until(app, condition, seconds=5, *, diagnostics=None):
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline and not condition():
         app.processEvents()
         time.sleep(.001)
     app.processEvents()
-    assert condition()
+    assert condition(), diagnostics() if diagnostics else 'Timed out waiting for Qt state'
+
+
+class SyntheticFrameClock:
+    """Advance capture time with generated frames, independently of CI scheduling.
+
+    The GUI still paints and acknowledges targets through real Qt events. Only
+    the capture module and this fake camera share this locked clock; Python's
+    time module and Qt's elapsed timers are never changed.
+    """
+
+    def __init__(self):
+        self.at = 100.
+        self.lock = threading.Lock()
+
+    def monotonic(self):
+        with self.lock:
+            return self.at
+
+    def next_frame(self):
+        with self.lock:
+            self.at += .01
+            return self.at
+
+
+def calibration_state(camera, dialog, results):
+    return {
+        'attempt': camera.attempt,
+        'target_tokens': [(row[0], row[1]) for row in camera.target_sequence],
+        'worker_running': dialog.worker.isRunning(),
+        'worker_error': dialog.worker.error,
+        'camera_closed': camera.closed,
+        'install_calls': camera.install_calls,
+        'results': [
+            {'ready': row.get('ready'), 'error': row.get('error'),
+             'completed_targets': row.get('capture', {}).get('completed_targets'),
+             'retry_count': row.get('capture', {}).get('retry_count')}
+            for row in results
+        ],
+    }
 
 
 class SyntheticCamera:
     screen_calibration_required = True
 
-    def __init__(self):
+    def __init__(self, clock):
         import cv2
 
         self.cv2 = cv2
+        self.clock = clock
+        self.read_delay_seconds = lambda: .004
         self.public_gaze = SimpleNamespace(reference=None)
         self.centres = {}
         self.gaze_enabled = False
@@ -67,9 +109,9 @@ class SyntheticCamera:
     def read(self):
         if self.collecting and self.raise_during_calibration:
             raise OSError("synthetic camera disconnected")
-        time.sleep(.004)
+        time.sleep(self.read_delay_seconds())
         self.frame_id += 1
-        self.at = time.monotonic()
+        self.at = self.clock.next_frame()
         return np.zeros((48, 64, 3), dtype=np.uint8), {"faces": 1, "direction": "UNKNOWN"}
 
     def show_target(self, index, phase, point, count, total):
@@ -119,8 +161,10 @@ def setup(app, tmp_path, monkeypatch):
     from agent.camera_setup import CameraSetup
 
     monkeypatch.setattr(screen_calibration, "TARGET_SETTLE_MS", 2)
-    # Windows may expose a ~15 ms monotonic resolution. Keep one fixed short
-    # window with ample room for three distinct timestamps, even under CI load.
+    # Keep real GUI acknowledgement, but do not turn a slow Windows runner into
+    # a fake camera quality failure by expiring this accelerated capture window.
+    clock = SyntheticFrameClock()
+    monkeypatch.setattr(screen_capture, "time", clock)
     monkeypatch.setattr(screen_capture, "CAPTURE_SECONDS", .12)
     monkeypatch.setattr(screen_capture, "MAX_CAPTURE_SECONDS", .12)
     monkeypatch.setattr(screen_capture, "MIN_SAMPLE_GAP_SECONDS", .001)
@@ -128,7 +172,7 @@ def setup(app, tmp_path, monkeypatch):
     monkeypatch.setattr(screen_capture, "SESSION_TIMEOUT_SECONDS", 5)
     atomic_json(tmp_path / "config.json", {"server": "http://localhost:8000", "token": "fixture"})
     agent = Agent(tmp_path)
-    camera = SyntheticCamera()
+    camera = SyntheticCamera(clock)
     model = tmp_path / "model"
     model.write_bytes(b"fixture")
     monkeypatch.setattr("agent.resources.verified_models", lambda: (model, model))

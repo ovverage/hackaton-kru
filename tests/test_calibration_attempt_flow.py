@@ -3,8 +3,10 @@
 import json
 from unittest.mock import Mock
 
+import pytest
+
 from test_screen_calibration_flow import (
-    app as app, begin_targets, setup as setup, until,
+    app as app, begin_targets, calibration_state, setup as setup, until,
 )
 
 
@@ -13,7 +15,8 @@ def saved_attempts(agent):
             for path in sorted((agent.folder / 'calibration-diagnostics').glob('attempt-*.json'))]
 
 
-def test_nine_constant_targets_preserve_span_failure_then_allow_fresh_retry(app, setup):
+@pytest.mark.parametrize('slow_second_attempt', [False, True])
+def test_nine_constant_targets_preserve_span_failure_then_allow_fresh_retry(app, setup, slow_second_attempt):
     agent, camera, dialog = setup
     original_sample = camera.screen_calibration_sample
     results = []
@@ -49,11 +52,27 @@ def test_nine_constant_targets_preserve_span_failure_then_allow_fresh_retry(app,
     # A failed fit never hands the camera to Agent. A completely fresh attempt
     # may then succeed and leaves both separate, immutable aggregate reports.
     camera.screen_calibration_sample = original_sample
+    delayed_reads = []
+    if slow_second_attempt:
+        def scheduling_delay():
+            if camera.attempt == 2 and camera.target_sequence[-1][1] == 1:
+                delayed_reads.append(camera.frame_id)
+                # A real-time .12-second fixture window would accept at most
+                # one frame, repeatedly rejecting this otherwise valid point.
+                return .15
+            return .004
+
+        camera.read_delay_seconds = scheduling_delay
     overlay.start_button.click()
-    until(app, lambda: agent.camera is camera)
+    until(app, lambda: agent.camera is camera,
+          diagnostics=lambda: calibration_state(camera, dialog, results))
     assert camera.attempt == 2 and camera.install_calls == 1
     assert len(camera.target_sequence) == 18 and len(results) == 2
     assert results[1]['ready'] and camera.profile.ready
+    assert results[1]['capture']['retry_count'] == 0
+    assert all(row['accepted_samples'] >= 3 for row in results[1]['capture']['targets'].values())
+    if slow_second_attempt:
+        assert len(delayed_reads) >= 3
     attempts = saved_attempts(agent)
     assert len(attempts) == 2 and [row['ready'] for row in attempts] == [False, True]
     assert attempts[0]['quality']['yaw_span_degrees'] == 0
