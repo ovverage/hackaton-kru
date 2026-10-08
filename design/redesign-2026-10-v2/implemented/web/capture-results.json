@@ -1,0 +1,300 @@
+[
+  {
+    "scene": "login",
+    "width": 1440,
+    "viewport": 1440,
+    "document": 1440,
+    "title": "Вся аудиторияна одном экране",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-01-login-1440.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "setup",
+    "width": 1440,
+    "viewport": 1440,
+    "document": 1440,
+    "title": "Вся аудиторияна одном экране",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-01-setup-1440.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "before",
+    "width": 1440,
+    "viewport": 1440,
+    "document": 1440,
+    "title": "Аудитория",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-02-room-before-1440.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "room",
+    "width": 1440,
+    "viewport": 1440,
+    "document": 1440,
+    "title": "Алгоритмы и структуры данных",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-03-room-live-1440.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "new",
+    "width": 1440,
+    "viewport": 1440,
+    "document": 1440,
+    "title": "Аудитория",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-05-new-session-1440.png",
+    "extra_screenshots": [
+      "web-05-new-session-1440-bottom.png"
+    ]
+  },
+  {
+    "scene": "device",
+    "width": 1440,
+    "viewport": 1440,
+    "document": 1440,
+    "title": "Алгоритмы и структуры данных",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-06-device-1440.png",
+    "extra_screenshots": [
+      "web-06-device-1440-bottom.png"
+    ]
+  },
+  {
+    "scene": "event",
+    "width": 1440,
+    "viewport": 1440,
+    "document": 1440,
+    "title": "События",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-07-event-1440.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "events",
+    "width": 1440,
+    "viewport": 1440,
+    "document": 1440,
+    "title": "События",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-08-events-1440.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "history",
+    "width": 1440,
+    "viewport": 1440,
+    "document": 1440,
+    "title": "Сеансы и отчёты",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-09-history-1440.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "computers",
+    "width": 1440,
+    "viewport": 1440,
+    "document": 1440,
+    "title": "Компьютеры",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-10-computers-1440.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "rules",
+    "width": 1440,
+    "viewport": 1440,
+    "document": 1440,
+    "title": "Правила контроля",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-11-rules-1440.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "teachers",
+    "width": 1440,
+    "viewport": 1440,
+    "document": 1440,
+    "title": "Преподаватели",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-12-teachers-1440.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "login",
+    "width": 390,
+    "viewport": 390,
+    "document": 390,
+    "title": "Вся аудиторияна одном экране",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-01-login-390.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "setup",
+    "width": 390,
+    "viewport": 390,
+    "document": 390,
+    "title": "Вся аудиторияна одном экране",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-01-setup-390.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "before",
+    "width": 390,
+    "viewport": 390,
+    "document": 390,
+    "title": "Аудитория",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-02-room-before-390.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "room",
+    "width": 390,
+    "viewport": 390,
+    "document": 390,
+    "title": "Алгоритмы и структуры данных",
+    "overflowElements": [],
+    "tableScrollers": 1,
+    "errors": [],
+    "screenshot": "web-03-room-live-390.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "new",
+    "width": 390,
+    "viewport": 390,
+    "document": 390,
+    "title": "Аудитория",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-05-new-session-390.png",
+    "extra_screenshots": [
+      "web-05-new-session-390-bottom.png"
+    ]
+  },
+  {
+    "scene": "device",
+    "width": 390,
+    "viewport": 390,
+    "document": 390,
+    "title": "Алгоритмы и структуры данных",
+    "overflowElements": [],
+    "tableScrollers": 1,
+    "errors": [],
+    "screenshot": "web-06-device-390.png",
+    "extra_screenshots": [
+      "web-06-device-390-bottom.png"
+    ]
+  },
+  {
+    "scene": "event",
+    "width": 390,
+    "viewport": 390,
+    "document": 390,
+    "title": "События",
+    "overflowElements": [],
+    "tableScrollers": 2,
+    "errors": [],
+    "screenshot": "web-07-event-390.png",
+    "extra_screenshots": [
+      "web-07-event-390-bottom.png"
+    ]
+  },
+  {
+    "scene": "events",
+    "width": 390,
+    "viewport": 390,
+    "document": 390,
+    "title": "События",
+    "overflowElements": [],
+    "tableScrollers": 2,
+    "errors": [],
+    "screenshot": "web-08-events-390.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "history",
+    "width": 390,
+    "viewport": 390,
+    "document": 390,
+    "title": "Сеансы и отчёты",
+    "overflowElements": [],
+    "tableScrollers": 1,
+    "errors": [],
+    "screenshot": "web-09-history-390.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "computers",
+    "width": 390,
+    "viewport": 390,
+    "document": 390,
+    "title": "Компьютеры",
+    "overflowElements": [],
+    "tableScrollers": 1,
+    "errors": [],
+    "screenshot": "web-10-computers-390.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "rules",
+    "width": 390,
+    "viewport": 390,
+    "document": 390,
+    "title": "Правила контроля",
+    "overflowElements": [],
+    "tableScrollers": 0,
+    "errors": [],
+    "screenshot": "web-11-rules-390.png",
+    "extra_screenshots": []
+  },
+  {
+    "scene": "teachers",
+    "width": 390,
+    "viewport": 390,
+    "document": 390,
+    "title": "Преподаватели",
+    "overflowElements": [],
+    "tableScrollers": 1,
+    "errors": [],
+    "screenshot": "web-12-teachers-390.png",
+    "extra_screenshots": []
+  }
+]

@@ -1,0 +1,36 @@
+[
+  {
+    "width": 1440,
+    "passed": [
+      "24 participants: 20 running, 2 paused, 1 waiting, 1 offline; paused cards separate from 22-row roster",
+      "Tabs filter pending/offline accurately; search filters name/PC and shows empty state",
+      "Pagination 8/8/6 rows, boundaries disabled, previous page works",
+      "Pause card opens existing UNLOCK confirmation, reason required; Escape restores focus without mutation",
+      "End-session confirmation supports Cancel/Escape and traps keyboard focus with restoration",
+      "Queue All events opens review page"
+    ],
+    "metrics": {
+      "viewport": 1440,
+      "document": 1440,
+      "tableScrollers": 0
+    },
+    "errors": []
+  },
+  {
+    "width": 390,
+    "passed": [
+      "24 participants: 20 running, 2 paused, 1 waiting, 1 offline; paused cards separate from 22-row roster",
+      "Tabs filter pending/offline accurately; search filters name/PC and shows empty state",
+      "Pagination 8/8/6 rows, boundaries disabled, previous page works",
+      "Pause card opens existing UNLOCK confirmation, reason required; Escape restores focus without mutation",
+      "End-session confirmation supports Cancel/Escape and traps keyboard focus with restoration",
+      "Queue All events opens review page"
+    ],
+    "metrics": {
+      "viewport": 390,
+      "document": 390,
+      "tableScrollers": 1
+    },
+    "errors": []
+  }
+]

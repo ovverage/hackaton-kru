@@ -1,0 +1,30 @@
+[
+  {
+    "width": 1440,
+    "passed": [
+      "login password visibility",
+      "setup mode",
+      "event filters",
+      "event queue navigation",
+      "required review comment and review persistence",
+      "history initial expansion and filters",
+      "teacher list and permission table",
+      "new session readiness selection, visible footer, creation"
+    ],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "passed": [
+      "login password visibility",
+      "setup mode",
+      "event filters",
+      "event queue navigation",
+      "required review comment and review persistence",
+      "history initial expansion and filters",
+      "teacher list and permission table",
+      "new session readiness selection, visible footer, creation"
+    ],
+    "errors": []
+  }
+]
