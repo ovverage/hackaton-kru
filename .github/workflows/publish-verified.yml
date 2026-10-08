@@ -85,6 +85,7 @@ jobs:
               runtime = report['runtime'] if name == 'installer-selftest.json' else report
               assert runtime['frozen'] and runtime['model_version'] == models['version']
               assert runtime['model_files'] == expected_models
+              assert runtime['browser_navigation_recovery'] is True
               assert runtime['teacher_face_model_files'] == teacher_models and runtime['teacher_face_runtime']
               assert runtime['mode'] == ('offline' if name == 'offline-selftest.json' else 'online')
           PY

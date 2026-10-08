@@ -56,6 +56,16 @@ class Credentials(BaseModel):
     password: str = Field(min_length=8, max_length=128)
 
 
+class LoginCredentials(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    password: str = Field(min_length=1, max_length=128)
+
+
+class PasswordChange(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=5, max_length=128)
+
+
 class Enrollment(BaseModel):
     code: str
     name: str = Field(min_length=1, max_length=80)
@@ -398,13 +408,15 @@ def create_app(data_dir=None, *, allow_demo=False):
             me = None
         return {"setup_required": setup, "user": me}
 
-    def login_response(u, response):
+    def new_login(c, u):
         token = secrets.token_urlsafe(32)
-        with db.connect(True) as c:
-            c.execute(
-                "INSERT INTO logins VALUES(?,?,?)",
-                (digest(token), u["id"], time.time() + 12 * 3600),
-            )
+        c.execute(
+            "INSERT INTO logins VALUES(?,?,?)",
+            (digest(token), u["id"], time.time() + 12 * 3600),
+        )
+        return token
+
+    def session_response(u, response, token):
         response.set_cookie(
             "qorgau_session",
             token,
@@ -414,6 +426,15 @@ def create_app(data_dir=None, *, allow_demo=False):
             max_age=43200,
         )
         return {"user": u}
+
+    def login_response(u, response, *, expected_hash=None):
+        with db.connect(True) as c:
+            if expected_hash is not None:
+                current = c.execute("SELECT password FROM users WHERE id=?", (u["id"],)).fetchone()
+                if not current or not secrets.compare_digest(current["password"], expected_hash):
+                    raise HTTPException(401, "Пароль изменился. Войдите снова.")
+            token = new_login(c, u)
+        return session_response(u, response, token)
 
     @app.post("/api/auth/setup")
     def setup(body: Credentials, response: Response):
@@ -428,7 +449,7 @@ def create_app(data_dir=None, *, allow_demo=False):
         return login_response(u, response)
 
     @app.post("/api/auth/login")
-    def login(body: Credentials, response: Response, request: Request):
+    def login(body: LoginCredentials, response: Response, request: Request):
         key = request.client.host if request.client else "local"
         now = time.time()
         recent = [x for x in failures.get(key, []) if now - x < 60]
@@ -446,7 +467,47 @@ def create_app(data_dir=None, *, allow_demo=False):
             failures[key] = recent + [now]
             raise HTTPException(401, "Неверное имя или пароль")
         failures.pop(key, None)
-        return login_response({"id": row["id"], "name": row["name"]}, response)
+        return login_response(
+            {"id": row["id"], "name": row["name"]}, response,
+            expected_hash=row["password"],
+        )
+
+    @app.post("/api/auth/password")
+    def change_password(body: PasswordChange, response: Response, request: Request):
+        u = user(request)
+        error = None
+        token = None
+        with db.connect(True) as c:
+            # Recheck both the session and password under the write lock: another
+            # password change may have revoked this request's session meanwhile.
+            row = c.execute(
+                "SELECT users.password FROM users JOIN logins ON users.id=logins.user_id "
+                "WHERE users.id=? AND logins.token=? AND logins.expires>?",
+                (u["id"], digest(request.cookies.get("qorgau_session", "")), time.time()),
+            ).fetchone()
+            if not row:
+                raise HTTPException(401, "Войдите в панель преподавателя")
+            key, now = "password-change:" + u["id"], time.time()
+            attempts = c.execute("SELECT * FROM unlock_attempts WHERE owner=?", (key,)).fetchone()
+            count = attempts["count"] if attempts and attempts["until"] > now else 0
+            until = attempts["until"] if count else now + 60
+            if count >= 5:
+                error = (429, "Слишком много попыток. Подождите одну минуту.")
+            else:
+                try:
+                    PH.verify(row["password"], body.current_password)
+                except VerificationError:
+                    c.execute("INSERT OR REPLACE INTO unlock_attempts VALUES(?,?,?)", (key, count + 1, until))
+                    error = (403, "Неверный текущий пароль")
+                else:
+                    c.execute("UPDATE users SET password=? WHERE id=?", (PH.hash(body.new_password), u["id"]))
+                    c.execute("DELETE FROM logins WHERE user_id=?", (u["id"],))
+                    c.execute("DELETE FROM unlock_attempts WHERE owner=?", (key,))
+                    token = new_login(c, u)
+                    audit(c, u["id"], "PASSWORD_CHANGED", {})
+        if error:
+            raise HTTPException(*error)
+        return session_response(u, response, token)
 
     @app.post("/api/auth/logout")
     def logout(request: Request, response: Response):

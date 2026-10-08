@@ -2,7 +2,7 @@
 
 from urllib.parse import urlparse
 
-from PySide6.QtCore import QUrl, Qt
+from PySide6.QtCore import QTimer, QUrl, Qt
 from PySide6.QtWebEngineCore import (
     QWebEnginePage,
     QWebEngineProfile,
@@ -31,20 +31,34 @@ class ExamPage(QWebEnginePage):
         super().__init__(profile, parent)
         self.allowed_origin = origin(allowed_url)
         self.on_attempt = on_attempt
+        self.reporting = True
+
+    def report_attempt(self, reason):
+        # Chromium must finish its native navigation/file/window callback before
+        # the controller can close this view. Closing from inside that callback
+        # triggers a fatal WebEngine CHECK on Windows (0x80000003).
+        QTimer.singleShot(0, self, lambda: self._deliver_attempt(reason))
+
+    def _deliver_attempt(self, reason):
+        if self.reporting:
+            self.on_attempt(reason)
 
     def acceptNavigationRequest(self, url, navigation_type, is_main_frame):
         # All frame navigation is restricted: an iframe must not become an escape.
         if origin(url.toString()) == self.allowed_origin:
             return True
-        self.on_attempt("BROWSER_ATTEMPT")
+        # A page's automatic advertising/login iframe is not a student attempt
+        # to leave the exam. Deny it without cancelling the whole main page.
+        if is_main_frame:
+            self.report_attempt("BROWSER_ATTEMPT")
         return False
 
     def createWindow(self, window_type):
-        self.on_attempt("BROWSER_ATTEMPT")
+        self.report_attempt("BROWSER_ATTEMPT")
         return None
 
     def chooseFiles(self, mode, old_files, accepted_mime_types):
-        self.on_attempt("BROWSER_ATTEMPT")
+        self.report_attempt("BROWSER_ATTEMPT")
         return []
 
 
@@ -59,9 +73,13 @@ class ExamBrowser(QWebEngineView):
         self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         # Off-the-record profile: no password/history/cookie reuse between exams.
-        self.profile = QWebEngineProfile(self)
+        self.profile = QWebEngineProfile()
         self.profile.downloadRequested.connect(lambda download: download.cancel())
         self.exam_page = ExamPage(self.profile, url, on_attempt, self)
+        # QObject destroys child objects after the parent's derived destructor.
+        # Parenting the profile to its page keeps it alive through page teardown;
+        # sibling children of the view would destroy the earlier profile first.
+        self.profile.setParent(self.exam_page)
         self.setPage(self.exam_page)
         settings = self.settings()
         for attribute in (
@@ -88,6 +106,7 @@ class ExamBrowser(QWebEngineView):
 
     def closeEvent(self, event):
         if self.released:
+            self.exam_page.reporting = False
             super().closeEvent(event)
         else:
             event.ignore()

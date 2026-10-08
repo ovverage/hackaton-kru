@@ -7,8 +7,8 @@ import time
 
 
 def check_browser():
-    """Exercise the packaged Chromium helper/resources, without any network I/O."""
-    from PySide6.QtCore import QCoreApplication, QEvent, QEventLoop, QTimer
+    """Exercise Chromium rendering and rejected redirects on loopback only."""
+    from PySide6.QtCore import QCoreApplication, QEvent, QEventLoop, QTimer, QUrl
     from PySide6.QtWidgets import QApplication
     from PySide6.QtWebEngineWidgets import QWebEngineView
 
@@ -43,6 +43,103 @@ def check_browser():
     app.processEvents()
     if observed != ["Qorgau browser ready"]:
         raise RuntimeError("Packaged browser renderer did not load the offline test page")
+
+    # Exercise the actual native callback and the controller's cancellation
+    # behavior, not a mocked navigation method. Older releases fatally exited
+    # when the attempt handler closed the view before the callback returned.
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    import threading
+    from .exam_browser import ExamBrowser
+
+    requests = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            requests.append(self.path)
+            if self.path == '/redirect':
+                self.send_response(302)
+                # Different hostname means a different origin, even on loopback.
+                self.send_header('Location', f'http://localhost:{self.server.server_port}/forbidden')
+                self.end_headers()
+            else:
+                body = (f'<!doctype html><p id="boundary-check">Qorgau origin ready</p>'
+                        f'<iframe src="http://localhost:{self.server.server_port}/forbidden"></iframe>').encode()
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+        def log_message(self, *_args):
+            pass
+
+    server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    serving = threading.Thread(target=server.serve_forever, daemon=True,
+                               name='qorgau-selftest-loopback')
+    serving.start()
+    try:
+        for _ in range(3):
+            attempt_loop = QEventLoop()
+            attempts, destroyed = [], []
+            url = f'http://127.0.0.1:{server.server_port}'
+
+            def rejected(reason):
+                attempts.append(reason)
+                browser.released = True
+                browser.close()
+                browser.deleteLater()
+
+            browser = ExamBrowser(url + '/ready', rejected)
+            browser.exam_page.destroyed.connect(lambda: destroyed.append('page'))
+            browser.profile.destroyed.connect(lambda: destroyed.append('profile'))
+            browser.destroyed.connect(attempt_loop.quit)
+            navigated = False
+
+            def inspected(value):
+                if value == 'Qorgau origin ready':
+                    browser.setUrl(QUrl(url + '/redirect'))
+                else:
+                    attempt_loop.quit()
+
+            def ready(ok):
+                nonlocal navigated
+                if ok and not navigated:
+                    navigated = True
+                    browser.page().runJavaScript(
+                        "document.getElementById('boundary-check').textContent", inspected)
+
+            browser.loadFinished.connect(ready)
+            deadline = QTimer()
+            deadline.setSingleShot(True)
+            deadline.timeout.connect(attempt_loop.quit)
+            deadline.start(20000)
+            attempt_loop.exec()
+            deadline.stop()
+            QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+            app.processEvents()
+            if attempts != ['BROWSER_ATTEMPT'] or destroyed != ['page', 'profile']:
+                if not destroyed:
+                    browser.released = True
+                    browser.close()
+                    browser.deleteLater()
+                    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+                raise RuntimeError('Packaged browser did not safely reject and recover from an external redirect')
+        if '/forbidden' in requests or requests.count('/redirect') != 3:
+            raise RuntimeError('Packaged browser navigation origin boundary was not preserved')
+        cancelled_attempts = []
+        browser = ExamBrowser(url + '/ready', cancelled_attempts.append)
+        browser.exam_page.report_attempt('BROWSER_ATTEMPT')
+        browser.released = True
+        browser.close()
+        browser.deleteLater()
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        app.processEvents()
+        if cancelled_attempts:
+            raise RuntimeError('A cancelled browser delivered a stale navigation attempt')
+    finally:
+        server.shutdown()
+        server.server_close()
+        serving.join(timeout=2)
 
 
 def check_screen_calibration():
@@ -360,7 +457,7 @@ def run(output):
     import hashlib
     import platform
     import sys
-    report = {"result": "PASS", "status": "passed", "version": APP_VERSION, "platform": platform.platform(), "frozen": bool(getattr(sys, "frozen", False)), "browser_renderer": True, "kind": "synthetic packaging test; no webcam or accuracy claim",
+    report = {"result": "PASS", "status": "passed", "version": APP_VERSION, "platform": platform.platform(), "frozen": bool(getattr(sys, "frozen", False)), "browser_renderer": True, "browser_navigation_recovery": True, "kind": "synthetic packaging test; no webcam or accuracy claim",
               "installer_mutex": installer_mutex, "models_verified": True, "onnx_inference": True, "face_landmarker": True,
               "yolo_face_inference": True, "gaze_forest": True, "model_version": MODEL_VERSION,
               "model_files": {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in assets},
