@@ -669,7 +669,7 @@ export default function App() {
                               <th>Вправо</th>
                               <th>Телефон</th>
                               <th>На проверке</th>
-                              <th>Блокировки</th>
+                              <th>Паузы</th>
                             </tr>
                           </thead>
                           <tbody>

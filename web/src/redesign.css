@@ -61,6 +61,7 @@ button, input, select, textarea { font: inherit; }
 
 /* Logo: filled answer bubble with a stem — the letter q */
 .logo { width: 26px; height: 26px; flex: none; display: block; }
+.q .brand .logo { color: var(--ink); }
 .brand, .q a.brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 650; font-size: 19px; letter-spacing: -0.012em; color: var(--graphite); text-decoration: none; }
 
 /* Buttons */
@@ -394,10 +395,12 @@ textarea.input { height: 96px; padding: 10px 12px; resize: vertical; line-height
 }
 @media (max-width: 720px) {
   .q.shell.app { display: block; }
-  .q .side.sidebar { position: static; width: auto; height: auto; min-width: 0; padding: 14px 16px; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 14px; border-right: 0; border-bottom: 1px solid var(--rule); }
+  .q .side.sidebar { position: static; width: auto; height: auto; min-width: 0; padding: 14px 16px; display: flex; flex-flow: row wrap; align-items: center; justify-content: space-between; gap: 14px; border-right: 0; border-bottom: 1px solid var(--rule); }
   .q .sidebar .brand { margin: 0; }
   .q .sidebar .brand > span { display: inline; }
-  .q .side .nav { display: none; }
+  .q .side .nav { display: flex; flex: 1 0 100%; flex-direction: row; overflow-x: auto; }
+  .q .sidebar nav span { display: inline; }
+  .q .nav button { width: auto; flex: 0 0 auto; padding-inline: 10px; white-space: nowrap; }
   .q .side-note { display: none; }
   .q .profile { display: none; }
   .q .content.workspace { margin-left: 0; padding: 0 18px 36px; }
