@@ -374,6 +374,8 @@ class StudentWindow(QWidget):
         layout.addLayout(row)
         self.device_name = label("Компьютер аудитории", "small")
         layout.addWidget(self.device_name)
+        self.face_access_note = label("", "small")
+        layout.addWidget(self.face_access_note)
         layout.addWidget(label("Подготовка к тесту", "title"))
         layout.addWidget(label("Выберите камеру и среду теста. Калибровка начнётся после команды начала.", "body"))
 
@@ -596,6 +598,8 @@ class StudentWindow(QWidget):
         model = present(snap)
         state = snap["state"]
         offline = getattr(self.agent, "mode", "online") == "offline"
+        from .exam_ui import teacher_template_access_note
+        self.face_access_note.setText(teacher_template_access_note(self.agent))
         pending = snap.get("start_pending") or {}
         pending_id = pending.get("id")
         if pending_id and self.preparing_start_id != pending_id and self.calibration is None:

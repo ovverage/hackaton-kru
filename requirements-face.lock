@@ -1,3 +1,4 @@
 # Optional server-side teacher-face inference; client already uses opencv-contrib-python.
-numpy==2.2.6
-opencv-python-headless==4.13.0.92
+numpy==2.2.6; sys_platform != "win32" and python_version < "3.12"
+numpy==2.5.3; sys_platform != "win32" and python_version >= "3.12"
+opencv-python-headless==4.13.0.92; sys_platform != "win32"

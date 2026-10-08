@@ -385,7 +385,8 @@ def create_app(data_dir=None, *, allow_demo=False):
 
     @app.get("/api/health")
     def health():
-        return {"status": "ok", "version": APP_VERSION}
+        from .backup_status import public_backup_status
+        return {"status": "ok", "version": APP_VERSION, "backup_policy_status": public_backup_status()}
 
     @app.get("/api/auth/status")
     def status(request: Request):

@@ -41,12 +41,35 @@ jobs:
           name: Qorgau-Web
           path: web/dist
 
+  server_face:
+    name: server-face
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - name: Install the server dependencies using binary wheels only
+        run: |
+          python -m pip install --only-binary=:all: -r requirements-core.lock
+          python -m pip check
+      - name: Prepare pinned teacher identity assets
+        run: python scripts/prepare_teacher_faces.py --folder backend/proctor/assets/teacher-faces
+      - name: Verify the backend-only layout and actual CPU models
+        run: python scripts/verify_teacher_face_runtime.py --report teacher-face-runtime.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Qorgau-Server-Face-Runtime
+          path: teacher-face-runtime.json
+
   deploy:
-    needs: [verify, windows]
+    needs: [verify, windows, server_face]
     if: >-
       always() && !cancelled() && github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       needs.verify.result == 'success' &&
+      needs.server_face.result == 'success' &&
       (needs.windows.result == 'success' || needs.windows.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 20

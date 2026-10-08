@@ -1,5 +1,5 @@
 [Unit]
-Description=Back up Qorgau database and referenced media
+Description=Back up Qorgau metadata and remove video from legacy backups
 After=qorgau.service
 
 [Service]

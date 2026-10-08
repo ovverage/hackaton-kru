@@ -34,6 +34,25 @@ class FaceVerification(BaseModel):
     frames: list[FaceFrame] = Field(min_length=3, max_length=3)
 
 
+class FaceAccessInput(BaseModel):
+    enabled: bool = Field(strict=True)
+
+
+def device_template_access(c, row, device):
+    """Biometric export is a server-owned permission, never a capability claim.
+
+    Manual pairing and private installer provisioning were authorized by the
+    teacher; public auto-registration only proves control of an installation.
+    An explicit owner decision overrides either default, including revocation.
+    """
+    public = c.execute('SELECT 1 FROM public_devices WHERE device_id=? AND owner=?',
+                       (row['id'], row['owner'])).fetchone() is not None
+    override = device.get('teacher_face_access')
+    enabled = override if type(override) is bool else not public
+    return bool(enabled and row['token'] and not device.get('revoked_at')
+                and not device.get('simulated')), public
+
+
 def register_teacher_faces(app, db, user, device_auth, audit, root):
     creation_lock = threading.Lock()
 
@@ -66,6 +85,36 @@ def register_teacher_faces(app, db, user, device_auth, audit, root):
                 and device['state']['lifecycle'] == 'RUNNING' and device['state']['access'] == 'LOCKED'
                 and device['state']['lock_id'] == body['lock_id']
                 and device['state']['version'] == body['expected_version']))
+
+    @app.get('/api/teacher-face-devices')
+    def list_face_devices(request: Request):
+        owner = user(request)['id']
+        items = []
+        with db.connect() as c:
+            for row in c.execute('SELECT * FROM devices WHERE owner=? ORDER BY rowid DESC', (owner,)):
+                device = decode(row)
+                if not row['token'] or device.get('revoked_at') or device.get('simulated'):
+                    continue
+                enabled, public = device_template_access(c, row, device)
+                items.append({'id': row['id'], 'name': device.get('name', 'Компьютер'),
+                              'enabled': enabled, 'public_enrollment': public})
+        return {'devices': items}
+
+    @app.post('/api/devices/{device_id}/teacher-face-access')
+    def set_face_access(device_id: str, body: FaceAccessInput, request: Request):
+        owner = user(request)['id']
+        with db.connect(True) as c:
+            row = c.execute('SELECT * FROM devices WHERE id=? AND owner=?', (device_id, owner)).fetchone()
+            if row is None:
+                raise HTTPException(404, 'Компьютер не найден')
+            device = decode(row)
+            if not row['token'] or device.get('revoked_at') or device.get('simulated'):
+                raise HTTPException(403, 'Доступ устройства отозван или недоступен')
+            device['teacher_face_access'] = body.enabled
+            c.execute('UPDATE devices SET body=? WHERE id=?', (encode(device), device_id))
+            audit(c, owner, 'TEACHER_FACE_ACCESS_GRANTED' if body.enabled else 'TEACHER_FACE_ACCESS_REVOKED',
+                  {'device_id': device_id})
+        return {'device_id': device_id, 'enabled': body.enabled}
 
     @app.get('/api/teacher-faces')
     def list_faces(request: Request):
@@ -120,7 +169,10 @@ def register_teacher_faces(app, db, user, device_auth, audit, root):
     def device_faces(request: Request, response: Response):
         response.headers['Cache-Control'] = 'no-store'
         with db.connect() as c:
-            row, _ = authorize_device(c, request)
+            row, device = authorize_device(c, request)
+            enabled, _ = device_template_access(c, row, device)
+            if not enabled:
+                raise HTTPException(403, 'Ожидает разрешения преподавателя. В кабинете откройте «Преподаватели» и разрешите этому компьютеру доступ к образцам лиц.')
             items = templates(c, row['owner'])
         return {'templates': items, 'model': MODEL_ID, 'threshold': MATCH_THRESHOLD,
                 'expires_at': time.time() + 60}

@@ -42,7 +42,7 @@ jobs:
           assert run['head_repository']['full_name'] == os.environ['GH_REPO']
           assert run['path'] == '.github/workflows/release.yml'
           assert run['conclusion'] == 'success'
-          assert jobs.get('verify') == jobs.get('windows') == 'success'
+          assert jobs.get('verify') == jobs.get('windows') == jobs.get('server-face') == 'success'
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write('sha=' + run['head_sha'] + '\n')
           PY
@@ -52,6 +52,7 @@ jobs:
       - name: Download the verified artifacts and check version and checksums
         run: |
           gh run download "$SOURCE_RUN" --name Qorgau-Student-Windows-x64 --dir artifacts
+          gh run download "$SOURCE_RUN" --name Qorgau-Server-Face-Runtime --dir artifacts
           gh run download "$SOURCE_RUN" --name Qorgau-Web --dir web-bundle
           python - <<'PY'
           import hashlib, json, os, pathlib, tomllib
@@ -72,6 +73,13 @@ jobs:
           models = json.load(open('model-manifest.json'))
           expected_models = {entry['file']: entry['sha256'] for entry in models['files']}
           teacher_models = {entry['file']: entry['sha256'] for entry in json.load(open('teacher-face-manifest.json'))['files']}
+          teacher_manifest = json.load(open('teacher-face-manifest.json'))
+          server_face = json.load(open('artifacts/teacher-face-runtime.json'))
+          assert server_face['status'] == 'passed' and server_face['platform'] == 'linux'
+          assert server_face['python'].startswith('3.14.')
+          assert server_face['backend_only_layout'] and server_face['fallback_manifest_loaded']
+          assert server_face['blank_image_status'] == 422 and server_face['face_descriptor_shape'] == [1, 128]
+          assert server_face['asset_sha256'] == {entry['file']: entry['sha256'] for entry in teacher_manifest['files'] + teacher_manifest['licenses']}
           for name in ('packaged-selftest.json', 'portable-selftest.json', 'offline-selftest.json', 'installer-selftest.json'):
               report = json.load(open('artifacts/' + name))
               runtime = report['runtime'] if name == 'installer-selftest.json' else report

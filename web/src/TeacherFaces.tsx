@@ -4,9 +4,11 @@ import { api } from "./types";
 import "./teacherFaces.css";
 
 type Teacher = { id: string; name: string; created_at: number };
+type FaceDevice = { id: string; name: string; enabled: boolean; public_enrollment: boolean };
 
 export default function TeacherFaces() {
   const [faces, setFaces] = useState<Teacher[]>([]);
+  const [devices, setDevices] = useState<FaceDevice[]>([]);
   const [name, setName] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -15,14 +17,40 @@ export default function TeacherFaces() {
   const [error, setError] = useState("");
   const [fileKey, setFileKey] = useState(0);
   async function refresh() {
-    const result = await api<{ faces: Teacher[] }>("/teacher-faces");
+    const [result, access] = await Promise.all([
+      api<{ faces: Teacher[] }>("/teacher-faces"),
+      api<{ devices: FaceDevice[] }>("/teacher-face-devices"),
+    ]);
     setFaces(result.faces);
+    setDevices(access.devices);
   }
   useEffect(() => {
     refresh()
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
+    const timer = window.setInterval(() => {
+      refresh().catch((err: Error) => setError(err.message));
+    }, 5000);
+    return () => window.clearInterval(timer);
   }, []);
+  async function setDeviceAccess(device: FaceDevice) {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await api(`/devices/${encodeURIComponent(device.id)}/teacher-face-access`, {
+        enabled: !device.enabled,
+      });
+      await refresh();
+      setMessage(device.enabled
+        ? "Разрешение отозвано. Сохранённые в памяти образцы перестанут использоваться не позднее чем через минуту."
+        : "Доступ компьютеру разрешён. Образцы появятся при следующем подключении к серверу.");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function mutate(path: string, options: RequestInit) {
     const response = await fetch("/api/teacher-faces" + path, {
       ...options,
@@ -90,7 +118,7 @@ export default function TeacherFaces() {
             доступен.
           </p>
           <p className="fine">
-            Распознанный преподаватель не учитывается как второе лицо. Проверка
+            На компьютерах с разрешённым доступом распознанный преподаватель не учитывается как второе лицо. Проверка
             движения — дополнительный шаг, она не гарантирует защиту от подмены
             изображения.
           </p>
@@ -185,6 +213,40 @@ export default function TeacherFaces() {
           )}
         </div>
       </div>
+      <section className="teacher-face-card">
+        <h3>Доступ компьютеров к образцам лиц</h3>
+        <p className="fine">
+          Исключение преподавателей из подсчёта лиц требует передачи компьютеру
+          образцов для локального сопоставления. Сверьте имя и ID с приложением
+          Qorgau и разрешите доступ только нужному компьютеру. Автоматическое
+          подключение само по себе не даёт этого разрешения.
+        </p>
+        <p className="fine">
+          Проверка лица для разблокировки выполняется на сервере отдельно.
+          Локальный экзамен и локальный пароль работают без этого разрешения.
+        </p>
+        {loading ? <p role="status">Загружаем компьютеры…</p> : devices.length === 0 ? (
+          <p className="fine">Подключённых компьютеров пока нет.</p>
+        ) : (
+          <ul className="teacher-face-list teacher-face-access-list">
+            {devices.map((device) => (
+              <li key={device.id}>
+                <div>
+                  <strong>{device.name}</strong>
+                  <small>ID: {device.id}</small>
+                  <small>{device.enabled ? "Доступ разрешён" : "Ожидает разрешения преподавателя"}</small>
+                  {device.enabled && !device.public_enrollment && (
+                    <small>Компьютер подключён по коду или установщику преподавателя.</small>
+                  )}
+                </div>
+                <button className="btn" disabled={busy} onClick={() => void setDeviceAccess(device)}>
+                  {device.enabled ? "Отозвать разрешение" : "Разрешить этому компьютеру"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </section>
   );
 }

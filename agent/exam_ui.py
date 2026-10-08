@@ -34,6 +34,19 @@ def text(value, size=14):
     return widget
 
 
+def teacher_template_access_note(agent):
+    """Show the server device identity, never its enrollment token."""
+    config = getattr(agent, 'config', {})
+    if getattr(agent, 'mode', 'online') == 'offline':
+        from .profile import read_object
+        folder = getattr(agent, 'folder', None)
+        config = read_object(Path(folder) / 'face-connection' / 'config.json') if folder else {}
+    prefix = 'Исключение преподавателей из подсчёта лиц: доступ разрешается в кабинете → «Преподаватели».'
+    if config.get('device_id'):
+        return f"{prefix}\n{config.get('name', 'Компьютер')} · ID: {config['device_id']}"
+    return prefix + ' ID подключения появится после начала локального экзамена при наличии связи.'
+
+
 def gaze_warning_active(snap):
     """Show fresh observed motion; this UI nudge does not decide rule strikes."""
     gaze = snap.get("gaze_diagnostics") or {}
@@ -303,6 +316,8 @@ class LockScreen(QWidget):
         self.face_unlock = QPushButton("Разблокировать по лицу преподавателя")
         self.face_unlock.clicked.connect(self.request_face_unlock)
         form.addWidget(self.face_unlock)
+        self.face_access_note = text(teacher_template_access_note(agent), 12)
+        form.addWidget(self.face_access_note)
         self.finish = QPushButton("Завершить контроль на этом компьютере")
         self.finish.clicked.connect(lambda: self.request_unlock("END_AND_RELEASE"))
         form.addWidget(self.finish)
@@ -330,6 +345,7 @@ class LockScreen(QWidget):
         root.addWidget(scroll, 2)
 
     def update_state(self, snap):
+        self.face_access_note.setText(teacher_template_access_note(self.agent))
         locked = snap["state"]["access"] == "LOCKED"
         self.heading.setText("Позовите преподавателя" if locked else "Идёт экзамен")
         self.reason.setText(

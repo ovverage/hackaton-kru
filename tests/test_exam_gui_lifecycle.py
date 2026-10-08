@@ -423,6 +423,21 @@ def test_online_has_no_local_password_setup_but_keeps_server_password(gui, monke
     lock.deleteLater()
 
 
+def test_offline_face_hint_uses_server_registration_id_without_exposing_token(tmp_path):
+    from agent.exam_ui import teacher_template_access_note
+    agent = SimpleNamespace(mode='offline', folder=tmp_path,
+                            config={'device_id': 'local-only-device', 'token': 'private-local-token'})
+    pending = teacher_template_access_note(agent)
+    assert 'после начала локального экзамена' in pending
+    assert 'private-local-token' not in pending
+    atomic_json(tmp_path / 'face-connection' / 'config.json', {
+        'device_id': 'server-device-123', 'name': 'Classroom PC 4', 'token': 'private-face-token'})
+    note = teacher_template_access_note(agent)
+    assert 'server-device-123' in note and 'Classroom PC 4' in note
+    assert 'local-only-device' not in note and 'private-face-token' not in note
+    assert '«Преподаватели»' in note
+
+
 def test_offline_password_requires_repeat_and_face_unlock_remains_available(gui, monkeypatch):
     from agent.exam_ui import LockScreen
     agent, window = gui
