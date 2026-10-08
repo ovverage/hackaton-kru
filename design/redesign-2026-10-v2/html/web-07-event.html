@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Кабинет: разбор события</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="qorgau.css">
+<style>@font-face{font-family:'Geologica';src:url('../../../web/src/assets/fonts/Geologica-Variable.woff') format('woff');font-weight:100 900;font-style:normal;font-display:swap}</style>
+<style>
+body{margin:0;background:#F3F4F6}
+a{color:#2859BC}a:hover{color:#153B83}
+</style>
+</head>
+<body>
+<div class="q stage" style="min-height: 1000px; font-family: 'Geologica', 'Segoe UI', sans-serif; color: #1D2C47">
+  <div class="ghost-page" aria-hidden="true">
+    <div class="ghost-side"><span class="brand on-dark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg><span>qorgau<span class="brand-dot">.</span></span></span></div>
+    <div style="flex: 1; padding: 120px 40px 0"><div class="t-h1">Алгоритмы и структуры данных</div><div class="sheet" style="height: 270px; margin-top: 90px"></div></div>
+  </div>
+  <div class="scrim"></div>
+
+  <div class="modal-wrap">
+    <section class="modal wide" role="dialog" aria-modal="true" aria-labelledby="ev-title" style="max-width: 1080px">
+      <header class="modal-head">
+        <div>
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+            <h2 id="ev-title" class="t-h2" style="font-size: 24px">Телефон в кадре</h2>
+            <span class="pill warn">Ждёт решения</span>
+          </div>
+          <p>Нурлан Абенов, K301-PC14, сегодня в 09:52:14</p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px">
+          <nav aria-label="Очередь событий" style="display: inline-flex; align-items: center; gap: 4px; padding: 3px; border-radius: 10px; box-shadow: inset 0 0 0 1px #E2E4E9">
+            <a class="icon-btn" href="#" aria-label="Предыдущее событие" style="width: 32px; height: 32px; color: #B7BCC6" aria-disabled="true"><svg class="i s" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></svg></a>
+            <span style="font-size: 13px; font-weight: 500; padding: 0 6px; white-space: nowrap">Событие 1 из 5</span>
+            <a class="icon-btn" href="#" aria-label="Следующее событие" style="width: 32px; height: 32px"><svg class="i s" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></svg></a>
+          </nav>
+          <a class="icon-btn" href="web-03-room-live.html" aria-label="Закрыть"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></a>
+        </div>
+      </header>
+
+      <div style="display: flex; flex-wrap: wrap">
+        <section style="flex: 999 1 560px; min-width: 0; padding: 24px 28px; display: flex; flex-direction: column; gap: 16px" aria-label="Запись события">
+          <figure class="cam" style="border-radius: 8px">
+            <svg class="scene" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <rect width="640" height="360" fill="#232B39"></rect>
+              <rect width="640" height="250" fill="#29313F"></rect>
+              <rect x="470" y="40" width="120" height="150" rx="4" fill="#2F3848"></rect>
+              <path d="M180 360 C186 292 240 262 320 262 C400 262 454 292 460 360 Z" fill="#485369"></path>
+              <rect x="297" y="214" width="46" height="56" rx="14" fill="#424C61"></rect>
+              <ellipse cx="318" cy="176" rx="58" ry="70" fill="#56627A" transform="rotate(8 318 176)"></ellipse>
+              <path d="M262 168 C262 118 290 104 320 104 C352 104 378 120 378 168 C366 142 344 134 320 134 C296 134 274 144 262 168 Z" fill="#394358" transform="rotate(8 318 176)"></path>
+              <path d="M400 360 L392 300 C390 288 402 282 410 290 L428 318 L440 360 Z" fill="#5A6680"></path>
+              <rect x="376" y="236" width="38" height="66" rx="6" fill="#1B1E23" transform="rotate(-12 395 269)"></rect>
+              <rect x="381" y="242" width="28" height="50" rx="3" fill="#3A5A78" transform="rotate(-12 395 269)"></rect>
+            </svg>
+            <span class="reg light tl"></span><span class="reg light tr"></span><span class="reg light bl"></span><span class="reg light br"></span>
+            <div class="det" style="left: 56%; top: 62%; width: 12%; height: 24%"><span>телефон 93%</span></div>
+            <div style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 12px; padding: 34px 28px 18px; background: linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0)); font-size: 13px">
+              <button class="icon-btn" aria-label="Пауза" style="color: #FFFFFF; width: 32px; height: 32px"><svg class="i" viewBox="0 0 24 24" style="fill: currentColor; stroke: none"><rect x="14" y="4" width="4" height="16" rx="1"></rect><rect x="6" y="4" width="4" height="16" rx="1"></rect></svg></button>
+              <span>0:05 / 0:12</span>
+              <span style="flex: 1"></span>
+              <span>Скорость 1×</span>
+            </div>
+          </figure>
+
+          <div aria-label="Шкала записи" style="display: flex; flex-direction: column; gap: 6px">
+            <div style="position: relative; height: 34px">
+              <div style="position: absolute; left: 0; right: 0; top: 12px; height: 10px; border-radius: 5px; background: #ECEEF2"></div>
+              <div style="position: absolute; left: 26.7%; width: 15%; top: 12px; height: 10px; background: #2859BC; border-radius: 2px"></div>
+              <div style="position: absolute; left: 67.5%; width: 4.2%; top: 8px; height: 18px; background: repeating-linear-gradient(135deg, #DFB373 0 3px, #FBF1E0 3px 6px); border-radius: 2px"></div>
+              <div style="position: absolute; left: 41.7%; top: 2px; bottom: 2px; width: 3px; margin-left: -1px; background: #C4483F; border-radius: 2px"></div>
+              <div style="position: absolute; left: 41.7%; top: 4px; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #FFFFFF; border: 2px solid #1D2C47"></div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 12px; color: #5F6673">
+              <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 14px; height: 6px; background: #2859BC; border-radius: 2px"></span>эпизод 09:52:12,4–14,2</span>
+              <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 3px; height: 12px; background: #C4483F"></span>срабатывание 09:52:14,2</span>
+              <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 14px; height: 10px; background: repeating-linear-gradient(135deg, #DFB373 0 3px, #FBF1E0 3px 6px)"></span>нет записи 0,5 с</span>
+              <span style="margin-left: auto">0:00–0:12</span>
+            </div>
+          </div>
+
+          <div class="note warn">
+            <svg class="i" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+            <span>Запись неполная: с 0:08,1 по 0:08,6 кадров нет. Момент срабатывания записан целиком.</span>
+          </div>
+
+          <section aria-labelledby="hist" style="display: flex; flex-direction: column; gap: 12px; padding-top: 16px; border-top: 1px solid #ECEEF2">
+            <h3 id="hist" class="t-h3" style="font-size: 14px">История события</h3>
+            <ol style="display: flex; flex-wrap: wrap; gap: 12px 24px; font-size: 13px">
+              <li style="flex: 1 1 200px; display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 10px"><span class="bub xs pause" style="margin-top: 4px"></span><span><strong style="font-weight: 600">Тест поставлен на паузу</strong><span class="t-small" style="display: block">Qorgau, 09:52:14</span></span></li>
+              <li style="flex: 1 1 200px; display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 10px"><span class="bub xs" style="margin-top: 4px"></span><span><strong style="font-weight: 600">Видео получено</strong><span class="t-small" style="display: block">K301-PC14, 09:52:27</span></span></li>
+              <li style="flex: 1 1 200px; display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 10px"><span class="bub xs warn" style="margin-top: 4px"></span><span><strong style="font-weight: 600">Ждёт вашего решения</strong><span class="t-small" style="display: block">с 09:52:27</span></span></li>
+            </ol>
+          </section>
+        </section>
+
+        <aside style="flex: 1 1 340px; min-width: 0; padding: 24px 28px; border-left: 1px solid #ECEEF2; display: flex; flex-direction: column; gap: 18px" aria-label="Решение">
+          <dl style="display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; font-size: 14px">
+            <dt class="muted">Начало</dt><dd style="margin: 0">09:52:12,4</dd>
+            <dt class="muted">Сработало</dt><dd style="margin: 0">09:52:14,2</dd>
+            <dt class="muted">Длительность</dt><dd style="margin: 0">1,8 с</dd>
+            <dt class="muted">Хранится до</dt><dd style="margin: 0">14 октября <button class="btn quiet sm" style="padding: 0 0 0 8px; min-height: 0">продлить на 7 дней</button></dd>
+          </dl>
+          <p class="t-small">Событие — повод посмотреть запись. Само по себе оно не доказывает нарушение.</p>
+
+          <label class="field">Комментарий к решению
+            <textarea class="input" placeholder="Что видно на записи и почему вы так решили">На записи телефон в правой руке, экран обращён к монитору.</textarea>
+          </label>
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px">
+            <button class="btn lg" style="padding: 0 12px">
+              <svg class="i s" viewBox="0 0 24 24" style="stroke-width: 2.25"><path d="M20 6 9 17l-5-5"></path></svg>
+              Нарушения нет
+            </button>
+            <button class="btn lg dark" style="padding: 0 12px">
+              <svg class="i s" viewBox="0 0 24 24" style="stroke-width: 2.25"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+              Это нарушение
+            </button>
+          </div>
+          <p class="t-small">Решение не снимает паузу. Продолжить тест можно в карточке компьютера.</p>
+
+          <a href="#" style="margin-top: auto; display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px; border-radius: 12px; background: #F7F8FA; text-decoration: none; color: #1D2C47">
+            <span class="cam" style="border-radius: 6px"><svg class="scene" viewBox="0 0 320 180" aria-hidden="true"><rect width="320" height="180" fill="#232B39"></rect><rect width="320" height="125" fill="#29313F"></rect><path d="M90 180 C93 146 120 131 160 131 C200 131 227 146 230 180 Z" fill="#485369"></path><ellipse cx="160" cy="88" rx="29" ry="35" fill="#56627A"></ellipse><rect x="196" y="96" width="19" height="33" rx="3" fill="#1B1E23" transform="rotate(24 205 112)"></rect></svg></span>
+            <span style="min-width: 0"><span class="t-small" style="display: block">Дальше в очереди</span><strong style="display: block; font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Возможная съёмка телефоном</strong></span>
+            <svg class="i s" viewBox="0 0 24 24" style="color: #2859BC"><path d="m9 18 6-6-6-6"></path></svg>
+          </a>
+
+        </aside>
+      </div>
+    </section>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Ученик: выбор окна программы</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="qorgau.css">
+<style>@font-face{font-family:'Geologica';src:url('../../../web/src/assets/fonts/Geologica-Variable.woff') format('woff');font-weight:100 900;font-style:normal;font-display:swap}</style>
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#2859BC}a:hover{color:#153B83}
+</style>
+</head>
+<body>
+<div class="q win" style="min-height: 600px; font-family: 'Geologica', 'Segoe UI', sans-serif; color: #1D2C47">
+  <header class="win-head" style="padding-top: 18px; padding-bottom: 18px">
+    <h1 class="t-h2">Окно программы с тестом</h1>
+    <button class="icon-btn" aria-label="Закрыть">
+      <svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+    </button>
+  </header>
+
+  <main class="win-body" style="gap: 18px">
+    <p class="t-body" style="max-width: 68ch">Откройте программу с тестом и выберите её окно. Когда преподаватель начнёт тест, окно развернётся на весь экран, а переключиться на другие будет нельзя.</p>
+
+    <fieldset style="border: 1px solid #E2E4E9; border-radius: 12px; padding: 0; margin: 0; overflow: hidden">
+      <legend class="sr-only">Открытые окна</legend>
+
+      <label style="display: grid; grid-template-columns: 20px 36px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 14px 16px; background: #EAF0FC; cursor: pointer">
+        <input type="radio" name="win" checked class="sr-only">
+        <span class="bub ink" style="width: 18px; height: 18px; box-shadow: inset 0 0 0 3px #EAF0FC"></span>
+        <span style="width: 36px; height: 36px; border-radius: 8px; background: #1D2C47; color: #FFFFFF; display: grid; place-items: center; font-weight: 650; font-size: 14px">Э</span>
+        <span style="min-width: 0"><strong style="display: block; font-weight: 600">Билет 12, Алгоритмы и структуры данных</strong><span class="t-small">Экзаменатор, examiner.exe</span></span>
+        <span class="t-small" style="display: inline-flex; align-items: center; gap: 4px; color: #153B83; font-weight: 600"><svg class="i s" viewBox="0 0 24 24" style="stroke-width: 2.4"><path d="M20 6 9 17l-5-5"></path></svg>выбрано</span>
+      </label>
+
+      <label style="display: grid; grid-template-columns: 20px 36px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 14px 16px; border-top: 1px solid #ECEEF2; cursor: pointer">
+        <input type="radio" name="win" class="sr-only">
+        <span class="bub" style="width: 18px; height: 18px"></span>
+        <span style="width: 36px; height: 36px; border-radius: 8px; background: #F3F4F6; display: grid; place-items: center; font-weight: 650; font-size: 14px; color: #5F6673">W</span>
+        <span style="min-width: 0"><strong style="display: block; font-weight: 600">Конспект лекций.docx</strong><span class="t-small">Word, WINWORD.EXE</span></span>
+        <span></span>
+      </label>
+
+      <label style="display: grid; grid-template-columns: 20px 36px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 14px 16px; border-top: 1px solid #ECEEF2; cursor: pointer">
+        <input type="radio" name="win" class="sr-only">
+        <span class="bub" style="width: 18px; height: 18px"></span>
+        <span style="width: 36px; height: 36px; border-radius: 8px; background: #F3F4F6; display: grid; place-items: center; color: #5F6673">
+          <svg class="i" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>
+        </span>
+        <span style="min-width: 0"><strong style="display: block; font-weight: 600">Загрузки</strong><span class="t-small">Проводник, explorer.exe</span></span>
+        <span></span>
+      </label>
+
+      <div style="display: grid; grid-template-columns: 20px 36px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 14px 16px; border-top: 1px solid #ECEEF2; background: #F3F4F6">
+        <span class="bub off" style="width: 18px; height: 18px"></span>
+        <span style="width: 36px; height: 36px; border-radius: 8px; background: #FFFFFF; display: grid; place-items: center; color: #5F6673">
+          <svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
+        </span>
+        <span style="min-width: 0; color: #5F6673"><strong style="display: block; font-weight: 600">Тест по алгоритмам, Google Chrome</strong><span class="t-small">Браузер не подходит: сайт откроет Qorgau Browser</span></span>
+        <span></span>
+      </div>
+    </fieldset>
+
+    <p class="t-small" style="max-width: 70ch">Выбор привязан к этому окну. Если закрыть программу и открыть заново, окно нужно будет выбрать ещё раз.</p>
+  </main>
+
+  <footer class="modal-foot" style="justify-content: space-between">
+    <button class="btn">
+      <svg class="i s" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg>
+      Обновить список
+    </button>
+    <div class="actions">
+      <a class="btn" href="exe-02-prep.html">Отмена</a>
+      <a class="btn primary" href="exe-02-prep.html">Выбрать это окно</a>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Qorgau — новый сеанс</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./qorgau.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@300..800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#F3F4F6}
+a{color:#2859BC}a:hover{color:#153B83}
+</style>
+</helmet>
+<div class="q stage" style="min-height: 1000px; font-family: 'Geologica', 'Segoe UI', sans-serif; color: #1D2C47">
+  <div class="ghost-page" aria-hidden="true">
+    <div class="ghost-side"><span class="brand on-dark"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg><span>qorgau<span class="brand-dot">.</span></span></span></div>
+    <div style="flex: 1; padding: 120px 40px 0"><div class="t-h1">Аудитория</div><div class="sheet" style="height: 240px; margin-top: 60px"></div></div>
+  </div>
+  <div class="scrim"></div>
+
+  <div class="modal-wrap">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="ns-title" style="max-width: 1120px">
+      <header class="modal-head">
+        <div>
+          <h2 id="ns-title" class="t-h2" style="font-size: 24px">Новый сеанс</h2>
+          <p>Где пройдёт тест и на каких компьютерах</p>
+        </div>
+        <a class="icon-btn" href="Web-Empty.dc.html" aria-label="Закрыть"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></a>
+      </header>
+
+      <form style="display: flex; flex-wrap: wrap">
+        <div style="flex: 1 1 420px; min-width: 0; padding: 24px 28px 28px; display: flex; flex-direction: column; gap: 22px">
+          <label class="field">Название
+            <input class="input" value="Алгоритмы и структуры данных, ИС-22">
+          </label>
+
+          <fieldset style="border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px">
+            <legend class="field" style="padding: 0; margin-bottom: 8px">Где проходит тест</legend>
+            <label style="display: grid; grid-template-columns: 20px 36px minmax(0, 1fr); align-items: center; gap: 14px; padding: 14px 16px; border-radius: 12px; border: 2px solid #2859BC; background: #EAF0FC; cursor: pointer">
+              <input type="radio" name="env" checked class="sr-only">
+              <span class="bub ink" style="width: 18px; height: 18px; box-shadow: inset 0 0 0 3px #EAF0FC"></span>
+              <span style="width: 36px; height: 36px; border-radius: 10px; background: #FFFFFF; color: #153B83; display: grid; place-items: center"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg></span>
+              <span><strong style="display: block; font-weight: 600">Сайт в Qorgau Browser</strong><span class="t-small" style="display: block; color: #1D2C47; margin-top: 2px">Одно окно без вкладок. Открыть можно только адрес теста.</span></span>
+            </label>
+            <label style="display: grid; grid-template-columns: 20px 36px minmax(0, 1fr); align-items: center; gap: 14px; padding: 14px 16px; border-radius: 12px; border: 1px solid #E2E4E9; margin: 1px; cursor: pointer">
+              <input type="radio" name="env" class="sr-only">
+              <span class="bub" style="width: 18px; height: 18px"></span>
+              <span style="width: 36px; height: 36px; border-radius: 10px; background: #F3F4F6; color: #5F6673; display: grid; place-items: center"><svg class="i" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M2 9h20"></path></svg></span>
+              <span><strong style="display: block; font-weight: 600">Программа на компьютере</strong><span class="t-small" style="display: block; margin-top: 2px">Окно, которое ученик выбрал в Qorgau заранее.</span></span>
+            </label>
+          </fieldset>
+
+          <label class="field">Адрес теста
+            <input class="input" type="url" value="https://tests.example.kz/algo/rk2">
+            <span class="help">Прямая ссылка на тест. Другие сайты и новые окна открыть не получится.</span>
+          </label>
+
+          <section aria-labelledby="rules-sum" style="border: 1px solid #E2E4E9; border-radius: 12px; overflow: hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #ECEEF2">
+              <h3 id="rules-sum" style="font-size: 13px; font-weight: 500">Правила контроля <span class="muted" style="font-weight: 400">версия 3.1</span></h3>
+              <a href="Web-Rules.dc.html" style="font-size: 13px; font-weight: 500">Посмотреть все</a>
+            </div>
+            <ul style="font-size: 14px">
+              <li style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 16px"><span>Три отметки за взгляд в одну сторону</span><span class="pill pause">пауза</span></li>
+              <li style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 16px; border-top: 1px solid #ECEEF2"><span>Телефон в кадре два раза подряд</span><span class="pill pause">пауза</span></li>
+              <li style="display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 16px; border-top: 1px solid #ECEEF2"><span>Второе лицо, подъём телефона и другое</span><span class="pill warn">проверка</span></li>
+            </ul>
+          </section>
+
+          <div class="note ink">
+            <svg class="i" viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"></rect><rect x="6" y="4" width="4" height="16" rx="1"></rect></svg>
+            <span>При нарушении тест встаёт на паузу, продолжить его можете только вы. Ученик зовёт вас кнопкой на экране или клавишами <strong>Ctrl+Alt+Q</strong>.</span>
+          </div>
+        </div>
+
+        <section aria-labelledby="pcs" style="flex: 1 1 520px; min-width: 0; padding: 24px 28px 28px; border-left: 1px solid #ECEEF2; background: #F7F8FA; display: flex; flex-direction: column; gap: 14px">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap">
+            <div>
+              <h3 id="pcs" class="t-h3">Компьютеры</h3>
+              <p class="t-small" style="margin-top: 2px">Выбрано <strong style="color: #1D2C47; font-weight: 600">9 из 12</strong>. Имена можно не вводить.</p>
+            </div>
+            <button type="button" class="btn sm">Выбрать все готовые</button>
+          </div>
+
+          <div class="card" style="overflow: hidden">
+            <div style="display: flex; justify-content: space-between; padding: 10px 16px; background: #FFFFFF; border-bottom: 1px solid #E2E4E9; font-size: 12px; font-weight: 500; color: #5F6673"><span style="display: inline-flex; align-items: center; gap: 8px"><span class="bub xs on"></span>Готовы, 9</span><span>Ученик</span></div>
+            <ul>
+              <li style="display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: center; gap: 12px; padding: 7px 16px; ">
+                <label style="display: flex; align-items: center; gap: 12px; min-height: 38px; font-weight: 600"><input type="checkbox" checked style="width: 18px; height: 18px; accent-color: #2859BC">K301-PC01</label>
+                <input class="input" style="height: 38px" aria-label="Ученик на K301-PC01" value="Айгерим Нурланова">
+              </li>
+              <li style="display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: center; gap: 12px; padding: 7px 16px; border-top: 1px solid #ECEEF2; ">
+                <label style="display: flex; align-items: center; gap: 12px; min-height: 38px; font-weight: 600"><input type="checkbox" checked style="width: 18px; height: 18px; accent-color: #2859BC">K301-PC02</label>
+                <input class="input" style="height: 38px" aria-label="Ученик на K301-PC02" value="Данияр Сеитов">
+              </li>
+              <li style="display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: center; gap: 12px; padding: 7px 16px; border-top: 1px solid #ECEEF2; ">
+                <label style="display: flex; align-items: center; gap: 12px; min-height: 38px; font-weight: 600"><input type="checkbox" checked style="width: 18px; height: 18px; accent-color: #2859BC">K301-PC03</label>
+                <input class="input" style="height: 38px" aria-label="Ученик на K301-PC03" placeholder="Имя ученика, если нужно">
+              </li>
+              <li style="display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: center; gap: 12px; padding: 7px 16px; border-top: 1px solid #ECEEF2; ">
+                <label style="display: flex; align-items: center; gap: 12px; min-height: 38px; font-weight: 600"><input type="checkbox" checked style="width: 18px; height: 18px; accent-color: #2859BC">K301-PC05</label>
+                <input class="input" style="height: 38px" aria-label="Ученик на K301-PC05" value="Мадина Оспанова">
+              </li>
+              <li style="display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: center; gap: 12px; padding: 7px 16px; border-top: 1px solid #ECEEF2; ">
+                <label style="display: flex; align-items: center; gap: 12px; min-height: 38px; font-weight: 600"><input type="checkbox" checked style="width: 18px; height: 18px; accent-color: #2859BC">K301-PC06</label>
+                <input class="input" style="height: 38px" aria-label="Ученик на K301-PC06" value="Тимур Ахметов">
+              </li>
+              <li style="display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: center; gap: 12px; padding: 7px 16px; border-top: 1px solid #ECEEF2; ">
+                <label style="display: flex; align-items: center; gap: 12px; min-height: 38px; font-weight: 600"><input type="checkbox" checked style="width: 18px; height: 18px; accent-color: #2859BC">K301-PC07</label>
+                <input class="input" style="height: 38px" aria-label="Ученик на K301-PC07" value="Сауле Мусина">
+              </li>
+            </ul>
+            <button type="button" class="btn quiet sm" style="width: 100%; justify-content: center; border-top: 1px solid #ECEEF2; border-radius: 0; min-height: 40px">Ещё 3 компьютера<svg class="i s" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></button>
+          </div>
+
+          <div class="card" style="overflow: hidden">
+            <div style="padding: 10px 16px; background: #FBF1E0; border-bottom: 1px solid #F1E2C7; font-size: 12px; font-weight: 500; color: #8A5F1C; display: flex; align-items: center; gap: 8px"><span class="bub xs warn"></span>Не готовы, 3. Войдут в сеанс, когда исправят</div>
+            <ul>
+              <li style="display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: center; gap: 12px; padding: 7px 16px; ">
+                <label style="display: flex; align-items: center; gap: 12px; min-height: 38px; font-weight: 600; color: #5F6673"><input type="checkbox" disabled style="width: 18px; height: 18px">K301-PC04</label>
+                <span style="display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #8A5F1C"><svg class="i s" viewBox="0 0 24 24"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"></path><rect x="2" y="6" width="14" height="12" rx="2"></rect></svg>Ученику: нажать «Проверить камеру»</span>
+              </li>
+              <li style="display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: center; gap: 12px; padding: 7px 16px; border-top: 1px solid #ECEEF2; ">
+                <label style="display: flex; align-items: center; gap: 12px; min-height: 38px; font-weight: 600; color: #5F6673"><input type="checkbox" disabled style="width: 18px; height: 18px">K301-PC09</label>
+                <span style="display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #8A5F1C"><svg class="i s" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>Старая версия Qorgau, нужно обновить</span>
+              </li>
+              <li style="display: grid; grid-template-columns: 128px minmax(0, 1fr); align-items: center; gap: 12px; padding: 7px 16px; border-top: 1px solid #ECEEF2; ">
+                <label style="display: flex; align-items: center; gap: 12px; min-height: 38px; font-weight: 600; color: #5F6673"><input type="checkbox" disabled style="width: 18px; height: 18px">K301-PC13</label>
+                <span style="display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #8A5F1C"><svg class="i s" viewBox="0 0 24 24"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"></path><rect x="2" y="6" width="14" height="12" rx="2"></rect></svg>Ученику: нажать «Проверить камеру»</span>
+              </li>
+            </ul>
+          </div>
+        </section>
+      </form>
+
+      <footer class="modal-foot" style="justify-content: space-between">
+        <p class="t-small" style="display: inline-flex; align-items: center; gap: 8px"><svg class="i s" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>Тест не начнётся сразу: сначала сеанс появится в аудитории.</p>
+        <div class="actions">
+          <a class="btn" href="Web-Empty.dc.html">Отмена</a>
+          <a class="btn primary" href="Web-Room.dc.html">Создать сеанс на 9 компьютерах</a>
+        </div>
+      </footer>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1056}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Кабинет: сеансы и отчёты</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="qorgau.css">
+<style>@font-face{font-family:'Geologica';src:url('../../../web/src/assets/fonts/Geologica-Variable.woff') format('woff');font-weight:100 900;font-style:normal;font-display:swap}</style>
+<style>
+body{margin:0;background:#F3F4F6}
+a{color:#2859BC}a:hover{color:#153B83}
+</style>
+</head>
+<body>
+<div class="q shell" style="font-family: 'Geologica', 'Segoe UI', sans-serif; color: #1D2C47">
+  <aside class="side">
+    <a class="brand on-dark" href="web-02-room-before.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg><span>qorgau<span class="brand-dot">.</span></span></a>
+    <nav class="nav" aria-label="Разделы">
+      <a href="web-02-room-before.html"><svg class="i" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="3" rx="1"></rect><rect width="7" height="7" x="14" y="14" rx="1"></rect><rect width="7" height="7" x="3" y="14" rx="1"></rect></svg>Аудитория</a>
+      <a href="web-08-events.html"><svg class="i" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><path d="m9 14 2 2 4-4"></path></svg>События<span class="badge amber">3</span></a>
+      <a class="on" href="web-09-history.html" aria-current="page"><svg class="i" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l4 2"></path></svg>Сеансы и отчёты</a>
+      <a href="web-10-computers.html"><svg class="i" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"></rect><path d="M8 21h8"></path><path d="M12 17v4"></path></svg>Компьютеры</a>
+      <a href="web-11-rules.html"><svg class="i" viewBox="0 0 24 24"><line x1="21" x2="14" y1="4" y2="4"></line><line x1="10" x2="3" y1="4" y2="4"></line><line x1="21" x2="12" y1="12" y2="12"></line><line x1="8" x2="3" y1="12" y2="12"></line><line x1="21" x2="16" y1="20" y2="20"></line><line x1="12" x2="3" y1="20" y2="20"></line><line x1="14" x2="14" y1="2" y2="6"></line><line x1="8" x2="8" y1="10" y2="14"></line><line x1="16" x2="16" y1="18" y2="22"></line></svg>Правила контроля</a>
+    </nav>
+    <div class="side-note"><strong>Решение за вами</strong>Qorgau отмечает события и сохраняет видео. Нарушение или нет, решает преподаватель.</div>
+    <div class="me">
+      <span class="avatar">А</span>
+      <div style="flex: 1; min-width: 0"><strong>Сапарова&nbsp;А.&nbsp;К.</strong><span>Преподаватель</span></div>
+      <a class="icon-btn" href="web-01-login.html" aria-label="Выйти"><svg class="i" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg></a>
+    </div>
+  </aside>
+
+  <div class="content">
+    <header class="topbar">
+      <span class="clock"><strong>10:52</strong><span>среда, 7 октября</span></span>
+      <span class="link-status"><span class="bub xs ink"></span>Сервер на связи</span>
+    </header>
+
+    <div class="page-head">
+      <div>
+        <h1 class="t-h1">Сеансы и отчёты</h1>
+        <p class="t-lead">Итоги каждого сеанса: отметки, решения и записи по каждому ученику.</p>
+      </div>
+      <div class="actions">
+        <a class="btn primary" href="web-05-new-session.html"><svg class="i s" viewBox="0 0 24 24" style="stroke-width: 2.25"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>Новый сеанс</a>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; margin-bottom: 16px">
+      <nav class="tabs" aria-label="Фильтр сеансов">
+        <a class="on" href="#" aria-current="true">Все <span class="n">12</span></a>
+        <a href="#">С нерешёнными <span class="n warn">1</span></a>
+        <a href="#">С нарушениями <span class="n">5</span></a>
+      </nav>
+      <div class="legend" style="font-size: 13px; color: #5F6673">
+        <span><span style="width: 10px; height: 10px; border-radius: 3px; background: #C4483F"></span>нарушение</span>
+        <span><span style="width: 10px; height: 10px; border-radius: 3px; background: #153B83"></span>нарушения нет</span>
+        <span><span style="width: 10px; height: 10px; border-radius: 3px; background: #DFB373"></span>ждёт решения</span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 24px">
+      <article class="panel">
+        <header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 22px 24px 18px">
+          <div>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap"><h2 class="t-h2">Алгоритмы и структуры данных, ИС-22</h2><span class="pill off">Завершён</span></div>
+            <p class="t-small" style="font-size: 13px; margin-top: 4px">7 октября 2026, 09:30–10:40, аудитория 301</p>
+          </div>
+          <div class="actions">
+            <a class="btn sm" href="web-03-room-live.html">Открыть сеанс</a>
+            <a class="btn sm" href="#"><svg class="i s" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>Отчёт CSV</a>
+          </div>
+        </header>
+        <dl style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin: 0; border-top: 1px solid #ECEEF2; border-bottom: 1px solid #E2E4E9">
+          <div style="padding: 14px 24px"><dt class="t-small">Учеников</dt><dd style="margin: 2px 0 0; font-size: 24px; font-weight: 650">24</dd></div>
+          <div style="padding: 14px 24px; border-left: 1px solid #ECEEF2"><dt class="t-small">Событий</dt><dd style="margin: 2px 0 0; font-size: 24px; font-weight: 650">18</dd><dd style="margin: 8px 0 0"><span class="minibar" role="img" aria-label="4 нарушения, 11 без нарушения, 3 ждут решения"><i style="width: 22%; background: #C4483F"></i><i style="width: 61%; background: #153B83"></i><i style="width: 17%; background: #DFB373"></i></span></dd></div>
+          <div style="padding: 14px 24px; border-left: 1px solid #ECEEF2"><dt class="t-small">Нарушений</dt><dd style="margin: 2px 0 0; font-size: 24px; font-weight: 650; color: #B4443F">4</dd></div>
+          <div style="padding: 14px 24px; border-left: 1px solid #ECEEF2; background: #FBF1E0"><dt class="t-small" style="color: #8A5F1C">Ждут решения</dt><dd style="margin: 2px 0 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px"><span style="font-size: 24px; font-weight: 650; color: #8A5F1C">3</span><a class="btn sm" href="web-08-events.html">Разобрать</a></dd></div>
+        </dl>
+        <div class="table-box">
+          <table class="table dense">
+            <thead><tr><th>Ученик</th><th class="num">Вниз</th><th class="num">Влево</th><th class="num">Вправо</th><th class="num">Телефон</th><th class="num">Ждут решения</th><th class="num">Паузы</th></tr></thead>
+            <tbody>
+              <tr><td><strong style="display: block; font-weight: 600">Нурлан Абенов</strong><small>K301-PC14</small></td><td class="num">2</td><td class="num zero" aria-label="0">—</td><td class="num">1</td><td class="num" style="color: #B4443F; font-weight: 600">1</td><td class="num" style="color: #8A5F1C; font-weight: 600">2</td><td class="num">1</td></tr>
+              <tr><td><strong style="display: block; font-weight: 600">Сауле Мусина</strong><small>K301-PC07</small></td><td class="num" style="font-weight: 600">3</td><td class="num zero" aria-label="0">—</td><td class="num zero" aria-label="0">—</td><td class="num zero" aria-label="0">—</td><td class="num zero" aria-label="0">—</td><td class="num">1</td></tr>
+              <tr><td><strong style="display: block; font-weight: 600">Арман Бекетов</strong><small>K301-PC18</small></td><td class="num">2</td><td class="num zero" aria-label="0">—</td><td class="num">1</td><td class="num zero" aria-label="0">—</td><td class="num" style="color: #8A5F1C; font-weight: 600">1</td><td class="num zero" aria-label="0">—</td></tr>
+              <tr><td><strong style="display: block; font-weight: 600">Алина Ким</strong><small>K301-PC03</small></td><td class="num zero" aria-label="0">—</td><td class="num">2</td><td class="num zero" aria-label="0">—</td><td class="num zero" aria-label="0">—</td><td class="num zero" aria-label="0">—</td><td class="num zero" aria-label="0">—</td></tr>
+              <tr><td><strong style="display: block; font-weight: 600">Айгерим Нурланова</strong><small>K301-PC01</small></td><td class="num">1</td><td class="num zero" aria-label="0">—</td><td class="num zero" aria-label="0">—</td><td class="num zero" aria-label="0">—</td><td class="num zero" aria-label="0">—</td><td class="num zero" aria-label="0">—</td></tr>
+              <tr><td><strong style="display: block; font-weight: 600">Ерлан Жумабаев</strong><small>K301-PC04</small></td><td class="num zero" aria-label="0">—</td><td class="num zero" aria-label="0">—</td><td class="num zero" aria-label="0">—</td><td class="num zero" aria-label="0">—</td><td class="num zero" aria-label="0">—</td><td class="num zero" aria-label="0">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="t-small" style="padding: 12px 24px 16px; border-top: 1px solid #ECEEF2">Учтены все события сеанса, кроме тех, где вы решили «Нарушения нет». Ещё 18 учеников без событий.</p>
+      </article>
+
+      <article class="panel">
+        <header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 22px 24px 18px">
+          <div>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap"><h2 class="t-h2">Базы данных, ИС-21</h2><span class="pill off">Завершён</span></div>
+            <p class="t-small" style="font-size: 13px; margin-top: 4px">3 октября 2026, 14:00–15:20, аудитория 301</p>
+          </div>
+          <div class="actions">
+            <a class="btn sm" href="web-03-room-live.html">Открыть сеанс</a>
+            <a class="btn sm" href="#"><svg class="i s" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>Отчёт CSV</a>
+          </div>
+        </header>
+        <dl style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); margin: 0; border-top: 1px solid #ECEEF2">
+          <div style="padding: 14px 24px"><dt class="t-small">Учеников</dt><dd style="margin: 2px 0 0; font-size: 24px; font-weight: 650">21</dd></div>
+          <div style="padding: 14px 24px; border-left: 1px solid #ECEEF2"><dt class="t-small">Событий</dt><dd style="margin: 2px 0 0; font-size: 24px; font-weight: 650">7</dd><dd style="margin: 8px 0 0"><span class="minibar" role="img" aria-label="1 нарушение, 6 без нарушения"><i style="width: 14%; background: #C4483F"></i><i style="width: 86%; background: #153B83"></i></span></dd></div>
+          <div style="padding: 14px 24px; border-left: 1px solid #ECEEF2"><dt class="t-small">Нарушений</dt><dd style="margin: 2px 0 0; font-size: 24px; font-weight: 650">1</dd></div>
+          <div style="padding: 14px 24px; border-left: 1px solid #ECEEF2"><dt class="t-small">Ждут решения</dt><dd class="zero" style="margin: 2px 0 0; font-size: 24px; font-weight: 650">—</dd></div>
+        </dl>
+        <button class="btn quiet sm" type="button" style="width: 100%; justify-content: center; min-height: 44px; border-top: 1px solid #ECEEF2; border-radius: 0 0 12px 12px">Показать учеников<svg class="i s" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></button>
+      </article>
+    </div>
+  </div>
+</div>
+</body>
+</html>

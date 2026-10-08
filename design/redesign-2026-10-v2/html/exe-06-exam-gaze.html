@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Ученик: тест в Qorgau Browser и напоминание о взгляде</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="qorgau.css">
+<style>@font-face{font-family:'Geologica';src:url('../../../web/src/assets/fonts/Geologica-Variable.woff') format('woff');font-weight:100 900;font-style:normal;font-display:swap}</style>
+<style>
+body{margin:0;background:#EEF0F3}
+a{color:#2859BC}a:hover{color:#153B83}
+</style>
+</head>
+<body>
+<div class="q" style="position: relative; min-height: 768px; background: #EEF0F3; font-family: 'Geologica', 'Segoe UI', sans-serif; color: #1D2C47; overflow: hidden">
+
+  <!-- Сторонний сайт теста: нейтральный вид, не стиль Qorgau -->
+  <div style="font-family: system-ui, 'Segoe UI', sans-serif; color: #1F2933">
+    <div style="height: 56px; background: #FFFFFF; border-bottom: 1px solid #D5DAE0; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; font-size: 15px">
+      <span style="font-weight: 600">Тестирование · Билет 12</span>
+      <span style="margin-right: 330px; color: #52606D">Осталось 38:12</span>
+    </div>
+    <div style="max-width: 760px; margin: 56px auto 0; padding: 0 24px">
+      <div style="background: #FFFFFF; border: 1px solid #D5DAE0; border-radius: 6px; padding: 32px 36px">
+        <p style="color: #52606D; font-size: 14px; margin: 0 0 10px">Вопрос 7 из 25</p>
+        <p style="font-size: 20px; line-height: 1.4; margin: 0 0 24px">Какова временная сложность бинарного поиска в отсортированном массиве из n элементов?</p>
+        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 16px">
+          <label style="display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid #D5DAE0; border-radius: 4px"><input type="radio" name="a"> O(n)</label>
+          <label style="display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid #3E6FB0; border-radius: 4px; background: #F1F6FC"><input type="radio" name="a" checked> O(log n)</label>
+          <label style="display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid #D5DAE0; border-radius: 4px"><input type="radio" name="a"> O(n log n)</label>
+          <label style="display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid #D5DAE0; border-radius: 4px"><input type="radio" name="a"> O(1)</label>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 28px">
+          <button style="font: 15px system-ui, sans-serif; padding: 10px 18px; border: 1px solid #D5DAE0; background: #FFFFFF; border-radius: 4px">Назад</button>
+          <button style="font: 15px system-ui, sans-serif; padding: 10px 18px; border: 1px solid #3E6FB0; background: #3E6FB0; color: #FFFFFF; border-radius: 4px">Далее</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Qorgau: кнопка вызова преподавателя -->
+  <button class="btn sm dark" style="position: absolute; top: 10px; right: 12px; gap: 10px; box-shadow: 0 4px 14px rgba(20, 22, 26, 0.18)">
+    <svg class="i s" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+    Позвать преподавателя
+    <span class="kbd">Ctrl+Alt+Q</span>
+  </button>
+
+  <!-- Qorgau: напоминание о взгляде, не забирает фокус -->
+  <div role="status" style="position: absolute; top: 72px; left: 50%; transform: translateX(-50%); width: 560px; max-width: calc(100% - 32px); display: flex; align-items: center; gap: 18px; padding: 14px 18px 14px 14px; background: #0F2245; color: #FFFFFF; border-radius: 18px; box-shadow: 0 18px 44px rgba(15, 34, 69, 0.35)">
+    <span aria-hidden="true" style="width: 54px; height: 54px; border-radius: 14px; background: #DFB373; color: #1C2E50; display: grid; place-items: center; flex: none">
+      <svg class="i" viewBox="0 0 24 24" style="width: 28px; height: 28px; stroke-width: 2.4"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg>
+    </span>
+    <div style="flex: 1">
+      <strong style="display: block; font-size: 24px; font-weight: 650; letter-spacing: -0.015em; line-height: 1.15">Смотрите на экран</strong>
+      <span style="font-size: 14px; color: #C0C6D0">Взгляд вниз засчитается как отметка через 2,9 с</span>
+    </div>
+    <svg width="52" height="52" viewBox="0 0 52 52" role="img" aria-label="Осталось 2,9 секунды">
+      <circle cx="26" cy="26" r="21" fill="none" stroke="#233A65" stroke-width="5"></circle>
+      <circle cx="26" cy="26" r="21" fill="none" stroke="#DFB373" stroke-width="5" stroke-linecap="round" stroke-dasharray="131.9" stroke-dashoffset="55.4" transform="rotate(-90 26 26)"></circle>
+      <text x="26" y="31" text-anchor="middle" font-family="Geologica, Segoe UI, sans-serif" font-size="14" font-weight="650" fill="#FFFFFF">2,9</text>
+    </svg>
+  </div>
+</div>
+</body>
+</html>

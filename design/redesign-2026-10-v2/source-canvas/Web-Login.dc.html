@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Qorgau — вход для преподавателя</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./qorgau.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@300..800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#2859BC}a:hover{color:#153B83}
+</style>
+</helmet>
+<div class="q" style="display: flex; flex-wrap: wrap; min-height: 900px; background: #FFFFFF; font-family: 'Geologica', 'Segoe UI', sans-serif; color: #1D2C47">
+  <section style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 48px; padding: 44px 64px 36px; background: #0F2245; color: #E0E6F0">
+    <span class="brand on-dark" style="font-size: 30px; letter-spacing: -0.05em">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 30px; height: 30px"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>
+      <span>qorgau<span class="brand-dot">.</span></span>
+    </span>
+
+    <div style="display: flex; flex-direction: column; gap: 28px; max-width: 680px">
+      <h1 class="t-display" style="font-size: 56px; color: #FFFFFF; max-width: 15ch">Вся аудитория на&nbsp;одном экране</h1>
+      <p style="font-size: 18px; line-height: 1.55; color: #B8C2D4; max-width: 50ch">Qorgau замечает телефон, второе лицо и долгий взгляд в сторону прямо на компьютере ученика и присылает вам короткое видео. Было ли нарушение, решаете вы.</p>
+
+      <article aria-hidden="true" style="max-width: 520px; background: #FFFFFF; color: #1D2C47; border-radius: 14px; overflow: hidden; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35)">
+        <div style="display: flex; justify-content: space-between; padding: 11px 16px; background: #FDEEEC; color: #B4443F; font-size: 13px; font-weight: 600">
+          <span style="display: inline-flex; align-items: center; gap: 8px"><svg class="i s" viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"></rect><rect x="6" y="4" width="4" height="16" rx="1"></rect></svg>Тест на паузе с 09:52</span>
+          <span style="font-weight: 500">место 14</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; padding: 16px">
+          <span class="cam" style="border-radius: 8px">
+            <svg class="scene" viewBox="0 0 320 180"><rect width="320" height="180" fill="#232B39"></rect><rect width="320" height="125" fill="#29313F"></rect><path d="M90 180 C93 146 120 131 160 131 C200 131 227 146 230 180 Z" fill="#485369"></path><ellipse cx="159" cy="88" rx="29" ry="35" fill="#56627A" transform="rotate(8 159 88)"></ellipse><rect x="188" y="118" width="19" height="33" rx="3" fill="#1B1E23" transform="rotate(-12 197 134)"></rect><rect x="182" y="110" width="31" height="46" fill="none" stroke="#DFB373" stroke-width="2.5"></rect></svg>
+            <span class="tc" style="left: 6px; bottom: 6px; font-size: 11px; padding: 1px 6px">0:12</span>
+          </span>
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <strong style="font-size: 16px; font-weight: 600">Нурлан Абенов</strong>
+            <span style="font-size: 13px; color: #5F6673">Телефон в кадре, два раза подряд</span>
+            <div style="display: flex; gap: 8px; margin-top: 10px">
+              <span class="btn sm">Запись</span>
+              <span class="btn sm primary">Продолжить тест</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <ul style="display: flex; flex-wrap: wrap; gap: 10px 28px; font-size: 14px; color: #C0C6D0">
+        <li style="display: inline-flex; align-items: center; gap: 8px"><svg class="i s" viewBox="0 0 24 24" style="color: #7FA2E8"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"></path><rect x="2" y="6" width="14" height="12" rx="2"></rect></svg>Видео только вокруг события</li>
+        <li style="display: inline-flex; align-items: center; gap: 8px"><svg class="i s" viewBox="0 0 24 24" style="color: #7FA2E8"><line x1="2" x2="22" y1="2" y2="22"></line><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"></path><path d="M5 10v2a7 7 0 0 0 12 5"></path><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"></path><path d="M9 9v3a3 3 0 0 0 5.12 2.12"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>Звук не записывается</li>
+        <li style="display: inline-flex; align-items: center; gap: 8px"><svg class="i s" viewBox="0 0 24 24" style="color: #7FA2E8"><path d="M18 21a8 8 0 0 0-16 0"></path><circle cx="10" cy="8" r="5"></circle><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"></path></svg>Решение за преподавателем</li>
+      </ul>
+    </div>
+
+    <p style="font-size: 12px; color: #939EB1">Команда PEEP. Кейс КРУ и Qostanai Hub, 2026</p>
+  </section>
+
+  <main style="flex: 1 1 440px; display: flex; align-items: center; justify-content: center; padding: 48px 40px">
+    <form style="width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 20px">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <h2 class="t-h1" style="font-size: 30px">Вход в кабинет</h2>
+        <p class="t-body muted">Для преподавателей, которые проводят тесты с Qorgau.</p>
+      </div>
+      <label class="field">Имя преподавателя
+        <input class="input" autocomplete="username" placeholder="Например, Айгуль Сапарова">
+      </label>
+      <label class="field">Пароль
+        <span style="position: relative; display: block">
+          <input class="input" type="password" autocomplete="current-password" placeholder="Не меньше 8 символов" style="padding-right: 48px">
+          <button class="icon-btn" type="button" aria-label="Показать пароль" style="position: absolute; right: 4px; top: 50%; transform: translateY(-50%)"><svg class="i" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+        </span>
+      </label>
+      <a class="btn primary lg block" href="Web-Empty.dc.html">Войти</a>
+      <div style="display: flex; gap: 12px; padding: 14px 16px; border-radius: 12px; background: #F7F8FA; font-size: 13px; line-height: 1.5; color: #5F6673">
+        <svg class="i s" viewBox="0 0 24 24" style="flex: none; margin-top: 2px; color: #153B83"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        <span><strong style="display: block; color: #1D2C47; font-weight: 600">Вход защищён</strong>После пяти неверных попыток вход закрывается на минуту. Сеанс в браузере действует 12 часов.</span>
+      </div>
+      <p class="t-small" style="max-width: 40ch">Видео и решения хранятся на сервере этой установки Qorgau. Камеры работают только на компьютерах с открытым Qorgau.</p>
+    </form>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

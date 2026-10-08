@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Ученик: подготовка компьютера</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="qorgau.css">
+<style>@font-face{font-family:'Geologica';src:url('../../../web/src/assets/fonts/Geologica-Variable.woff') format('woff');font-weight:100 900;font-style:normal;font-display:swap}</style>
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#2859BC}a:hover{color:#153B83}
+</style>
+</head>
+<body>
+<div class="q win" style="min-height: 720px; font-family: 'Geologica', 'Segoe UI', sans-serif; color: #1D2C47">
+  <header class="win-head">
+    <span class="brand"><svg class="qtile" viewBox="0 0 64 64" aria-hidden="true" style="width: 30px; height: 30px"><rect x="2" y="2" width="60" height="60" rx="15" fill="#2859BC"></rect><text x="32" y="44" text-anchor="middle" font-family="Geologica, Segoe UI, sans-serif" font-size="40" font-weight="700" fill="#EDF4E7">q</text></svg><span>qorgau<span class="brand-dot">.</span></span></span>
+    <span style="display: inline-flex; align-items: center; gap: 8px">
+      <span class="pill" title="Так этот компьютер называется у преподавателя"><svg class="i s" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"></rect><path d="M8 21h8"></path><path d="M12 17v4"></path></svg>K301-PC14</span>
+      <span class="pill ok"><span class="bub ink"></span>На связи</span>
+    </span>
+  </header>
+
+  <main class="win-body">
+    <section class="band" aria-live="polite">
+      <span class="ic" aria-hidden="true"><svg class="i l" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h1 style="font-size: 24px; line-height: 1.2; font-weight: 650; letter-spacing: -0.015em">Всё готово. Ждём преподавателя</h1>
+        <p style="font-size: 15px; line-height: 1.5; color: #1D2C47; max-width: 44ch">Тест откроется сам, на весь экран, когда преподаватель его начнёт. Это окно можно свернуть.</p>
+      </div>
+    </section>
+
+    <ol class="steps" aria-label="Подготовка к тесту">
+      <li class="step">
+        <span class="bub-num done" aria-label="Готово">
+          <svg class="i s" viewBox="0 0 24 24" style="stroke-width: 2.5"><path d="M20 6 9 17l-5-5"></path></svg>
+        </span>
+        <div class="step-main">
+          <div class="step-title"><h3>Камера</h3><span class="t-small">проверена в 09:41</span></div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center">
+            <span class="cam" aria-label="Изображение с камеры" style="width: 78px; flex: none; border-radius: 8px"><svg class="scene" viewBox="0 0 320 180" aria-hidden="true"><rect width="320" height="180" fill="#232B39"></rect><rect width="320" height="125" fill="#29313F"></rect><path d="M90 180 C93 146 120 131 160 131 C200 131 227 146 230 180 Z" fill="#485369"></path><ellipse cx="160" cy="86" rx="30" ry="36" fill="#56627A"></ellipse></svg><span style="position: absolute; left: 5px; top: 5px; width: 7px; height: 7px; border-radius: 50%; background: #7FA2E8; box-shadow: 0 0 0 2px rgba(15, 34, 69, 0.6)"></span></span>
+            <label class="select" style="flex: 1 1 180px">
+              <span class="sr-only">Камера</span>
+              <select class="input"><option>Logitech C270 HD</option><option>Встроенная камера</option></select>
+              <svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg>
+            </label>
+            <button class="btn">Проверить снова</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+            <span class="pill">
+              <svg class="i s" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              Взгляд: на экран
+            </span>
+            <span class="t-small">Поверните голову, и здесь появится направление</span>
+          </div>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="bub-num skip">2</span>
+        <div class="step-main">
+          <div class="step-title"><h3>Окно программы</h3><span class="t-small">не нужно для сайта</span></div>
+          <p class="t-body muted" style="max-width: 50ch">Тест на сайте откроется в Qorgau Browser. Если тест в отдельной программе, откройте её и выберите окно.</p>
+          <div><a class="btn sm" href="exe-04-window.html">
+            <svg class="i s" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M2 9h20"></path></svg>
+            Выбрать окно программы
+          </a></div>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="bub-num now">3</span>
+        <div class="step-main">
+          <div class="step-title"><h3>Начало теста</h3><span class="t-small" style="color: #2859BC; font-weight: 500">ждём преподавателя</span></div>
+          <p class="t-body muted" style="max-width: 50ch">Перед стартом Qorgau ещё раз проверит камеру, лицо в кадре и место для записи.</p>
+        </div>
+      </li>
+    </ol>
+  </main>
+
+  <footer class="win-foot">
+    <svg class="i s" viewBox="0 0 24 24"><line x1="2" x2="22" y1="2" y2="22"></line><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"></path><path d="M5 10v2a7 7 0 0 0 12 5"></path><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"></path><path d="M9 9v3a3 3 0 0 0 5.12 2.12"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>
+    <span>Во время теста Qorgau отмечает события и сохраняет короткие видео. Звук не записывается.</span>
+  </footer>
+</div>
+</body>
+</html>
