@@ -69,5 +69,5 @@ def language_selector(parent=None):
     for code, name in LANGUAGES.items():
         picker.addItem(name, code)
     picker.setCurrentIndex(picker.findData(_language))
-    picker.currentIndexChanged.connect(lambda _: set_language(picker.currentData()))
+    picker.currentIndexChanged.connect(picker.select_interface_language)
     return picker

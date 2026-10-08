@@ -8,7 +8,7 @@ import threading
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QLockFile, Qt, QThread, QTimer, Signal
+from PySide6.QtCore import QLockFile, Qt, QThread, QTimer, Signal, Slot
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLayout, QScrollArea, QStackedWidget, QVBoxLayout)
 from .localized_widgets import (QLabel, QMenu, QLineEdit, QMessageBox, QPushButton, QComboBox, QSystemTrayIcon, QWidget)
@@ -1033,6 +1033,7 @@ class StudentWindow(QWidget):
         ):
             self.show_status()
 
+    @Slot()
     def show_status(self):
         if self.agent and self.agent.engine.state.access == "LOCKED" and self.exam_controller:
             self.exam_controller.tick()
@@ -1046,6 +1047,7 @@ class StudentWindow(QWidget):
         self.raise_()
         self.activateWindow()
 
+    @Slot()
     def request_exit(self):
         if self.shutting_down:
             return
@@ -1081,7 +1083,16 @@ class StudentWindow(QWidget):
         self.retry_timer.stop()
         if self.tray:
             self.tray.hide()
+            # The tray does not own its context menu. Detach it while both
+            # QObjects are valid, before parent/GC destruction can reorder them.
+            self.tray.setContextMenu(None)
+            self.tray_menu.close()
+            if not getattr(self, '_tray_disconnected', False):
+                self.tray.activated.disconnect(self.tray_activated)
+                self.tray.messageClicked.disconnect(self.show_status)
+                self._tray_disconnected = True
         self.hide()
+        self.deleteLater()
         if self.run_worker:
             QApplication.instance().quit()
 

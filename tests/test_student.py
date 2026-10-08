@@ -225,6 +225,12 @@ def test_tray_start_close_and_exit_preserve_active_control(application, tmp_path
     assert window.tray_exit.isEnabled()
     window.request_exit()
     assert window.stop.is_set() and not window.tray.isVisible()
+    assert window.tray.contextMenu() is None
+    # Late native tray events must not reopen a window after shutdown.
+    window.tray.messageClicked.emit()
+    window.tray.activated.emit(window.tray.ActivationReason.Trigger)
+    assert not window.isVisible()
+    window.finish_exit()  # Cleanup is idempotent.
     agent.http.close()
 
 

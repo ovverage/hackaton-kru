@@ -1,6 +1,7 @@
 """Qt presentation adapters: translate at display time, including worker errors."""
 
 from PySide6 import QtWidgets as W
+from PySide6.QtCore import Slot
 from PySide6.QtGui import QAction as NativeAction
 from .i18n import register, tr
 
@@ -90,6 +91,11 @@ class QLineEdit(Presentation, W.QLineEdit):
 class QComboBox(Presentation, W.QComboBox):
     SOURCE_ROLE = 0x1200
 
+    @Slot(int)
+    def select_interface_language(self, _index):
+        from .i18n import set_language
+        set_language(self.currentData())
+
     def addItem(self, *args):
         values = list(args)
         index = next(i for i, item in enumerate(values) if isinstance(item, str))
@@ -145,6 +151,15 @@ class QMenu(Presentation, W.QMenu):
     _constructor_property = 'setTitle'
 
     def addAction(self, *args):
+        # Qt's callable overload creates a native QAction with a hidden functor.
+        # Give the action an explicit QObject owner and use a normal signal
+        # connection, so bound receivers do not become retained Python closures.
+        # This also keeps callback actions in the live translation registry.
+        if len(args) in (2, 3) and isinstance(args[-2], str) and callable(args[-1]):
+            action = QAction(*args[:-1], self)
+            super().addAction(action)
+            action.triggered.connect(args[-1])
+            return action
         if 1 <= len(args) <= 2 and isinstance(args[-1], str):
             action = QAction(*args, self)
             super().addAction(action)

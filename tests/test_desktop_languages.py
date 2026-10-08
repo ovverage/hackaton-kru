@@ -120,3 +120,65 @@ def test_message_box_uses_selected_language_for_standard_buttons(app, monkeypatc
     assert QMessageBox.question(None, 'Пароль преподавателя', 'Продолжить тест',
         NativeBox.StandardButton.Ok | NativeBox.StandardButton.Cancel) == NativeBox.StandardButton.Cancel
     assert result == [('Оқытушы құпиясөзі', 'Тестті жалғастыру', 'Бас тарту')]
+
+
+def test_language_picker_signal_does_not_retain_its_own_widget(app):
+    """A lambda capturing the picker leaks a Qt connection/receiver cycle."""
+    import gc
+    import weakref
+    from PySide6.QtCore import QCoreApplication, QEvent
+    from agent.i18n import language_selector, set_language
+    from agent.localized_widgets import QWidget
+    for _ in range(30):
+        picker = language_selector()
+        reference = weakref.ref(picker)
+        del picker
+        # Bound @Slot receivers are owned by Qt, not retained by a Python
+        # closure. The old connection leaves this object alive even after GC.
+        assert reference() is None
+        parent = QWidget()
+        child = language_selector(parent)
+        parent_reference, child_reference = weakref.ref(parent), weakref.ref(child)
+        parent.deleteLater()
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        del child, parent
+        gc.collect()
+        assert parent_reference() is None and child_reference() is None
+        set_language('en', persist=False)
+        set_language('ru', persist=False)
+
+
+def test_callback_menu_actions_translate_and_do_not_retain_receiver(app):
+    import gc
+    import weakref
+    from PySide6.QtCore import Slot
+    from PySide6.QtGui import QIcon
+    from agent.i18n import set_language
+    from agent.localized_widgets import QMenu, QWidget
+
+    class Owner(QWidget):
+        def __init__(self):
+            super().__init__()
+            self.calls = 0
+            self.menu = QMenu(self)
+            self.menu.addAction('Открыть Qorgau', self.selected)
+            self.menu.addAction(QIcon(), 'Выйти из Qorgau', self.selected)
+
+        @Slot()
+        def selected(self):
+            self.calls += 1
+
+    for _ in range(30):
+        set_language('ru', persist=False)
+        owner = Owner()
+        reference = weakref.ref(owner)
+        set_language('en', persist=False)
+        assert [action.text() for action in owner.menu.actions()] == ['Open Qorgau', 'Quit Qorgau']
+        for action in owner.menu.actions():
+            assert action.parent() is owner.menu
+            action.trigger()
+        assert owner.calls == 2
+        del action, owner
+        assert reference() is None
+        gc.collect()
+        set_language('kk', persist=False)
