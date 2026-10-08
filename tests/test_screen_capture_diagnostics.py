@@ -21,7 +21,7 @@ def test_fixed_settling_window_excludes_transition_frames_before_fitting(monkeyp
     assert result['quality']['validation_max_error'] < 1e-10
 
 
-def test_all_nine_points_with_unmoving_gaze_preserve_actual_final_failure(monkeypatch):
+def test_unmoving_gaze_retries_boundaries_and_keeps_failed_metrics_on_cancel(monkeypatch):
     harness = CaptureHarness(monkeypatch)
 
     def staring_at_center(row):
@@ -29,13 +29,16 @@ def test_all_nine_points_with_unmoving_gaze_preserve_actual_final_failure(monkey
         return row
 
     harness.sample_policy = staring_at_center
+    harness.on_read = lambda: harness.stop.set() if harness.current == 10 else None
     result = harness.run()
-    assert len(harness.targets) == result['capture']['completed_targets'] == 9
-    assert result['error'] == 'SCREEN_ANGULAR_SPAN_TOO_SMALL'
+    assert [row[0] for row in harness.targets] == [*range(9), 10]
+    assert result['capture']['completed_targets'] == 1
+    assert result['error'] == 'SCREEN_CALIBRATION_CANCELLED'
+    assert result['capture']['targets']['fit_top_left']['last_error'] == 'SCREEN_ANGULAR_SPAN_TOO_SMALL'
     assert result['quality']['yaw_span_degrees'] == 0
     assert result['quality']['pitch_span_degrees'] == 0
     assert not result['ready'] and not harness.installs
-    assert all(row['accepted_samples'] >= 3 for row in result['capture']['targets'].values())
+    assert result['capture']['targets']['fit_center']['accepted_samples'] >= 3
 
 
 def test_live_no_sample_feedback_explains_model_uncertainty(monkeypatch):

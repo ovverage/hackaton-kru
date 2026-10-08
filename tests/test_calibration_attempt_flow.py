@@ -15,47 +15,28 @@ def saved_attempts(agent):
             for path in sorted((agent.folder / 'calibration-diagnostics').glob('attempt-*.json'))]
 
 
-@pytest.mark.parametrize('slow_second_attempt', [False, True])
-def test_nine_constant_targets_preserve_span_failure_then_allow_fresh_retry(app, setup, slow_second_attempt):
+@pytest.mark.parametrize('slow_remeasurement', [False, True])
+def test_collapsed_first_pass_remeasures_boundaries_without_restart(app, setup, slow_remeasurement):
     agent, camera, dialog = setup
     original_sample = camera.screen_calibration_sample
     results = []
+    retry_seen = []
+    delayed_reads = []
     dialog.worker.screen_result.connect(results.append)
 
     def constant_sample():
         sample = original_sample()
-        sample['gaze'].update(yaw_degrees=7., pitch_degrees=-3.)
+        token = camera.target_sequence[-1][1]
+        if token < 9:
+            sample['gaze'].update(yaw_degrees=7., pitch_degrees=-3.)
+        else:
+            retry_seen.append((camera.install_calls, agent.camera, dialog.worker.result))
         return sample
 
     camera.screen_calibration_sample = constant_sample
-    overlay = begin_targets(app, dialog)
-    until(app, lambda: bool(results) and overlay.start_button.text() == 'Повторить настройку')
-    first = results[0]
-    assert first['error'] == 'SCREEN_ANGULAR_SPAN_TOO_SMALL' and not first['ready']
-    assert first['capture']['completed_targets'] == 9 and len(camera.target_sequence) == 9
-    assert first['quality']['yaw_span_degrees'] == 0
-    assert first['quality']['pitch_span_degrees'] == 0
-    assert all(row['accepted_samples'] >= 3 for row in first['capture']['targets'].values())
-    assert 'почти не различила' in overlay.error_label.text()
-    assert 'горизонтали 0.0°' in overlay.error_label.text()
-    assert dialog.worker.isRunning() and dialog.worker.result is None
-    assert camera.install_calls == 0 and agent.camera is None
-    assert not agent.capabilities['gaze'] and not camera.gaze_enabled
-    saved, = saved_attempts(agent)
-    assert saved['error'] == first['error'] and not saved['ready']
-    assert saved['quality']['yaw_span_degrees'] == 0
-    assert saved['capture']['completed_targets'] == 9
-    assert saved['elapsed_seconds'] > 0
-    encoded = json.dumps(saved)
-    assert 'center_observation' not in encoded and 'angular_polygon' not in encoded
-    assert 'reference_yaw_degrees' not in encoded and 'frame_id' not in encoded
-    # A failed fit never hands the camera to Agent. A completely fresh attempt
-    # may then succeed and leaves both separate, immutable aggregate reports.
-    camera.screen_calibration_sample = original_sample
-    delayed_reads = []
-    if slow_second_attempt:
+    if slow_remeasurement:
         def scheduling_delay():
-            if camera.attempt == 2 and camera.target_sequence[-1][1] == 1:
+            if camera.target_sequence and camera.target_sequence[-1][1] == 10:
                 delayed_reads.append(camera.frame_id)
                 # A real-time .12-second fixture window would accept at most
                 # one frame, repeatedly rejecting this otherwise valid point.
@@ -63,19 +44,25 @@ def test_nine_constant_targets_preserve_span_failure_then_allow_fresh_retry(app,
             return .004
 
         camera.read_delay_seconds = scheduling_delay
-    overlay.start_button.click()
+    begin_targets(app, dialog)
     until(app, lambda: agent.camera is camera,
           diagnostics=lambda: calibration_state(camera, dialog, results))
-    assert camera.attempt == 2 and camera.install_calls == 1
-    assert len(camera.target_sequence) == 18 and len(results) == 2
-    assert results[1]['ready'] and camera.profile.ready
-    assert results[1]['capture']['retry_count'] == 0
-    assert all(row['accepted_samples'] >= 3 for row in results[1]['capture']['targets'].values())
-    if slow_second_attempt:
+    assert camera.attempt == 1 and camera.install_calls == 1
+    assert [row[1] for row in camera.target_sequence] == [*range(9), *range(10, 18)]
+    result, = results
+    assert result['ready'] and camera.profile.ready
+    assert retry_seen and all(row == (0, None, None) for row in retry_seen)
+    assert result['capture']['retry_count'] == 8
+    assert all(row['accepted_samples'] >= 3 for row in result['capture']['targets'].values())
+    if slow_remeasurement:
         assert len(delayed_reads) >= 3
-    attempts = saved_attempts(agent)
-    assert len(attempts) == 2 and [row['ready'] for row in attempts] == [False, True]
-    assert attempts[0]['quality']['yaw_span_degrees'] == 0
+    saved, = saved_attempts(agent)
+    assert saved['ready'] and saved['capture']['completed_targets'] == 9
+    assert saved['capture']['targets']['fit_center']['attempts'] == 1
+    assert saved['capture']['targets']['fit_top_left']['last_error'] == 'SCREEN_ANGULAR_SPAN_TOO_SMALL'
+    encoded = json.dumps(saved)
+    assert 'center_observation' not in encoded and 'angular_polygon' not in encoded
+    assert 'reference_yaw_degrees' not in encoded and 'frame_id' not in encoded
 
 
 def test_failed_validation_point_repeats_automatically_and_preserves_other_points(app, setup):

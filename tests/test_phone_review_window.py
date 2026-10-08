@@ -130,21 +130,22 @@ def test_real_raising_sequence_survives_phone_lock_without_new_penalties(setup):
     assert camera.face_detector.detect.call_count == 2
     assert agent.recorder.count == 50
     assert any(event.get("type") == "PHONE_AIM_REVIEW" for event in agent.recorder.events)
-    assert agent._phone_review is None
+    assert agent._phone_review["lock_id"] == state["lock_id"]
     assert agent.engine.state.strikes == [] and agent.engine.state.locks == 1
     assert agent.engine.last_t is None  # No locked evidence sample re-enters the rules.
-    assert agent.capture_pump.set_recognition.call_args.kwargs["phone_review"] is None
-    assert review["until"] == pytest.approx(start + .1 + 2.5)
+    assert agent.capture_pump.set_recognition.call_args.kwargs["phone_review"] == (state["lock_id"], float("inf"))
+    assert review["until"] == float("inf")
 
 
-def test_stationary_phone_has_finite_window_and_no_aim_review(setup):
+def test_stationary_phone_remains_observed_while_locked_without_duplicate_reviews(setup):
     agent, camera, clock, start = setup
     for index in range(50):
         capture(agent, camera, clock, start, index, stationary=True)
     assert len(events(agent, "PHONE_DETECTED")) == 1
     assert not events(agent, "PHONE_AIM_REVIEW")
-    assert agent._phone_review is None
-    assert camera.phone.detect.call_count <= 28
+    assert agent._phone_review["until"] == float("inf")
+    assert camera.phone.detect.call_count == 50
+    assert not events(agent, "PHONE_LOCKED_REVIEW")  # Same already-detected presence.
     assert agent.recorder.count == 50
 
 
@@ -184,9 +185,9 @@ def test_queue_drops_early_phone_frames_but_consumed_prelock_aim_is_not_replayed
     assert aim[0]["category"] == "REVIEW"
     assert agent.engine.state.reason == "PHONE_DETECTED"
     assert agent.engine.state.locks == 1 and not agent.engine.state.strikes
-    assert agent._phone_review is None
-    # No evidence-only window needs to be armed for this already-recorded rise.
-    assert all(call.kwargs.get("phone_review") is None for call in agent.capture_pump.set_recognition.call_args_list)
+    assert agent._phone_review["until"] == float("inf")
+    # Analysis keeps running, but the already-recorded rise is not emitted again.
+    assert agent.capture_pump.set_recognition.call_args.kwargs["phone_review"] == (agent.engine.state.lock_id, float("inf"))
 
 
 def test_new_phone_tracker_episode_is_not_suppressed_after_teacher_unlock(setup):
@@ -257,7 +258,7 @@ def test_teacher_transition_cancels_window_and_old_result(setup, kind):
     assert agent.engine.state.access == "OPEN"
 
 
-def test_new_critical_lock_cancels_old_phone_window(setup):
+def test_new_critical_lock_replaces_phone_mode_and_rejects_old_lock_result(setup):
     agent, _, clock, _ = setup
     review = arm(setup)
     agent.engine.lock("CAMERA_UNAVAILABLE")
@@ -265,7 +266,8 @@ def test_new_critical_lock_cancels_old_phone_window(setup):
     state = agent.engine.state.public()
     clock[0] += .2
     review_sample(agent, clock[0], review["lock_id"])
-    assert agent._phone_review is None
+    assert agent._phone_review["lock_id"] == state["lock_id"] != review["lock_id"]
+    assert agent._phone_review["until"] == float("inf")
     assert agent.engine.state.public() == state
     assert not events(agent, "PHONE_AIM_REVIEW")
 

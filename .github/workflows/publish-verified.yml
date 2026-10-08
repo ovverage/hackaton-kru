@@ -57,7 +57,7 @@ jobs:
           import hashlib, json, os, pathlib, tomllib
           version = tomllib.load(open('pyproject.toml', 'rb'))['project']['version']
           assert os.environ['RELEASE_TAG'] == 'v' + version
-          expected = {'Qorgau-Student.exe', 'Qorgau-Student-Windows-x64.zip', f'Qorgau-Student-Setup-{version}-x64.exe'}
+          expected = {'Qorgau-Student.exe', 'Qorgau-Offline.exe', 'Qorgau-Student-Windows-x64.zip', f'Qorgau-Student-Setup-{version}-x64.exe'}
           checked = set()
           for line in pathlib.Path('artifacts/SHA256SUMS.txt').read_text().splitlines():
               digest, name = line.split('  ', 1)
@@ -66,16 +66,19 @@ jobs:
                   assert hashlib.file_digest(binary, 'sha256').hexdigest() == digest
               checked.add(name)
           assert checked == expected
-          for name in ('packaged-selftest.json', 'portable-selftest.json', 'installer-selftest.json', 'plain-first-run.json'):
+          for name in ('packaged-selftest.json', 'portable-selftest.json', 'offline-selftest.json', 'installer-selftest.json', 'plain-first-run.json'):
               report = json.load(open('artifacts/' + name))
               assert report['status'] == 'passed' and report['version'] == version
           models = json.load(open('model-manifest.json'))
           expected_models = {entry['file']: entry['sha256'] for entry in models['files']}
-          for name in ('packaged-selftest.json', 'portable-selftest.json', 'installer-selftest.json'):
+          teacher_models = {entry['file']: entry['sha256'] for entry in json.load(open('teacher-face-manifest.json'))['files']}
+          for name in ('packaged-selftest.json', 'portable-selftest.json', 'offline-selftest.json', 'installer-selftest.json'):
               report = json.load(open('artifacts/' + name))
               runtime = report['runtime'] if name == 'installer-selftest.json' else report
               assert runtime['frozen'] and runtime['model_version'] == models['version']
               assert runtime['model_files'] == expected_models
+              assert runtime['teacher_face_model_files'] == teacher_models and runtime['teacher_face_runtime']
+              assert runtime['mode'] == ('offline' if name == 'offline-selftest.json' else 'online')
           PY
           zip -r artifacts/Qorgau-Web.zip web-bundle
       - name: Tag and publish that exact commit

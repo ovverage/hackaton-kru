@@ -114,6 +114,8 @@ jobs:
           trap 'rm -rf -- "$ssh_dir"' EXIT
           printf '%s\n' "$DEPLOY_KEY" > "$ssh_dir/key"
           printf '%s\n' "$KNOWN_HOSTS" > "$ssh_dir/known_hosts"
+          python scripts/prepare_teacher_faces.py --folder backend/proctor/assets/teacher-faces
+          cp teacher-face-manifest.json backend/proctor/assets/teacher-faces/
           files=(backend shared deploy web/dist requirements-core.lock pyproject.toml)
           if [ -f dist/Qorgau-Student.exe ]; then files+=(dist/Qorgau-Student.exe); fi
           tar --exclude='__pycache__' --exclude='*.pyc' -czf release.tar.gz "${files[@]}"
@@ -141,7 +143,9 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-windows.lock
       - name: Download and verify the exact trained runtime models
-        run: python scripts/prepare_models.py
+        run: |
+          python scripts/prepare_models.py
+          python scripts/prepare_teacher_faces.py
       - run: python -m pip install -r requirements-windows.lock -e '.[test,desktop,package,cv]'
       - run: python -m pytest -q
         env:
@@ -151,6 +155,7 @@ jobs:
       - run: python -m agent.client --self-test source-selftest.json
       - run: python scripts/build_student.py --with-cv --onedir
       - run: python scripts/build_student.py --with-cv
+      - run: python scripts/build_student.py --with-cv --offline
       - name: Verify the actual packaged executable
         shell: pwsh
         run: |
@@ -161,6 +166,10 @@ jobs:
           $process = Start-Process -FilePath 'dist/Qorgau-Student.exe' -ArgumentList '--self-test', "$pwd/portable-selftest.json" -WindowStyle Hidden -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw 'Portable runtime check failed' }
           if ((Get-Content portable-selftest.json | ConvertFrom-Json).status -ne 'passed') { throw 'Portable report did not pass' }
+          $process = Start-Process -FilePath 'dist/Qorgau-Offline.exe' -ArgumentList '--self-test', "$pwd/offline-selftest.json" -WindowStyle Hidden -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw 'Offline runtime check failed' }
+          $offline = Get-Content offline-selftest.json | ConvertFrom-Json
+          if ($offline.status -ne 'passed' -or $offline.mode -ne 'offline' -or !$offline.teacher_face_runtime) { throw 'Offline report did not pass' }
       - name: Build Windows installer
         run: |
           Copy-Item packaged-selftest.json dist/Qorgau-Student/selftest.json
@@ -177,12 +186,13 @@ jobs:
         run: |
           Compress-Archive -Path dist/Qorgau-Student -DestinationPath Qorgau-Student-Windows-x64.zip
           Copy-Item dist/Qorgau-Student.exe artifacts/
-          $files = @(Get-Item Qorgau-Student-Windows-x64.zip,dist/Qorgau-Student.exe) + @(Get-ChildItem artifacts/Qorgau-Student-Setup-*-x64.exe)
+          Copy-Item dist/Qorgau-Offline.exe artifacts/
+          $files = @(Get-Item Qorgau-Student-Windows-x64.zip,dist/Qorgau-Student.exe,dist/Qorgau-Offline.exe) + @(Get-ChildItem artifacts/Qorgau-Student-Setup-*-x64.exe)
           $files | ForEach-Object {
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
             "$hash  $($_.Name)"
           } | Set-Content SHA256SUMS.txt
-          Copy-Item Qorgau-Student-Windows-x64.zip,SHA256SUMS.txt,packaged-selftest.json,portable-selftest.json,installer-selftest.json,plain-first-run.json artifacts/
+          Copy-Item Qorgau-Student-Windows-x64.zip,SHA256SUMS.txt,packaged-selftest.json,portable-selftest.json,offline-selftest.json,installer-selftest.json,plain-first-run.json artifacts/
       - uses: actions/upload-artifact@v4
         with:
           name: Qorgau-Student-Windows-x64

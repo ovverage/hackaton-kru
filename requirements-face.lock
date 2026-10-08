@@ -1,0 +1,3 @@
+# Optional server-side teacher-face inference; client already uses opencv-contrib-python.
+numpy==2.2.6
+opencv-python-headless==4.13.0.92

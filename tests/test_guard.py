@@ -287,6 +287,7 @@ def test_password_does_not_override_phone_or_camera_fault(live_agent):
 
 def test_security_event_is_durable_bounded_and_deduplicated(live_agent):
     agent, _ = live_agent
+    agent.teacher_unlock('teacher-password')
     agent.security_event("SERVER_UNAVAILABLE")
     agent.security_event("SERVER_UNAVAILABLE")
     assert (

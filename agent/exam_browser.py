@@ -54,6 +54,8 @@ class ExamBrowser(QWebEngineView):
         if not origin(url):
             raise ValueError("INVALID_URL")
         self.setWindowTitle("Qorgau Browser — экзамен")
+        from .desktop import icon
+        self.setWindowIcon(icon())
         self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         # Off-the-record profile: no password/history/cookie reuse between exams.

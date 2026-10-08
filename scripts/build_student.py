@@ -1,12 +1,14 @@
 """Build a portable student app on its target OS. Windows builds must run on Windows."""
 
 import argparse
+import json
 import os
 import subprocess
 import sys
 from pathlib import Path
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--offline', action='store_true', help='Build the independent local-exam executable')
 parser.add_argument(
     "--console",
     action="store_true",
@@ -25,6 +27,11 @@ parser.add_argument(
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 name = "Qorgau-Student-Debug" if args.console else "Qorgau-Student"
+if args.offline:
+    name = 'Qorgau-Offline-Debug' if args.console else 'Qorgau-Offline'
+profile_folder = root / 'build' / ('offline-profile' if args.offline else 'online-profile')
+profile_folder.mkdir(parents=True, exist_ok=True)
+(profile_folder / 'build-profile.json').write_text(json.dumps({'mode': 'offline' if args.offline else 'online'}), encoding='utf-8')
 command = [
     sys.executable,
     "-m",
@@ -47,6 +54,10 @@ command = [
     "certifi",
 ]
 command.extend(["--hidden-import", "PySide6.QtWebEngineWidgets"])
+for path, destination in ((root / 'extension', 'extension'),
+                          (root / 'packaging/windows/qorgau.ico', 'packaging/windows'),
+                          (profile_folder / 'build-profile.json', '.')):
+    command.extend(['--add-data', str(path) + os.pathsep + destination])
 if os.name == "nt":
     command.extend(["--icon", str(root / "packaging/windows/qorgau.ico")])
 if not args.with_cv:
@@ -56,6 +67,10 @@ else:
     sys.path.insert(0, str(root))
     from agent.resources import verified_assets, ffmpeg_executable
     models = verified_assets()
+    from scripts.prepare_teacher_faces import prepare
+    prepare(verify_only=True)
+    command.extend(['--add-data', str(root / 'models/teacher-faces') + os.pathsep + 'models/teacher-faces',
+                    '--add-data', str(root / 'teacher-face-manifest.json') + os.pathsep + '.'])
     ffmpeg_executable()
     notices = root / "dist/third-party"
     if not (notices / "package-inventory.json").is_file():

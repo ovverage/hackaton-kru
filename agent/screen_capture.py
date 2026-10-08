@@ -54,6 +54,7 @@ class ScreenCaptureSession:
         last_sample_at = None
         fit, validation, rotations = {}, {}, []
         reference_rotation = None
+        head_reference_initialized = False
         sequence = [('fit', row) for row in FIT_TARGETS] + [('validation', row) for row in VALIDATION_TARGETS]
         capture = dict(target_count=len(sequence), completed_targets=0,
                        target_visible_seconds=TARGET_VISIBLE_SECONDS,
@@ -63,6 +64,7 @@ class ScreenCaptureSession:
         checker = ScreenGazeCalibration()
         last_quality = {}
         retry_messages = {}
+        rechecked_validation = set()
 
         def finish(result):
             return dict(result, elapsed_seconds=time.monotonic() - begun, capture=capture)
@@ -79,8 +81,67 @@ class ScreenCaptureSession:
             key = sequence[index][1][0]
             capture['retry_count'] += 1
             capture['targets'][key]['last_error'] = reason
-            retry_messages[index] = reason
+            retry_messages[index] = (reason, 'point')
             pending.appendleft(index)
+
+        def remeasure(indices, reason, *, reset_head=False):
+            """Replace complete labelled windows, never select favourable angles.
+
+            Any changed fit is checked with newly captured validation windows.
+            A head reference may change only when no old window is retained.
+            """
+            nonlocal rotations, reference_rotation, head_reference_initialized
+            indices = tuple(dict.fromkeys(indices))
+            if reset_head:
+                assert set(indices) == set(range(len(sequence)))
+                rotations, reference_rotation, head_reference_initialized = [], None, False
+            fit_changed = any(index < len(FIT_TARGETS) for index in indices)
+            if fit_changed:
+                rechecked_validation.clear()
+            for index in indices:
+                phase, (key, *_position) = sequence[index]
+                (fit if phase == 'fit' else validation).pop(key, None)
+                capture['targets'][key]['last_error'] = reason
+                retry_messages[index] = (reason, 'fit' if fit_changed else 'checks')
+            capture['retry_count'] += len(indices)
+            capture['completed_targets'] = len(fit) + len(validation)
+            pending.extend(indices)
+
+        def retry_fit(result):
+            reason = result['error']
+            quality = result.get('quality', {})
+            failed = quality.get('failed_target')
+            index = next((i for i, (_, row) in enumerate(sequence) if row[0] == failed), None)
+            checks = tuple(range(len(FIT_TARGETS), len(sequence)))
+            local = {'SCREEN_SAMPLES_INSUFFICIENT', 'SCREEN_SAMPLES_UNSTABLE',
+                     'SCREEN_SAMPLES_UNSTABLE_IN_SCREEN_SPACE'}
+            if reason == 'SCREEN_ANGULAR_SPAN_TOO_SMALL':
+                # Span uses only the corners; the stable centre remains useful.
+                remeasure(range(1, len(sequence)), reason)
+            elif reason in local and index is not None:
+                if index < len(FIT_TARGETS):
+                    remeasure((index, *checks), reason)
+                else:
+                    remeasure((index,), reason)
+            elif reason == 'SCREEN_VALIDATION_ERROR_TOO_HIGH' and index in checks:
+                errors = quality.get('validation_errors', {})
+                if quality.get('validation_median_error', 0) > checker.config.max_validation_median_error:
+                    failed_checks = tuple(i for i in checks if
+                        errors.get(sequence[i][1][0], 0) > checker.config.max_validation_median_error)
+                else:
+                    failed_checks = (index,)
+                if failed_checks and not rechecked_validation.intersection(failed_checks):
+                    rechecked_validation.update(failed_checks)
+                    remeasure(failed_checks, reason)
+                else:
+                    # A repeat still disagreeing with the fit may implicate the
+                    # fit itself. Start a coherent fresh set, not an endless
+                    # search for a validation observation that happens to pass.
+                    remeasure(range(len(sequence)), reason, reset_head=True)
+            else:
+                # Geometry/conditioning/fit residuals do not identify one causal
+                # bad target. Reobserve all fit + check windows automatically.
+                remeasure(range(len(sequence)), reason, reset_head=True)
 
         while pending:
             if stop.is_set():
@@ -109,14 +170,22 @@ class ScreenCaptureSession:
             retry_hint = ''
             if index in retry_messages:
                 from .calibration_diagnostics import format_target_retry
-                retry_hint = format_target_retry(dict(
-                    ready=False, error=retry_messages.pop(index), quality={'failed_target': key}))
+                reason, scope = retry_messages.pop(index)
+                if scope == 'fit':
+                    retry_hint = ('Измерения не согласовались с зоной экрана. '
+                                  'Автоматически уточняем границы и проверяем их заново.')
+                elif scope == 'checks':
+                    retry_hint = ('Уточняем проверочные точки. Остальные пригодные измерения сохранены.')
+                else:
+                    retry_hint = format_target_retry(dict(
+                        ready=False, error=reason, quality={'failed_target': key}))
             acknowledged_at = None
             while acknowledged_at is None:
                 if stop.is_set():
                     return fail('SCREEN_CALIBRATION_CANCELLED')
                 if time.monotonic() - requested_at > PRESENTATION_TIMEOUT_SECONDS:
-                    return fail('SCREEN_TARGET_NOT_PRESENTED')
+                    repeat(index, 'SCREEN_TARGET_NOT_PRESENTED')
+                    break
                 read()
                 try:
                     current, display, presented_at = self.presentations.get_nowait()
@@ -126,6 +195,8 @@ class ScreenCaptureSession:
                     return fail('SCREEN_CHANGED')
                 if current == presentation and presented_at >= requested_at:
                     acknowledged_at = presented_at
+            if acknowledged_at is None:
+                continue
             samples = []
             point_rotations = []
             head_moved = False
@@ -202,16 +273,17 @@ class ScreenCaptureSession:
                 centre_head = HeadPoseObserver()
                 available = [parsed for r in point_rotations if (parsed := rotation_from_matrix(r)) is not None]
                 if centre_head.set_reference_rotations(available, required_samples=max(3, len(available))):
-                    if 'fit_center' not in fit:
+                    if not head_reference_initialized:
                         reference_rotation = centre_head.reference
                 elif centre_head.reference_error == 'HEAD_REFERENCE_UNSTABLE':
                     repeat(index, 'SCREEN_HEAD_MOVED')
                     continue
-                if 'fit_center' not in fit:
+                if not head_reference_initialized:
                     # Head orientation is independent of the retried eye ray.
                     # Keep the reference used to admit ALL saved target windows;
                     # a later centre retry must not rebase or erase that reference.
                     rotations = point_rotations
+                    head_reference_initialized = True
             # Replace the complete exposure, never mix retries or retain a best
             # angle. Other accepted point windows remain untouched in memory.
             (fit if phase == 'fit' else validation)[key] = samples
@@ -228,18 +300,19 @@ class ScreenCaptureSession:
             result = profile.report()
             last_quality = result['quality']
             if not result['ready']:
-                failed = result['quality'].get('failed_target')
-                retry_index = next((i for i, (_, row) in enumerate(sequence) if row[0] == failed), None)
-                if retry_index is not None and result['error'] != 'SCREEN_FIT_ERROR_TOO_HIGH':
-                    repeat(retry_index, result['error'])
-                    continue
-                # A globally collapsed/contradictory mapping does not identify
-                # one bad target. A largest affine-fit residual also need not
-                # identify the causal bad input. Do not loop on that guess.
-                current_key = None
-                return fail(result['error'], result)
+                retry_fit(result)
+                continue
             if not camera.install_screen_calibration(profile, fit['fit_center'], rotations, signature):
                 reason = camera.screen_calibration_progress.get('error') or 'SCREEN_CALIBRATION_FAILED'
-                return fail(reason, result)
+                if reason in {'SCREEN_CHANGED', 'DISPLAY_CHANGED', 'CAMERA_CHANGED',
+                              'CAMERA_CAPTURE_FAILED', 'CAMERA_TIMEOUT', 'CAMERA_FROZEN',
+                              'SCREEN_CALIBRATION_CANCELLED'}:
+                    return fail(reason, result)
+                # Install may have disabled collection after a reference-quality
+                # failure. Resume explicitly, then replace every old window so
+                # the new reference cannot invalidate retained measurements.
+                camera.begin_screen_calibration(signature)
+                remeasure(range(len(sequence)), reason, reset_head=True)
+                continue
             return finish(result)
         return fail('SCREEN_CALIBRATION_FAILED')

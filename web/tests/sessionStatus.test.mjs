@@ -92,3 +92,14 @@ test("review queue is newest first, omits decided events and does not reorder so
   );
   assert.equal(events[0].id, "old");
 });
+
+test("interactive setup can start before a camera or target is configured", () => {
+  const pc = device({
+    capabilities: { interactive_start: true, window_guard: true },
+    targets: [],
+  });
+  assert.equal(preparationIssue(pc, "BROWSER"), null);
+  assert.equal(preparationIssue(pc, "WINDOW"), null);
+  pc.online = false;
+  assert.match(preparationIssue(pc, "WINDOW"), /Нет связи/);
+});

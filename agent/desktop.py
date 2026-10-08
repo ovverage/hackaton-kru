@@ -6,6 +6,7 @@ import os
 import socket
 import sys
 import threading
+import time
 from pathlib import Path
 
 from PySide6.QtCore import QLockFile, Qt, QThread, QTimer, Signal
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMenu,
+    QLineEdit,
     QMessageBox,
     QPushButton,
     QComboBox,
@@ -201,6 +203,12 @@ def public_gaze_status_text(gaze, *, active=False, gaze_seconds=0):
 
 
 def icon():
+    from .resources import resource_root
+    packaged = resource_root() / "packaging/windows/qorgau.ico"
+    if packaged.is_file():
+        result = QIcon(str(packaged))
+        if not result.isNull():
+            return result
     pixmap = QPixmap(64, 64)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
@@ -250,6 +258,59 @@ class AgentWorker(QThread):
             )
 
 
+class OfflineStartWorker(QThread):
+    done = Signal(str)
+
+    def __init__(self, agent, target, parent):
+        super().__init__(parent)
+        self.agent, self.target = agent, dict(target)
+
+    def run(self):
+        try:
+            self.agent.offline_start(self.target)
+            self.done.emit("")
+        except (OSError, ValueError) as error:
+            self.done.emit(str(error))
+        except Exception:
+            self.done.emit("Не удалось подготовить выбранную вкладку. Обновите список и повторите.")
+
+
+class PasswordSetupWorker(QThread):
+    done = Signal(str)
+
+    def __init__(self, agent, password, parent):
+        super().__init__(parent)
+        self.agent, self.password = agent, password
+
+    def run(self):
+        try:
+            self.agent.setup_password(self.password)
+            self.done.emit("")
+        except ValueError as error:
+            self.done.emit(str(error))
+        except Exception:
+            self.done.emit("Не удалось проверить пароль. Проверьте связь с сервером и повторите.")
+        finally:
+            self.password = ""
+
+
+class PrepareStartWorker(QThread):
+    done = Signal(str, str)
+
+    def __init__(self, agent, token, parent):
+        super().__init__(parent)
+        self.agent, self.token = agent, token
+
+    def run(self):
+        try:
+            self.agent.prepare_start(self.token)
+            self.done.emit(self.token, "")
+        except (OSError, ValueError) as error:
+            self.done.emit(self.token, str(error))
+        except Exception:
+            self.done.emit(self.token, "Не удалось подготовить выбранную среду. Повторите начало экзамена.")
+
+
 class StudentWindow(QWidget):
     def __init__(
         self,
@@ -275,6 +336,13 @@ class StudentWindow(QWidget):
         self.shutting_down = False
         self.failure = ""
         self.last_notification = None
+        self.preparing_start_id = None
+        self.offline_target = None
+        self.offline_start_worker = None
+        self.password_worker = None
+        self.environment_worker = None
+        self.prepared_camera_token = None
+        self.environment_error = None
         self.tray = None
         self.setObjectName("window")
         self.setWindowTitle("Qorgau — агент аудитории")
@@ -381,8 +449,46 @@ class StudentWindow(QWidget):
         self.camera_button.setObjectName("primary")
         self.camera_button.clicked.connect(self.prepare_camera)
         layout.addWidget(self.camera_button)
-        self.camera_status = label("Выберите камеру и нажмите «Готово», глядя на экран. Для Qorgau Browser окно выбирать не нужно.", "small")
+        self.camera_status = label("Выберите камеру. Настройка по точкам начнётся после команды «Начать».", "small")
         layout.addWidget(self.camera_status)
+        self.offline_controls = QWidget()
+        offline = QVBoxLayout(self.offline_controls)
+        offline.setContentsMargins(0, 0, 0, 0)
+        self.tabs_button = QPushButton("Выбрать вкладку Chrome / Edge")
+        self.tabs_button.clicked.connect(self.select_browser_tab)
+        offline.addWidget(self.tabs_button)
+        self.password_setup = QWidget()
+        passwords = QVBoxLayout(self.password_setup)
+        passwords.setContentsMargins(0, 0, 0, 0)
+        self.password_heading = label("Пароль преподавателя для этого компьютера", "field")
+        passwords.addWidget(self.password_heading)
+        self.local_password = QLineEdit()
+        self.local_password.setEchoMode(QLineEdit.EchoMode.Password)
+        self.local_password.setMaxLength(128)
+        self.local_password.setPlaceholderText("Новый локальный пароль")
+        passwords.addWidget(self.local_password)
+        self.local_password_repeat = QLineEdit()
+        self.local_password_repeat.setEchoMode(QLineEdit.EchoMode.Password)
+        self.local_password_repeat.setMaxLength(128)
+        self.local_password_repeat.setPlaceholderText("Повторите пароль")
+        passwords.addWidget(self.local_password_repeat)
+        self.save_password = QPushButton("Сохранить пароль")
+        self.save_password.clicked.connect(self.setup_local_password)
+        passwords.addWidget(self.save_password)
+        self.password_feedback = label("", "small")
+        passwords.addWidget(self.password_feedback)
+        layout.addWidget(self.password_setup)
+        self.local_start = QPushButton("Начать экзамен")
+        self.local_start.setObjectName("primary")
+        self.local_start.clicked.connect(self.start_offline)
+        offline.addWidget(self.local_start)
+        self.local_end = QPushButton("Завершить экзамен")
+        self.local_end.clicked.connect(self.finish_offline)
+        offline.addWidget(self.local_end)
+        self.offline_feedback = label("", "small")
+        offline.addWidget(self.offline_feedback)
+        self.offline_controls.hide()
+        layout.addWidget(self.offline_controls)
         self.gaze_status = label("", "small")
         self.gaze_status.setWordWrap(True)
         layout.addWidget(self.gaze_status)
@@ -391,6 +497,14 @@ class StudentWindow(QWidget):
         self.runtime_error = label("", "error")
         self.runtime_error.hide()
         layout.addWidget(self.runtime_error)
+        self.environment_retry = QPushButton("Повторить открытие экзамена")
+        self.environment_retry.clicked.connect(self.retry_pending_environment)
+        self.environment_retry.hide()
+        layout.addWidget(self.environment_retry)
+        self.environment_cancel = QPushButton("Отменить начало экзамена")
+        self.environment_cancel.clicked.connect(self.cancel_pending_environment)
+        self.environment_cancel.hide()
+        layout.addWidget(self.environment_cancel)
         layout.addStretch()
         layout.addWidget(label("Во время теста фиксируются события и видео с камеры. Звук не записывается.", "small"))
         self.dashboard_scroll = QScrollArea()
@@ -431,7 +545,7 @@ class StudentWindow(QWidget):
             if self.tray:
                 self.tray.showMessage(
                     "Компьютер подключён",
-                    "Qorgau работает в трее. Сеансы назначаются на сайте преподавателя.",
+                    "Главное окно готово. Сеансы назначаются на сайте преподавателя.",
                 )
         except Exception:  # noqa: BLE001 - GUI boundary must keep recovery controls accessible
             self.registration_failed(
@@ -440,9 +554,18 @@ class StudentWindow(QWidget):
 
     def attach(self, agent):
         self.agent = agent
+        agent.capabilities["interactive_start"] = True
         from .exam_ui import ExamController
 
         self.exam_controller = ExamController(agent, self)
+        if self.run_worker and getattr(agent, "mode", "online") != "offline":
+            QTimer.singleShot(0, self.exam_controller.warmup_browser)
+        self.offline_controls.setVisible(getattr(agent, "mode", "online") == "offline")
+        if getattr(agent, "mode", "online") != "offline":
+            self.password_heading.setText("Резервный доступ преподавателя при потере сети")
+            self.local_password.setPlaceholderText("Существующий пароль кабинета преподавателя")
+            self.local_password_repeat.hide()
+            self.save_password.setText("Проверить и сохранить резервный доступ")
         self.pages.setCurrentIndex(1)
         self.device_name.setText(agent.config.get("name", "Компьютер аудитории"))
         self.camera_choice.setCurrentIndex(max(0, self.camera_choice.findData(agent.config.get("camera_settings", {}).get("index", 0))))
@@ -477,6 +600,23 @@ class StudentWindow(QWidget):
         snap = self.agent.snapshot()
         model = present(snap)
         state = snap["state"]
+        offline = getattr(self.agent, "mode", "online") == "offline"
+        pending = snap.get("start_pending") or {}
+        pending_id = pending.get("id")
+        if pending_id and self.preparing_start_id != pending_id and self.calibration is None:
+            self.preparing_start_id = pending_id
+            QTimer.singleShot(0, lambda token=pending_id: self.begin_pending_start(token))
+        elif not pending_id and self.preparing_start_id is not None:
+            self.preparing_start_id = None
+            if self.calibration is not None:
+                self.calibration.reject()
+            self.exam_controller.cancel_environment_preparation()
+        if not pending_id:
+            self.prepared_camera_token = None
+            self.environment_error = None
+        self.environment_retry.setVisible(bool(pending_id and self.environment_error))
+        self.environment_cancel.setVisible(bool(pending_id and self.prepared_camera_token == pending_id))
+        self.environment_retry.setEnabled(not (self.environment_worker and self.environment_worker.isRunning()))
         if self.tray:
             status = (
                 "Нет связи с сервером" if not snap.get("connected") else model["title"]
@@ -506,26 +646,41 @@ class StudentWindow(QWidget):
                     )
                 self.last_notification = marker
         self.connection.setText(
-            "● Сервер подключён"
+            "● Автономный режим" if offline else "● Сервер подключён"
             if snap.get("connected") and not self.failure
             else "○ Нет связи с сервером"
         )
         active = state["lifecycle"] == "RUNNING"
         selected = next((t for t in self.agent.targets if t.get("id") == "primary-window"), None)
         self.agent.capabilities["selected_window"] = bool(selected)
-        self.target_button.setEnabled(not active)
+        self.target_button.setEnabled(not active and not pending_id)
         self.target_button.setText("Изменить окно" if selected else "Выбрать открытое окно")
-        self.target_status.setText(selected["name"] if selected else "Для Qorgau Browser тест откроет преподаватель. Окно выбирайте только для отдельного приложения.")
-        self.camera_choice.setEnabled(not active and not snap.get("camera_preparing"))
-        self.camera_button.setEnabled(model["can_calibrate"] and not self.failure)
-        self.camera_button.setText("Изменить камеру" if snap.get("camera") else "Готово")
+        target_text = self.offline_target.get("title", self.offline_target.get("name", "Выбрана вкладка")) if self.offline_target else None
+        self.target_status.setText(target_text if offline and target_text else selected["name"] if selected else
+                                  "Выберите вкладку или открытое приложение." if offline else
+                                  "Для Qorgau Browser тест откроет преподаватель. Окно выбирайте только для отдельного приложения.")
+        self.camera_choice.setEnabled(not active and not pending_id and not snap.get("camera_preparing"))
+        self.camera_button.setEnabled(not active and not pending_id and not self.failure)
+        self.camera_button.setText("Сохранить выбор камеры")
         self.camera_status.setText(
             "Камера недоступна — выберите её повторно" if snap.get("camera_fault")
             else "Включаем камеру…" if snap.get("camera_preparing")
+            else "Подготовка к началу экзамена…" if pending_id
             else "Камера включена. Ждём преподавателя." if snap.get("camera") and not active
             else model["title"] if active
-            else "Выберите камеру и нажмите «Готово», глядя на экран. Для Qorgau Browser окно выбирать не нужно."
+            else "Настройка по точкам начнётся после команды «Начать»."
         )
+        password_ready = bool(snap.get("local_password_ready"))
+        self.password_setup.setVisible(not password_ready and not active and not pending_id)
+        saving_password = self.password_worker is not None and self.password_worker.isRunning()
+        self.save_password.setEnabled(not saving_password)
+        self.local_password.setEnabled(not saving_password)
+        self.local_password_repeat.setEnabled(not saving_password)
+        if offline:
+            self.tabs_button.setEnabled(not active and not pending_id)
+            activating = self.offline_start_worker is not None and self.offline_start_worker.isRunning()
+            self.local_start.setEnabled(password_ready and bool(self.offline_target or selected) and not active and not pending_id and not activating)
+            self.local_end.setEnabled(active)
         session = snap.get("session") or {}
         self.assignment_title.setText(session.get("title", ""))
         gaze = snap.get("gaze_diagnostics") or {}
@@ -570,29 +725,192 @@ class StudentWindow(QWidget):
                 self.agent.security_event('DISPLAY_CHANGED')
 
     def open_exam(self):
-        if not self.agent:
+        if not self.agent or not present(self.agent.snapshot())["can_open"]:
             return
-        with self.agent.mutex:
-            if not present(self.agent.snapshot())["can_open"]:
-                return
-            try:
-                self.agent.launch_environment()
-            except (ValueError, OSError):
-                QMessageBox.warning(
-                    self,
-                    "Не удалось открыть тест",
-                    "Проверьте, что выбранный браузер или приложение установлен. Обратитесь к преподавателю.",
-                )
+        try:
+            self.exam_controller.focus_environment()
+        except (ValueError, OSError):
+            self.agent.security_event("TARGET_CLOSED")
+            self.exam_controller.tick()
 
     def prepare_camera(self, checked=False, *, calibrate=False):
-        if not self.agent or not present(self.agent.snapshot())["can_calibrate"]:
+        if not self.agent or self.agent.snapshot().get("start_pending"):
+            return
+        with self.agent.mutex:
+            if self.agent.engine.state.lifecycle == "RUNNING":
+                return
+            self.agent.config.setdefault("camera_settings", {})["index"] = self.camera_choice.currentData()
+            from .client import atomic_json
+            atomic_json(self.folder / "config.json", self.agent.config)
+        self.refresh()
+
+    def begin_pending_start(self, token):
+        if (self.agent.snapshot().get("start_pending") or {}).get("id") != token:
             return
         from .camera_setup import CameraSetup
+        try:
+            self.prepared_camera_token = None
+            self.environment_error = None
+            self.runtime_error.hide()
+            self.show_status()
+            dialog = CameraSetup(self.agent, self, index=self.camera_choice.currentData(),
+                                 screen=self.exam_controller.preparation_screen())
+            self.calibration = dialog
+            dialog.finished.connect(lambda result: self.pending_camera_finished(token, dialog, result))
+            dialog.open()
+        except (OSError, ValueError, RuntimeError):
+            self.start_preparation_failed(token, "Не удалось начать настройку камеры. Повторите начало экзамена.")
 
-        self.calibration = CameraSetup(self.agent, self, calibrate=calibrate, index=self.camera_choice.currentData())
-        self.calibration.exec()
-        self.calibration = None
+    def pending_camera_finished(self, token, dialog, result):
+        from PySide6.QtWidgets import QDialog
+        if self.calibration is dialog:
+            self.calibration = None
+        dialog.deleteLater()
+        if (self.agent.snapshot().get("start_pending") or {}).get("id") != token:
+            return
+        if result != QDialog.DialogCode.Accepted:
+            self.start_preparation_failed(token, "Настройка отменена. Экзамен ещё не начат.")
+            return
+        self.prepared_camera_token = token
+        self.wait_for_start_camera(token, lambda: self.prepare_pending_environment(token))
+
+    def wait_for_start_camera(self, token, on_ready, deadline=None):
+        snap = self.agent.snapshot()
+        if (snap.get("start_pending") or {}).get("id") != token:
+            return
+        deadline = time.monotonic() + 8 if deadline is None else deadline
+        if snap.get("start_camera_ready"):
+            on_ready()
+        elif time.monotonic() >= deadline:
+            self.start_preparation_failed(token, "Свежие кадры камеры не поступают. Повторите начало экзамена.")
+        else:
+            QTimer.singleShot(100, lambda: self.wait_for_start_camera(token, on_ready, deadline))
+
+    def prepare_pending_environment(self, token):
+        if (self.agent.snapshot().get("start_pending") or {}).get("id") != token:
+            return
+        if self.environment_worker is not None and self.environment_worker.isRunning():
+            QTimer.singleShot(100, lambda: self.prepare_pending_environment(token))
+            return
+        self.environment_worker = PrepareStartWorker(self.agent, token, self)
+        self.environment_worker.done.connect(self.environment_prepared)
+        self.environment_worker.start()
+
+    def environment_prepared(self, token, error):
+        if (self.agent.snapshot().get("start_pending") or {}).get("id") != token:
+            return
+        if error:
+            self.start_preparation_failed(token, error)
+            return
+        try:
+            self.exam_controller.prepare_environment(
+                token, lambda: self.wait_for_start_camera(token, lambda: self.complete_pending_start(token)),
+                lambda message: self.start_preparation_failed(token, message),
+            )
+        except (OSError, ValueError):
+            self.start_preparation_failed(token, "Не удалось подготовить выбранную среду. Повторите начало экзамена.")
+
+    def complete_pending_start(self, token):
+        try:
+            self.agent.complete_start(token)
+            self.preparing_start_id = None
+            self.refresh()
+        except (OSError, ValueError) as error:
+            message = {
+                'NEED_EXACTLY_ONE_FACE': 'Перед началом в кадре должен остаться один человек. Затем повторите открытие экзамена.',
+                'REMOVE_PHONE_BEFORE_START': 'Уберите телефон из кадра и повторите открытие экзамена.',
+                'CAMERA_FRAME_STALE': 'Свежие кадры камеры не поступают. Проверьте камеру и повторите открытие.',
+                'NEED_1GB_RECORDING_SPACE': 'Для записи нужен минимум 1 ГБ свободного места. Освободите место и повторите открытие.',
+                'SCREEN_CALIBRATION_REQUIRED': 'Настройка взгляда больше не соответствует экрану. Повторите начало экзамена и калибровку.',
+            }.get(str(error), 'Камера или окно ещё не готовы. Проверьте их и повторите открытие экзамена.')
+            self.start_preparation_failed(token, message)
+
+    def start_preparation_failed(self, token, message):
+        if (self.agent.snapshot().get("start_pending") or {}).get("id") != token:
+            return
+        camera = getattr(self.agent, 'camera', None)
+        retryable = (self.prepared_camera_token == token and camera is not None
+                     and not getattr(camera, 'requires_gaze_reference', False))
+        if retryable:
+            self.environment_error = message
+        else:
+            self.agent.cancel_start(token, message)
+            self.preparing_start_id = None
+        self.exam_controller.cancel_environment_preparation()
+        self.runtime_error.setText(message)
+        self.runtime_error.show()
+        self.show_status()
         self.refresh()
+        self.dashboard_scroll.ensureWidgetVisible(self.runtime_error, 0, 40)
+
+    def retry_pending_environment(self):
+        token = (self.agent.snapshot().get('start_pending') or {}).get('id')
+        if not token or token != self.prepared_camera_token:
+            return
+        self.environment_error = None
+        self.runtime_error.hide()
+        self.refresh()
+        self.wait_for_start_camera(token, lambda: self.prepare_pending_environment(token))
+
+    def cancel_pending_environment(self):
+        token = (self.agent.snapshot().get('start_pending') or {}).get('id')
+        if token:
+            self.agent.cancel_start(token, "Начало экзамена отменено.")
+        self.prepared_camera_token = None
+        self.environment_error = None
+        self.exam_controller.cancel_environment_preparation()
+        self.runtime_error.hide()
+        self.show_status()
+        self.refresh()
+
+    def setup_local_password(self):
+        if self.password_worker is not None and self.password_worker.isRunning():
+            return
+        password, repeat = self.local_password.text(), self.local_password_repeat.text()
+        self.local_password.clear()
+        self.local_password_repeat.clear()
+        if getattr(self.agent, "mode", "online") == "offline" and password != repeat:
+            self.password_feedback.setText("Пароли не совпали. Введите их ещё раз.")
+            return
+        self.password_feedback.setText("Проверяем и сохраняем резервный доступ…")
+        self.password_worker = PasswordSetupWorker(self.agent, password, self)
+        self.password_worker.done.connect(self.password_setup_done)
+        self.password_worker.finished.connect(self.refresh)
+        self.password_worker.start()
+        password = repeat = ""
+        self.refresh()
+
+    def password_setup_done(self, message):
+        self.password_feedback.setText(message or "Пароль преподавателя сохранён на этом компьютере.")
+        self.refresh()
+
+    def select_browser_tab(self):
+        from .exam_ui import BrowserTabPicker
+        picker = BrowserTabPicker(self.agent, self)
+        if picker.exec() and picker.selected:
+            self.offline_target = picker.selected
+            self.refresh()
+
+    def start_offline(self):
+        selected = self.offline_target or next((t for t in self.agent.targets if t.get("id") == "primary-window"), None)
+        if selected is None:
+            return
+        if self.offline_start_worker is not None and self.offline_start_worker.isRunning():
+            return
+        self.offline_feedback.setText("Активируем выбранное окно…")
+        self.offline_start_worker = OfflineStartWorker(self.agent, selected, self)
+        self.offline_start_worker.done.connect(self.offline_start_done)
+        self.offline_start_worker.finished.connect(self.refresh)
+        self.offline_start_worker.start()
+        self.refresh()
+
+    def offline_start_done(self, message):
+        self.offline_feedback.setText(message)
+        self.refresh()
+
+    def finish_offline(self):
+        self.agent.security_event("TEACHER_REQUEST")
+        self.exam_controller.tick()
 
     def select_target(self):
         if not self.agent or self.agent.engine.state.lifecycle == "RUNNING":
@@ -608,6 +926,7 @@ class StudentWindow(QWidget):
                     if t["id"] not in ("primary-window", "primary-app")
                 ]
                 self.agent.targets.append(picker.selected)
+                self.offline_target = picker.selected
                 self.agent.capabilities["selected_window"] = True
                 self.agent.config["selected_target"] = picker.selected
                 from .client import atomic_json
@@ -641,20 +960,21 @@ class StudentWindow(QWidget):
         if self.agent and self.agent.engine.state.access == "LOCKED" and self.exam_controller:
             self.exam_controller.tick()
             return
-        self.showNormal()
+        self.showFullScreen()
         self.raise_()
         self.activateWindow()
 
     def start_visibility(self, show_window=False):
-        if show_window or not self.agent or not self.tray or not self.agent.capabilities.get("selected_window"):
-            self.show()
-        else:
-            self.hide()
+        self.showFullScreen()
+        self.raise_()
+        self.activateWindow()
 
     def request_exit(self):
         if self.shutting_down:
             return
         if self.enrollment and self.enrollment.isRunning():
+            return
+        if any(worker and worker.isRunning() for worker in (self.password_worker, self.offline_start_worker, self.environment_worker)):
             return
         if self.agent:
             with self.agent.mutex:
@@ -716,6 +1036,8 @@ def launch(
     show_window=False,
     bootstrap=None,
 ):
+    from .student_entry import configure_webengine
+    configure_webengine()
     from .install_guard import hold_installation_mutex
     hold_installation_mutex()
     app = QApplication.instance() or QApplication(sys.argv[:1])

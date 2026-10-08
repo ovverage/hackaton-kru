@@ -579,15 +579,28 @@ class Camera:
         mesh_faces, feature = self.face_features(mesh_frame, None if at is None else int(at * 1000))
         face_detections = self.face_detector.detect(frame)
         faces = max(mesh_faces, len(face_detections))
+        raw_faces = faces
+        identity_engine, templates, expires = getattr(self, 'teacher_identity', (None, [], 0))
+        if faces > 1 and identity_engine is not None and templates and time.time() < expires:
+            try:
+                identities = identity_engine.detect(frame)
+                from .teacher_exclusion import count_students
+                faces = count_students(faces, face_detections, identities, width, height, identity_engine, templates)
+            except (ValueError, OSError, RuntimeError):
+                pass  # Unknown identities still count; outages never whitelist a face.
         from .behavior import classify_gaze
         if getattr(self, 'public_gaze', None) is not None:
             gaze = self._observe_public_gaze(
-                mesh_frame, faces, mesh_faces, time.monotonic() if at is None else at,
+                mesh_frame, raw_faces, mesh_faces, time.monotonic() if at is None else at,
             )
             direction = gaze['direction']
         else:
-            gaze = self.gaze.observe(self.gaze_vector if faces == 1 else None)
-            direction = classify_gaze(feature, self.centres) if self.centres else gaze['direction']
+            gaze = self.gaze.observe(self.gaze_vector if raw_faces == 1 else None)
+            direction = classify_gaze(feature, self.centres) if self.centres and raw_faces == 1 else gaze['direction']
+        if raw_faces > 1:
+            direction = 'UNKNOWN'
+            gaze = dict(gaze, head_direction='UNKNOWN', head_away=False, head_warning=False,
+                        head_tracking_status='multiple_faces')
         self.gaze_diagnostics = gaze
         return {"direction": direction, "faces": faces, **self.phone_observation(frame, at)}
 

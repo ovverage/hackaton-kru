@@ -12,10 +12,11 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
 from shared.rules import State
+from shared.version import APP_VERSION
 from .db import encode
 
 
@@ -29,6 +30,13 @@ def register_public_registration(app, db, audit, root):
     capacity = int(os.getenv("PROCTOR_PUBLIC_ENROLLMENT_LIMIT", "500"))
     if not 1 <= capacity <= 5000:
         raise ValueError("PROCTOR_PUBLIC_ENROLLMENT_LIMIT must be between 1 and 5000")
+
+    @app.get("/api/student/download-offline")
+    def download_offline_student():
+        return RedirectResponse(
+            f"https://github.com/ovverage/hackaton-kru/releases/download/v{APP_VERSION}/Qorgau-Offline.exe",
+            status_code=307,
+        )
 
     @app.get("/api/student/download")
     def download_default_student():

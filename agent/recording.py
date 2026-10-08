@@ -1,6 +1,7 @@
 """Durable 10-second JPEG segments and incident clips with bounded frame memory."""
 from concurrent.futures import ThreadPoolExecutor
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -15,6 +16,12 @@ from shared.storage import atomic_json
 from .resources import ffmpeg_executable
 
 HEADER = struct.Struct("<dI")
+PHONE_EVIDENCE_TYPES = frozenset({"PHONE_DETECTED", "PHONE_AIM_REVIEW", "PHONE_LOCKED_REVIEW"})
+
+
+def capture_end(incident):
+    """The requested media boundary, including post-roll only before its ceiling."""
+    return min(incident["end"] + 5, incident.get("capture_end", float("inf")))
 
 
 def frames(path):
@@ -154,14 +161,39 @@ class ClipRecorder:
             raise ValueError("INVALID_RECORDING_ID")
         if event.get("update"):
             if ident in self.pending:
-                self.pending[ident]["end"] = event["end"]
+                incident = self.pending[ident]
+                incident["end"] = min(event["end"], incident.get("capture_end", float("inf")))
                 self.save()
             return
         if ident not in self.pending and ident not in self.ready:
             self.pending[ident] = {"id": ident, "start": event.get("start", event["at"]),
+                                   "type": event.get("type"),
                                    "created_at": event.get("created_at", time.time()),
                                    "at": event["at"], "end": None if event.get("ongoing") else event.get("end", event["at"])}
             self.save()
+
+    def freeze_at(self, t):
+        """Stop pending non-phone evidence at lock time; later phone frames stay separate.
+
+        Call on the recorder's owning thread after marking the locking incident.
+        A queued/running encode is checked again before publication by completed().
+        Missing historical event types are treated as non-phone evidence.
+        """
+        if not isinstance(t, (int, float)) or isinstance(t, bool) or not math.isfinite(t):
+            raise ValueError("INVALID_RECORDING_CAPTURE_END")
+        changed = []
+        for ident, incident in self.pending.items():
+            if incident.get("type") in PHONE_EVIDENCE_TYPES:
+                continue
+            ceiling = min(t, incident.get("capture_end", float("inf")))
+            if incident.get("capture_end") == ceiling:
+                continue
+            incident["capture_end"] = ceiling
+            incident["end"] = ceiling if incident["end"] is None else min(incident["end"], ceiling)
+            changed.append(ident)
+        if changed:
+            self.save()
+        return changed
 
     def completed(self, t):
         force = t == float("inf")
@@ -172,7 +204,7 @@ class ClipRecorder:
                 if ident in self.encoding or self.last_t is None:
                     continue
                 end = incident["end"]
-                if not force and (end is None or t < end + 5):
+                if not force and (end is None or t < capture_end(incident)):
                     continue
                 if len(self.encoding) >= 8:
                     # Harvest existing futures before scheduling another batch.
@@ -181,7 +213,7 @@ class ClipRecorder:
                 snapshot = dict(incident)
                 snapshot["end"] = self.last_t if end is None else end
                 selected = [dict(x) for x in self.index
-                            if x["end"] >= snapshot["start"] - 10 and x["start"] <= snapshot["end"] + 5]
+                            if x["end"] >= snapshot["start"] - 10 and x["start"] <= capture_end(snapshot)]
                 self.encoding[ident] = self.pool.submit(self.encode, snapshot, selected)
             for ident, future in list(self.encoding.items()):
                 if future.done() or force:
@@ -190,6 +222,21 @@ class ClipRecorder:
                     except Exception as error:
                         del self.encoding[ident]
                         raise OSError("RECORDING_ENCODING_FAILED: запись сохранена в сегментах для повтора") from error
+                    ceiling = self.pending[ident].get("capture_end", float("inf"))
+                    if any(part["end"] > ceiling or part["requested_end"] > ceiling for part in result):
+                        # freeze_at may run while this snapshot is already encoding.
+                        # Never publish that obsolete result; raw segments are retained
+                        # by pending until a newly capped encode completes.
+                        for part in result:
+                            path = Path(part["path"]).resolve()
+                            if path.parent != self.folder.resolve() or path.suffix != ".mp4":
+                                raise ValueError("Unsafe clip path in recording result")
+                            path.unlink(missing_ok=True)
+                        del self.encoding[ident]
+                        continue
+                    if math.isfinite(ceiling):
+                        for part in result:
+                            part["capture_end"] = ceiling
                     self.ready[ident] = result
                     del self.pending[ident]
                     del self.encoding[ident]
@@ -214,10 +261,10 @@ class ClipRecorder:
         # Bound each upload as well as each capture segment. Long incidents are
         # represented by several adjacent clips in the same event.
         start = max(0, incident["start"] - 10)
-        end = incident["end"] + 5
+        end = capture_end(incident)
         parts = []
         cursor = start
-        while cursor < end:
+        while cursor <= end:
             part_end = min(end, cursor + 30)
             part = {**incident, "id": incident["id"] + f"-{len(parts):04d}",
                     "start": cursor + 10, "end": part_end - 5}
@@ -226,11 +273,14 @@ class ClipRecorder:
                 result = self.encode_part(part, candidates)
                 result["event_id"] = incident["id"]
                 parts.append(result)
+            if part_end >= end:
+                break
             cursor = part_end
         return parts
 
     def encode_part(self, incident, selected):
         output = self.folder / (incident["id"] + ".mp4")
+        requested_end = capture_end(incident)
         first = last = None
         gaps = []
         count = 0
@@ -239,7 +289,7 @@ class ClipRecorder:
             with (directory / "frames.txt").open("w") as concat:
                 for item in selected:
                     for at, jpg in frames(item["path"]):
-                        if at < incident["start"] - 10 or at > incident["end"] + 5:
+                        if at < incident["start"] - 10 or at > requested_end:
                             continue
                         if last is not None and at <= last:
                             continue
@@ -268,8 +318,9 @@ class ClipRecorder:
         return {"event_id": incident["id"], "path": str(output), "start": first, "end": last,
                 "created_at": incident.get("created_at", time.time()),
                 "gaps": gaps, "requested_start": max(0, incident["start"] - 10),
-                "requested_end": incident["end"] + 5,
-                "complete": not gaps and first <= max(0, incident["start"] - 10) + .2 and last >= incident["end"] + 4.8}
+                "requested_end": requested_end,
+                **({"capture_end": incident["capture_end"]} if "capture_end" in incident else {}),
+                "complete": not gaps and first <= max(0, incident["start"] - 10) + .2 and last >= requested_end - .2}
 
     def close(self):
         self.close_segment()

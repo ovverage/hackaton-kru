@@ -126,6 +126,7 @@ export const eventNames: Record<string, string> = {
   GAZE_LEFT: "Взгляд влево",
   GAZE_RIGHT: "Взгляд вправо",
   PHONE_DETECTED: "Обнаружен телефон",
+  PHONE_LOCKED_REVIEW: "Телефон во время блокировки",
   SECOND_FACE_REVIEW: "Второе лицо в кадре",
   FREQUENT_GAZE_REVIEW: "Частые отвлечения",
   CAMERA_UNAVAILABLE: "Камера недоступна",

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import csv
+from contextlib import asynccontextmanager
+import logging
 import hashlib
 import json
 import io
@@ -35,6 +37,7 @@ from shared.version import APP_VERSION, RULE_VERSION
 from .db import Database, decode, encode
 from .packages import register_package_routes
 from .registration import register_public_registration
+from .retention import expire_media, MEDIA_TTL_SECONDS
 
 ROOT = Path(__file__).resolve().parents[2]
 PH = PasswordHasher()
@@ -90,6 +93,10 @@ class TeacherUnlock(BaseModel):
     expected_version: int = Field(ge=0)
     action: Literal["UNLOCK", "END_AND_RELEASE"] = "UNLOCK"
 
+
+class TeacherPassword(BaseModel):
+    password: str = Field(min_length=1, max_length=128)
+
 class RetentionInput(BaseModel):
     days: int = Field(default=7, ge=1, le=30)
     reason: str = Field(min_length=1, max_length=500)
@@ -121,7 +128,26 @@ def create_app(data_dir=None, *, allow_demo=False):
         0, int(os.getenv("PROCTOR_MEDIA_RESERVE_BYTES", str(512 * 1024 * 1024)))
     )
     db = Database(base / "proctor.sqlite3")
-    app = FastAPI(title="Qorgau / локальный прокторинг", version=APP_VERSION)
+    @asynccontextmanager
+    async def lifespan(_app):
+        async def cleanup_loop():
+            while True:
+                try:
+                    await asyncio.to_thread(expire_media, base, apply=True)
+                except Exception:
+                    logging.getLogger(__name__).exception("Video retention cleanup failed")
+                await asyncio.sleep(60)
+        cleanup = asyncio.create_task(cleanup_loop())
+        try:
+            yield
+        finally:
+            cleanup.cancel()
+            try:
+                await cleanup
+            except asyncio.CancelledError:
+                pass
+
+    app = FastAPI(title="Qorgau / локальный прокторинг", version=APP_VERSION, lifespan=lifespan)
     app.state.db = db
     simulations = {}
     failures = {}
@@ -288,6 +314,7 @@ def create_app(data_dir=None, *, allow_demo=False):
 
                 "FACE_ABSENCE_TECHNICAL",
                 "PHONE_AIM_REVIEW",
+                "PHONE_LOCKED_REVIEW",
             }
             if event.get("type") not in allowed:
                 raise HTTPException(422, "Неизвестный тип события")
@@ -574,6 +601,7 @@ def create_app(data_dir=None, *, allow_demo=False):
         with db.connect(True) as c:
             devices = [owned(c, "devices", id, u["id"]) for id in body.device_ids]
             for d in devices:
+                interactive = bool(d.get("capabilities", {}).get("interactive_start"))
                 if d["simulated"] and not allow_demo:
                     raise HTTPException(409, "Тренировочные устройства отключены")
                 if d.get("revoked_at"):
@@ -586,7 +614,8 @@ def create_app(data_dir=None, *, allow_demo=False):
                     raise HTTPException(409, f"{d['name']}: нет связи")
                 if env["kind"] == "DESKTOP" and time.time() - d.get("last_heartbeat_at", 0) >= 6:
                     raise HTTPException(409, f"{d['name']}: приложение не подключено")
-                if env["kind"] != "DESKTOP" and not any(
+                pending_browser = interactive and env["kind"] == "BROWSER" and env.get("target_id") == "qorgau-browser"
+                if env["kind"] != "DESKTOP" and not pending_browser and not any(
                     t["id"] == env.get("target_id") and t["kind"] == env["kind"]
                     for t in d["targets"]
                 ):
@@ -600,7 +629,7 @@ def create_app(data_dir=None, *, allow_demo=False):
                     d["simulated"]
                     or not all(
                         d["capabilities"].get(k)
-                        for k in ("window_guard", "camera", "recording")
+                        for k in (("window_guard",) if interactive else ("window_guard", "camera", "recording"))
                     )
                 ):
                     raise HTTPException(
@@ -609,7 +638,7 @@ def create_app(data_dir=None, *, allow_demo=False):
                     )
                 if env["kind"] == "DESKTOP" and not d["capabilities"].get("desktop_monitor"):
                     raise HTTPException(409, f"{d['name']}: обновите приложение Qorgau")
-                if body.mode == "GUARDED" and env["kind"] == "DESKTOP":
+                if body.mode == "GUARDED" and env["kind"] == "DESKTOP" and not interactive:
                     selected = next((t for t in d["targets"] if t["id"] == "primary-window"), None)
                     if selected and selected.get("guardable") is False:
                         raise HTTPException(
@@ -618,7 +647,8 @@ def create_app(data_dir=None, *, allow_demo=False):
                         )
                 if body.mode == "GUARDED" and env["kind"] != "DESKTOP":
                     target = next(
-                        t for t in d["targets"] if t["id"] == env["target_id"]
+                        (t for t in d["targets"] if t["id"] == env["target_id"]),
+                        {"id": "qorgau-browser"} if pending_browser else {},
                     )
                     if (
                         env["kind"] == "BROWSER" and target["id"] != "qorgau-browser"
@@ -714,7 +744,7 @@ def create_app(data_dir=None, *, allow_demo=False):
                 caps = d.get("capabilities", {})
                 if time.time() - d.get("last_seen", 0) >= 6:
                     raise HTTPException(409, "Нет связи с компьютером")
-                if not caps.get("camera") or not caps.get("recording") or caps.get("camera_fault"):
+                if not caps.get("interactive_start") and (not caps.get("camera") or not caps.get("recording") or caps.get("camera_fault")):
                     raise HTTPException(409, "Камера и запись не готовы. Включите камеру в приложении студента.")
             cmd = {
                 "id": uid(),
@@ -749,6 +779,34 @@ def create_app(data_dir=None, *, allow_demo=False):
             )
             audit(c, u["id"], body.type, cmd)
         return cmd
+
+    @app.post("/api/agent/teacher-password")
+    def teacher_password(body: TeacherPassword, request: Request):
+        error = None
+        with db.connect(True) as c:
+            row, d = device_auth(request, c)
+            if d.get("revoked_at"):
+                raise HTTPException(403, "Доступ устройства отозван")
+            owner, now = row["owner"], time.time()
+            attempts = c.execute("SELECT * FROM unlock_attempts WHERE owner=?", (owner,)).fetchone()
+            count = attempts["count"] if attempts and attempts["until"] > now else 0
+            until = attempts["until"] if count else now + 60
+            if count >= 5:
+                error = (429, "Слишком много попыток. Подождите одну минуту.")
+            else:
+                teacher = c.execute("SELECT * FROM users WHERE id=?", (owner,)).fetchone()
+                try:
+                    PH.verify(teacher["password"], body.password)
+                except VerificationError:
+                    c.execute("INSERT OR REPLACE INTO unlock_attempts VALUES(?,?,?)", (owner, count + 1, until))
+                    audit(c, owner, "TEACHER_PASSWORD_DENIED", {"device_id": d["id"]})
+                    error = (403, "Неверный пароль преподавателя")
+                else:
+                    c.execute("DELETE FROM unlock_attempts WHERE owner=?", (owner,))
+                    audit(c, owner, "TEACHER_PASSWORD_CONFIRMED", {"device_id": d["id"]})
+        if error:
+            raise HTTPException(*error)
+        return {"verified": True}
 
     @app.post("/api/agent/teacher-unlock")
     def teacher_unlock(body: TeacherUnlock, request: Request):
@@ -822,11 +880,7 @@ def create_app(data_dir=None, *, allow_demo=False):
             if not row:
                 raise HTTPException(404, "Событие не найдено")
             owned(c, "exams", row["exam_id"], u["id"])
-            event = decode(row)
-            event["retain_until"] = max(event.get("retain_until", 0), event["created_at"] + 7 * 86400, time.time() + body.days * 86400)
-            c.execute("UPDATE events SET body=? WHERE id=?", (encode(event), event_id))
-            audit(c, u["id"], "RETENTION_EXTENDED", {"event_id": event_id, "until": event["retain_until"], "reason": body.reason})
-        return {"retain_until": event["retain_until"]}
+        raise HTTPException(409, "Видео автоматически удаляется через 2 часа после загрузки. Журнал событий сохраняется.")
 
     @app.post("/api/devices/{device_id}/simulate")
     def simulate(device_id: str, body: SimulationInput, request: Request):
@@ -1123,10 +1177,15 @@ def create_app(data_dir=None, *, allow_demo=False):
                     "INSERT INTO media VALUES(?,?,?,?,?)",
                     (mid, event_id, device_id, str(file), mime),
                 )
+                uploaded_at = time.time()
+                expires_at = uploaded_at + MEDIA_TTL_SECONDS
+                c.execute("INSERT INTO media_lifetime VALUES(?,?,?)", (mid, uploaded_at, expires_at))
                 ev["media"].append(
                     {
                         "id": mid,
                         "url": f"/api/media/{mid}",
+                        "uploaded_at": uploaded_at,
+                        "expires_at": expires_at,
                         "mime": mime,
                         "size": size,
                         "sha256": sha.hexdigest(),
@@ -1162,6 +1221,7 @@ def create_app(data_dir=None, *, allow_demo=False):
     @app.get("/api/media/{media_id}")
     def get_media(media_id: str, request: Request):
         u = user(request)
+        expire_media(base, apply=True)
         with db.connect() as c:
             row = c.execute(
                 "SELECT media.* FROM media JOIN events ON events.id=media.event_id JOIN exams ON exams.id=events.exam_id WHERE media.id=? AND exams.owner=?",
@@ -1231,6 +1291,8 @@ def create_app(data_dir=None, *, allow_demo=False):
 
     register_package_routes(app, db, user, audit, ROOT)
     register_public_registration(app, db, audit, ROOT)
+    from .teacher_faces import register_teacher_faces
+    register_teacher_faces(app, db, user, device_auth, audit, ROOT)
     dist = ROOT / "web" / "dist"
     if dist.exists():
         app.mount("/", StaticFiles(directory=dist, html=True), name="web")

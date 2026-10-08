@@ -241,10 +241,12 @@ def test_wrong_monitor_signature_fails_before_any_sample(harness):
     assert not harness.sample_calls and not harness.installs
 
 
-def test_absent_target_acknowledgement_times_out_without_sampling(harness):
+def test_absent_target_acknowledgement_repeats_without_sampling_until_cancelled(harness):
     harness.allow_ack = False
+    harness.on_read = lambda: harness.stop.set() if harness.current == 9 else None
     result = harness.run()
-    assert result["error"] == "SCREEN_TARGET_NOT_PRESENTED"
+    assert result["error"] == "SCREEN_CALIBRATION_CANCELLED"
+    assert result['capture']['targets']['fit_center']['last_error'] == 'SCREEN_TARGET_NOT_PRESENTED'
     assert not harness.sample_calls and not harness.installs
     assert harness.clock.at < 105
 
@@ -252,8 +254,10 @@ def test_absent_target_acknowledgement_times_out_without_sampling(harness):
 def test_stale_acknowledgement_does_not_authorize_new_attempt(harness):
     harness.session.presented(0, SIGNATURE)
     harness.allow_ack = False
+    harness.on_read = lambda: harness.stop.set() if harness.current == 9 else None
     result = harness.run()
-    assert result["error"] == "SCREEN_TARGET_NOT_PRESENTED"
+    assert result["error"] == "SCREEN_CALIBRATION_CANCELLED"
+    assert result['capture']['targets']['fit_center']['last_error'] == 'SCREEN_TARGET_NOT_PRESENTED'
     assert not harness.sample_calls
 
 
@@ -297,12 +301,15 @@ def test_insufficient_frames_then_retry_replaces_only_that_exposure(harness):
     assert result['capture']['retry_count'] == result['quality']['adaptive_target_retries'] == 1
 
 
-def test_install_refusal_is_an_explicit_failure(harness):
+def test_reference_quality_install_refusal_restarts_collection_automatically(harness):
     harness.install_allowed = False
     harness.screen_calibration_progress["error"] = "SCREEN_HEAD_MOVED"
+    harness.on_read = lambda: harness.stop.set() if harness.current == 9 else None
     result = harness.run()
-    assert result["error"] == "SCREEN_HEAD_MOVED" and not result["ready"]
-    assert harness.invalidations == ["SCREEN_HEAD_MOVED"]
+    assert result["error"] == "SCREEN_CALIBRATION_CANCELLED" and not result["ready"]
+    assert len(harness.beginnings) == 2
+    assert result['capture']['targets']['fit_center']['last_error'] == 'SCREEN_HEAD_MOVED'
+    assert not harness.installs
 
 
 def test_start_and_present_queues_copy_gui_signature(harness):

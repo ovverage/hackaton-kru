@@ -27,3 +27,6 @@ argon2-cffi-bindings==26.1.0
 cffi==2.1.1
 pycparser==3.0
 uvloop==0.23.0; sys_platform != "win32" and platform_python_implementation == "CPython"
+# Server-side teacher face inference; no camera or GUI runtime is required.
+numpy==2.2.6
+opencv-python-headless==4.13.0.92

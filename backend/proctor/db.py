@@ -32,6 +32,11 @@ class Database:
             CREATE INDEX IF NOT EXISTS events_exam ON events(exam_id);
             CREATE INDEX IF NOT EXISTS commands_device ON commands(device_id);
             CREATE TABLE IF NOT EXISTS unlock_attempts(owner TEXT PRIMARY KEY,count INTEGER NOT NULL,until REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS teacher_faces(id TEXT PRIMARY KEY,owner TEXT NOT NULL,name TEXT NOT NULL,embedding TEXT NOT NULL,model TEXT NOT NULL,created_at REAL NOT NULL);
+            CREATE INDEX IF NOT EXISTS teacher_faces_owner ON teacher_faces(owner);
+            CREATE TABLE IF NOT EXISTS face_challenges(id TEXT PRIMARY KEY,owner TEXT NOT NULL,device_id TEXT NOT NULL,body TEXT NOT NULL,expires REAL NOT NULL,used INTEGER NOT NULL,model TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS face_attempts(device_id TEXT PRIMARY KEY,count INTEGER NOT NULL,until REAL NOT NULL);
+            CREATE TABLE IF NOT EXISTS media_lifetime(id TEXT PRIMARY KEY,uploaded_at REAL NOT NULL,expires_at REAL NOT NULL);
             """)
 
     @contextmanager

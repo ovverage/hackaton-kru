@@ -21,6 +21,8 @@ import httpx
 from shared.rules import PHONE_CONFIDENCE_THRESHOLD, RuleEngine, State
 from shared.storage import atomic_json
 from shared.version import APP_VERSION, MODEL_VERSION
+from .session_control import SessionControl
+from .teacher_access import TeacherAccess
 
 
 def inventory(config):
@@ -67,7 +69,7 @@ def inventory(config):
     return found
 
 
-class Agent:
+class Agent(SessionControl, TeacherAccess):
     def __init__(self, folder: Path, server: str | None = None, transport=None):
         self.folder = folder
         self.config = json.loads((folder / "config.json").read_text(encoding="utf-8"))
@@ -114,6 +116,13 @@ class Agent:
         self.status = "Подключение к серверу"
         self.last_synced_at = None
         self.camera_preparing = False
+        self.start_pending = None
+        self.teacher_face_scan = False
+        self._teacher_engine = None
+        self._teacher_engine_lock = threading.Lock()
+        self._teacher_templates = (None, [], 0)
+        from .local_access import LocalAccess
+        self.local_access = LocalAccess(folder)
         self.session = self.journal.get("session")
         self.capabilities = {
             "agent_version": APP_VERSION,
@@ -123,6 +132,7 @@ class Agent:
             "recording": False,
             "gaze": False,
             "platform": os.name,
+            "interactive_start": False,
         }
         self.camera = None
         self.capture_pump = None
@@ -185,11 +195,17 @@ class Agent:
         review = self._phone_review
         if review and (self.engine.state.lifecycle != "RUNNING"
                        or self.engine.state.access != "LOCKED"
-                       or self.engine.state.reason != "PHONE_DETECTED"
                        or self.engine.state.lock_id != review["lock_id"]
-                       or time.monotonic() > review["until"]):
+                       ):
             self._phone_review = None
             changed = True
+        if self.engine.state.lifecycle == 'RUNNING' and self.engine.state.access == 'LOCKED' and self._phone_review is None:
+            at = time.monotonic()
+            self._phone_review = {'lock_id': self.engine.state.lock_id, 'until': float('inf'),
+                                  'started': at, 'last_at': at, 'event_id': None,
+                                  'phone_present': False}
+        if paused and self.recorder and hasattr(self.recorder, 'freeze_at'):
+            self.recorder.freeze_at(max(0, time.monotonic() - self.origin))
         if self.capture_pump:
             self.capture_pump.set_recognition(not paused, phone_review=self.phone_review_mode())
         if paused and self.camera is not None and self._paused_camera is not self.camera:
@@ -246,12 +262,14 @@ class Agent:
             if command["expires_at"] < now:
                 raise ValueError("COMMAND_EXPIRED")
             kind = command["type"]
+            deferred_start = (kind == 'START' and self.capabilities.get('interactive_start')
+                              and not command.get('_prepared_start'))
             if (
                 kind not in ("REVIEW", "UNLOCK", "END_AND_RELEASE")
                 and command.get("expected_version") != self.engine.state.version
             ):
                 raise ValueError("STATE_CONFLICT")
-            if (kind in ("START", "UNLOCK")
+            if (kind in ("START", "UNLOCK") and not deferred_start
                     and getattr(self.camera, "screen_calibration_required", False) is True
                     and getattr(self.camera, "requires_gaze_reference", True)):
                 # Includes a queued GUI monitor change, before the capture
@@ -259,6 +277,13 @@ class Agent:
                 # make an invalid monitor reference usable again.
                 raise ValueError("SCREEN_CALIBRATION_REQUIRED")
             if kind == "START":
+                if deferred_start:
+                    self.queue_start(command)
+                    ack = {'id': ident, 'ok': True, 'error': ''}
+                    self.journal['processed'][ident] = ack
+                    self.journal['acks'].append(ack)
+                    self.save()
+                    return
                 if self.camera_preparing:
                     raise ValueError("CAMERA_PREPARING")
                 if self.guarded:
@@ -278,7 +303,8 @@ class Agent:
                         raise ValueError("REMOVE_PHONE_BEFORE_START")
                     if shutil.disk_usage(self.folder).free < 1024**3:
                         raise ValueError("NEED_1GB_RECORDING_SPACE")
-                self.launch_environment()
+                if not command.get('_prepared_start'):
+                    self.launch_environment()
                 self.engine.start()
                 self.guard_started_at = time.monotonic()
             elif kind == "LOCK":
@@ -317,7 +343,11 @@ class Agent:
                             self.recorder.mark(update)
                 self.engine.end()
                 self.engine.reset_observation()
-                self.record_until = time.monotonic() + 5 if self.camera else None
+                self.start_pending = None
+                self.record_until = time.monotonic() if self.camera else None
+                if self.mode == 'offline':
+                    self.record_until = None
+                    self.cleanup_local_exam()
             elif kind == "REVIEW":
                 event_id = command["event_id"]
                 revision = command["review_revision"]
@@ -439,6 +469,7 @@ class Agent:
                 self.last_observation_at = None
                 self.gaze_diagnostics = None
                 self.engine = RuleEngine()
+                self.reset_session_tracking()
                 self.journal.update(exam_id=config["exam_id"], reviews={}, processed={})
                 self.journal["recent_events"] = []
                 self.guard_target = None
@@ -472,7 +503,7 @@ class Agent:
 
     def security_event(self, reason, *, lock=True):
         with self.mutex:
-            if self.engine.state.lifecycle != "RUNNING":
+            if self.engine.state.lifecycle != "RUNNING" or self.engine.state.access == 'LOCKED':
                 return
             t = time.monotonic() - self.origin
             if t - self.last_security_event.get(reason, -1e9) < 10:
@@ -490,6 +521,14 @@ class Agent:
             self.save()
 
     def teacher_unlock(self, password, action="UNLOCK"):
+        try:
+            return self._online_teacher_unlock(password, action)
+        except httpx.HTTPError:
+            if not self.local_access.ready:
+                raise ValueError('Нет связи. Резервный пароль ещё не был настроен на этом компьютере.') from None
+            self.local_authorize(password, action)
+
+    def _online_teacher_unlock(self, password, action="UNLOCK"):
         # Serialize sync + unlock to prevent concurrent queue deletion/command delivery.
         with self.sync_mutex:
             self.sync()
@@ -509,6 +548,7 @@ class Agent:
                 except (ValueError, KeyError):
                     detail = "Не удалось проверить пароль преподавателя"
                 raise ValueError(str(detail))
+            self.local_access.set_password(password)
             self.sync()
             # Confirm application immediately, even if the background worker
             # stopped because of a camera/runtime failure.
@@ -546,6 +586,8 @@ class Agent:
             file.unlink(missing_ok=True)
 
     def collect_media(self, t):
+        if self.mode == 'offline':
+            return
         existing = {x["path"] for x in self.journal["media"]}
         fresh = [x for x in self.recorder.completed(t) if x["path"] not in existing]
         if fresh:
@@ -572,6 +614,8 @@ class Agent:
         """Record raw frames while recognition is paused, without invented observations."""
         with self.mutex:
             changed = self.update_recognition_mode()
+            if self.engine.state.lifecycle == 'COMPLETED' or self.mode == 'offline':
+                return
             at = time.monotonic() if captured_at is None else captured_at
             if self.recorder and frame is not None and math.isfinite(at) and at <= time.monotonic() + .1:
                 t = at - self.origin
@@ -652,13 +696,15 @@ class Agent:
                     event["phone_episode_id"] = phone_episode_id
                     self._last_phone_aim = {"episode_id": phone_episode_id, "at": at}
             phone_event = next((event for event in events if event.get("type") == "PHONE_DETECTED"), None)
-            if (phone_event and not self.phone_aim_consumed(phone_episode_id, at)
-                    and self.engine.state.reason == "PHONE_DETECTED"):
-                self._phone_review = {"lock_id": self.engine.state.lock_id, "until": at + 2.5,
-                                      "started": at, "last_at": at, "event_id": phone_event["id"]}
+            if phone_event and self.engine.state.reason == "PHONE_DETECTED":
+                self._phone_review = {"lock_id": self.engine.state.lock_id, "until": float('inf'),
+                                      "started": at, "last_at": at, "event_id": phone_event["id"],
+                                      'phone_present': True, 'aim_seen': self.phone_aim_consumed(phone_episode_id, at)}
             if self.capture_pump and self.engine.state.access == "LOCKED":
                 self.capture_pump.set_recognition(False, phone_review=self.phone_review_mode())
             self.persist_observation_evidence(events, t, frame, detections)
+            if self.engine.state.access == 'LOCKED' and self.recorder and hasattr(self.recorder, 'freeze_at'):
+                self.recorder.freeze_at(t)
             if events or before != self.engine.state.version or mode_changed:
                 self.save()
 
@@ -669,7 +715,6 @@ class Agent:
         valid = (review is not None and lock_id == review["lock_id"]
                  and self.engine.state.lifecycle == "RUNNING"
                  and self.engine.state.access == "LOCKED"
-                 and self.engine.state.reason == "PHONE_DETECTED"
                  and self.engine.state.lock_id == lock_id
                  and math.isfinite(at) and review["last_at"] < at <= review["until"]
                  and now <= review["until"] and at <= now + .1 and now - at <= 2)
@@ -680,16 +725,30 @@ class Agent:
         detections = [d for d in detections if d.get("label") == "phone"
                       and d.get("confidence", 0) >= PHONE_CONFIDENCE_THRESHOLD]
         events = []
+        present = confidence >= PHONE_CONFIDENCE_THRESHOLD and bool(detections)
+        if not present:
+            review.setdefault('absent_since', at)
+            if at - review['absent_since'] >= 1:
+                review['phone_present'] = False
+                review['aim_seen'] = False
+        else:
+            review.pop('absent_since', None)
+        if present and not review.get('phone_present'):
+            event = self.engine.event('PHONE_LOCKED_REVIEW', at - self.origin,
+                                      confidence=confidence, evidence_lock_id=lock_id,
+                                      detail='Телефон обнаружен во время блокировки.')
+            events.append(event)
+            review['event_id'] = event['id']
+            review['phone_present'] = True
         consumed = self.phone_aim_consumed(episode_id, at)
-        if aiming and not consumed and confidence >= PHONE_CONFIDENCE_THRESHOLD and detections:
+        if aiming and not consumed and not review.get('aim_seen') and confidence >= PHONE_CONFIDENCE_THRESHOLD and detections:
             events.append(self.engine.event(
                 "PHONE_AIM_REVIEW", at - self.origin,
-                start=max(0, review["started"] - self.origin - 2.5), confidence=confidence,
+                start=max(0, at - self.origin - 2.5), confidence=confidence,
                 related_event_id=review["event_id"], evidence_lock_id=lock_id, phone_episode_id=episode_id,
                 detail="Подъём и удержание телефона: возможная попытка съёмки; факт фотографии не установлен"))
             self._last_phone_aim = {"episode_id": episode_id, "at": at}
-        if events or consumed:
-            self._phone_review = None  # One review per raising episode, including pre-lock evidence.
+            review['aim_seen'] = True
         self.persist_observation_evidence(events, at - self.origin, frame, detections)
         if events or consumed:
             self.save()
@@ -721,13 +780,15 @@ class Agent:
                             path = folder / (event["id"] + ".jpg")
                             path.write_bytes(encoded.tobytes())
                             self.remember([{**event, "thumbnail_path": str(path)}])
-            if self.recorder and frame is not None:
+            if self.recorder and frame is not None and self.mode != 'offline':
                 self.recorder.push(t, frame)
                 for event in events:
                     self.recorder.mark(event)
                 self.collect_media(t)
 
     def read_browser(self):
+        if self.engine.state.access == 'LOCKED':
+            return
         if (self.environment or {}).get("target_id") == "qorgau-browser":
             return
         path = self.folder / "browser.json"
@@ -746,7 +807,7 @@ class Agent:
                 or observation.get("binding") != self.bridge_binding):
             return
         env = self.environment or {}
-        if self.engine.state.lifecycle != "RUNNING" or env.get("kind") != "BROWSER":
+        if self.engine.state.lifecycle != "RUNNING" or env.get("kind") not in ("BROWSER", "BROWSER_TAB"):
             return
         data = observation.get("observation", {})
         parsed = urlparse(data.get("url", ""))
@@ -755,9 +816,11 @@ class Agent:
             allowed.scheme,
             allowed.netloc,
         )
-        if not wrong_origin and data.get("focused", True):
+        wrong_tab = env.get('kind') == 'BROWSER_TAB' and any(
+            data.get(key) != env.get(key) for key in ('tab_id', 'window_id', 'browser_instance'))
+        if not wrong_origin and not wrong_tab and data.get("focused", True):
             return
-        reason = "OTHER_SITE" if wrong_origin else "BROWSER_NOT_FOCUSED"
+        reason = 'OTHER_TAB' if wrong_tab else "OTHER_SITE" if wrong_origin else "BROWSER_NOT_FOCUSED"
         t = time.monotonic() - self.origin
         if t - self.last_browser_event.get(reason, -1e9) < 10:
             return
@@ -773,7 +836,7 @@ class Agent:
             )
             self.journal["events"].append(event)
             self.remember([event])
-            if self.guarded and wrong_origin and self.engine.state.access != "LOCKED":
+            if self.guarded and (wrong_origin or wrong_tab) and self.engine.state.access != "LOCKED":
                 self.engine.lock("BROWSER_ATTEMPT")
             if self.recorder:
                 self.recorder.mark(event)
@@ -783,6 +846,10 @@ class Agent:
     def snapshot(self):
         with self.mutex:
             return {
+                'mode': self.mode, 'start_pending': dict(self.start_pending) if self.start_pending else None,
+                'start_camera_ready': self.start_camera_ready,
+                'local_password_ready': self.local_access.ready,
+                'teacher_face_scan': self.teacher_face_scan,
                 "state": self.engine.state.public(),
                 "status": self.status,
                 "environment": self.environment,
@@ -821,6 +888,9 @@ class Agent:
             last_upload = 0
             last_bridge = 0
             last_expiry = 0
+            last_program_check = 0
+            last_template_refresh = 0
+            template_future = None
             while not stop.is_set():
                 if time.monotonic() - last_bridge >= 1:
                     atomic_json(self.folder / "bridge.json", {
@@ -859,6 +929,12 @@ class Agent:
                 if future is None and time.monotonic() - last_sync >= 1:
                     last_sync = time.monotonic()
                     future = pool.submit(self.sync)
+                if template_future is not None and template_future.done():
+                    template_future.result()
+                    template_future = None
+                if template_future is None and self.camera and time.monotonic() - last_template_refresh >= 30:
+                    last_template_refresh = time.monotonic()
+                    template_future = pool.submit(self.refresh_teacher_templates)
                 try:
                     if self.guarded and self.engine.state.lifecycle == "RUNNING":
                         last_ok = (
@@ -866,7 +942,7 @@ class Agent:
                             or self.guard_started_at
                             or time.monotonic()
                         )
-                        if time.monotonic() - last_ok > 10:
+                        if self.mode != 'offline' and time.monotonic() - last_ok > 10:
                             self.security_event("SERVER_UNAVAILABLE")
                         if (
                             self.guard_started_at
@@ -874,6 +950,18 @@ class Agent:
                             and not self.capabilities.get("guard_active")
                         ):
                             self.security_event("GUARD_UNAVAILABLE")
+                        if self.engine.state.access == 'OPEN' and time.monotonic() - last_program_check >= 2:
+                            from .program_check import running_tools
+                            last_program_check = time.monotonic()
+                            self.capabilities['remote_programs'] = running_tools()
+                            if self.capabilities['remote_programs']:
+                                self.security_event('REMOTE_CONTROL_PROGRAM')
+                            if (self.environment or {}).get('kind') == 'BROWSER_TAB':
+                                from .profile import read_object
+                                browser = read_object(self.folder / 'browser.json')
+                                if (time.monotonic() - (self.guard_started_at or time.monotonic()) > 6
+                                        and time.time() - browser.get('at', 0) > 6):
+                                    self.security_event('BROWSER_TRACKING_LOST')
                     self.read_browser()
                     should_capture = self.camera and (self.engine.state.lifecycle != "COMPLETED" or self.record_until is not None)
                     if should_capture:
@@ -898,7 +986,8 @@ class Agent:
                         stop.wait(0.1)
                 except (OSError, RuntimeError) as err:
                     with self.mutex:
-                        if not self.camera_fault and self.engine.state.lifecycle == "RUNNING":
+                        if (not self.camera_fault and self.engine.state.lifecycle == "RUNNING"
+                                and self.engine.state.access != 'LOCKED'):
                             t = time.monotonic() - self.origin
                             self.journal["events"].append(
                                 self.engine.event(
@@ -940,6 +1029,8 @@ class Agent:
         if self.recorder:
             self.recorder.close()
         self.http.close()
+        if getattr(self, '_face_http', None):
+            self._face_http.close()
         (self.folder / "bridge.json").unlink(missing_ok=True)
 
 
@@ -953,6 +1044,7 @@ def main():
     parser.add_argument("--enroll", metavar="CODE")
     parser.add_argument("--name", default="Компьютер аудитории")
     parser.add_argument("--headless", action="store_true")
+    parser.add_argument('--offline', action='store_true', help='Локальный экзамен без запуска с сайта')
     parser.add_argument(
         "--show",
         action="store_true",
@@ -973,6 +1065,18 @@ def main():
     if args.self_test:
         from .selftest import run
         run(args.self_test)
+        return
+    from .profile import read_object
+    from .resources import resource_root
+    args.offline = args.offline or read_object(resource_root() / 'build-profile.json').get('mode') == 'offline'
+    if args.offline:
+        from .offline import OfflineAgent
+        args.data = args.data or Path.home() / '.qorgau' / 'offline'
+        agent = OfflineAgent(args.data, args.server)
+        if args.headless:
+            parser.error('Локальный режим требует интерфейс выбора окна.')
+        from .desktop import launch
+        launch(args.data, args.server, agent=agent, show_window=True)
         return
     from .provision import auto_enroll, bootstrap_data_dir
     from shared.bootstrap import default_bootstrap, read_bootstrap

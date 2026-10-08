@@ -72,8 +72,8 @@ def test_full_monitor_geometry_and_explicit_start(app, dialog):
     assert dialog.isFullScreen()
     assert "9 точек" in dialog.instructions.text()
     assert "3 секунды" in dialog.instructions.text() and "27 секунд" in dialog.instructions.text()
-    assert "повторится автоматически" in dialog.instructions.text()
-    assert "пройденные точки сохранятся" in dialog.instructions.text()
+    assert "повторятся автоматически" in dialog.instructions.text()
+    assert "без перезапуска" in dialog.instructions.text()
     dialog.show_target(0, "fit", (.5, .5))
     app.processEvents()
     assert not started and not acknowledgements
@@ -154,7 +154,7 @@ def test_same_point_retry_has_unique_ack_token_and_fresh_settle(app, dialog, mon
     assert dialog._presentation_id == 11 and dialog._target_index == 2
     assert dialog._target == point
     assert "Повтор точки 3" in dialog.progress.text() and "попытка 2" in dialog.progress.text()
-    assert "Пройденные точки сохранены" in dialog.progress.text()
+    assert "Повторное измерение идёт автоматически" in dialog.progress.text()
     assert "Получено кадров взгляда: 0" in dialog.progress.text()
     dialog.update_progress(8, 3, "Поздний результат предыдущего показа")
     assert "Получено кадров взгляда: 0" in dialog.progress.text()
@@ -329,3 +329,24 @@ def test_invalid_target_does_not_start_a_timer(app, dialog, point):
     with pytest.raises(ValueError):
         dialog.show_target(0, "fit", point)
     assert not dialog._settle.isActive()
+
+
+def test_selected_exam_screen_is_fixed_for_the_target_dialog(app):
+    from PySide6.QtWidgets import QApplication
+    from agent.screen_calibration import ScreenCalibrationDialog, screen_signature
+
+    selected = QApplication.screens()[0]
+    window = ScreenCalibrationDialog(screen=selected)
+    try:
+        assert window._screen is selected
+        assert window.selected_signature == screen_signature(selected)
+        assert not window.screen_selector.isEnabled()
+    finally:
+        window.close()
+
+
+def test_disconnected_explicit_exam_screen_is_not_replaced_with_primary(app):
+    from agent.screen_calibration import ScreenCalibrationDialog
+
+    with pytest.raises(RuntimeError, match='монитор отключён'):
+        ScreenCalibrationDialog(screen=object())

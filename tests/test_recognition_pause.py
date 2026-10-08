@@ -164,15 +164,15 @@ def test_absence_pause_does_not_deadlock_unlock_but_camera_fault_still_blocks(ru
     assert agent.engine.state.access == "OPEN"
 
 
-def test_completed_tail_records_without_observations_or_new_events(running_agent):
+def test_completed_exam_stops_recording_without_post_tail_or_new_events(running_agent):
     agent, clock = running_agent
     agent.apply(command(agent, "END_AND_RELEASE", "end"), now=1)
-    assert agent.recognition_paused and agent.record_until == clock[0] + 5
+    assert agent.recognition_paused and agent.record_until == clock[0]
     before = len(agent.journal["events"])
     clock[0] += .2
     agent.observe(phone_confidence=.99, faces=0, frame=np.zeros((12, 16, 3), dtype=np.uint8), captured_at=clock[0])
     assert len(agent.journal["events"]) == before
-    assert len(agent.recorder.frames) == 1
+    assert not agent.recorder.frames
     assert agent.last_observation is None
 
 

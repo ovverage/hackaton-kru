@@ -1,4 +1,5 @@
 import Classroom from "./Classroom";
+import TeacherFaces from "./TeacherFaces";
 import ControlStatus from "./ControlStatus";
 import { preparationIssue, type TestEnvironment } from "./sessionStatus";
 import { useDialogFocus } from "./useDialogFocus";
@@ -278,7 +279,8 @@ export default function App() {
     : [];
   const sessionActive = Boolean(exam && exam.status !== "COMPLETED");
   useEffect(() => {
-    if (sessionActive && !["room", "blocked"].includes(page)) setPage("room");
+    if (sessionActive && !["room", "blocked", "teachers"].includes(page))
+      setPage("room");
     if (!sessionActive && page === "blocked") setPage("room");
   }, [sessionActive, page]);
   const events = exam ? data.events.filter((e) => e.exam_id === exam.id) : [];
@@ -372,6 +374,7 @@ export default function App() {
     ? [
         { id: "room", name: "Текущие компьютеры", icon: Monitor },
         { id: "blocked", name: "Заблокированные", icon: LockKeyhole },
+        { id: "teachers", name: "Преподаватели", icon: Users },
       ]
     : [
         { id: "room", name: "Аудитория", icon: LayoutDashboard },
@@ -379,6 +382,7 @@ export default function App() {
         { id: "history", name: "Сеансы и отчёты", icon: History },
         { id: "devices", name: "Компьютеры", icon: Monitor },
         { id: "rules", name: "Правила контроля", icon: Settings2 },
+        { id: "teachers", name: "Преподаватели", icon: Users },
       ];
   return (
     <div className="app">
@@ -477,7 +481,9 @@ export default function App() {
                         ? "Сеансы и отчёты"
                         : page === "devices"
                           ? "Компьютеры аудитории"
-                          : "Правила контроля"}
+                          : page === "teachers"
+                            ? "Преподаватели"
+                            : "Правила контроля"}
               </h1>
               <p>
                 {["room", "blocked"].includes(page)
@@ -490,7 +496,9 @@ export default function App() {
                       ? "Результаты контроля, решения и записи каждого сеанса."
                       : page === "devices"
                         ? "Здесь только компьютеры с работающим приложением Qorgau."
-                        : "Отдельные счётчики направлений. Контекст вместо автоматических обвинений."}
+                        : page === "teachers"
+                          ? "Лица преподавателей для подтверждения на рабочем месте."
+                          : "Отдельные счётчики направлений. Контекст вместо автоматических обвинений."}
               </p>
             </div>
             {!sessionActive &&
@@ -749,6 +757,16 @@ export default function App() {
           {page === "devices" && (
             <>
               <div className="notice">
+                <Download size={18} />
+                <span>
+                  Для работы без кабинета и подключения к серверу:{" "}
+                  <a href="/api/student/download-offline">
+                    скачать Qorgau Offline
+                  </a>
+                  . Настройка и управление выполняются на компьютере.
+                </span>
+              </div>
+              <div className="notice">
                 <Monitor size={18} />
                 <span>
                   Студент устанавливает Qorgau или открывает EXE. Компьютер
@@ -822,6 +840,7 @@ export default function App() {
               </p>
             </>
           )}
+          {page === "teachers" && <TeacherFaces />}
           {page === "rules" && (
             <>
               <div className="notice">
@@ -1644,32 +1663,9 @@ function EventReview({
           для проверки; оно не является доказательством нарушения само по себе.
         </p>
         <p className="fine">
-          Записи завершённых сеансов хранятся 7 дней.
-          {e.retain_until
-            ? ` Срок продлён до ${new Date(e.retain_until * 1000).toLocaleDateString("ru")}.`
-            : ""}
+          Видео автоматически удаляется через 2 часа после загрузки. Журнал
+          событий и решения сохраняются.
         </p>
-        <button
-          className="btn"
-          disabled={busy || !reason.trim()}
-          onClick={async () => {
-            setBusy(true);
-            try {
-              await api(`/events/${e.id}/retain`, {
-                days: 7,
-                reason: reason.trim(),
-              });
-              await onUpdate();
-              notify("Запись сохранится ещё минимум 7 дней");
-            } catch (error) {
-              notify((error as Error).message);
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          Продлить хранение на 7 дней
-        </button>
         <label>
           Комментарий к решению
           <textarea

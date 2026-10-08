@@ -66,6 +66,8 @@ def test_late_ack_for_previous_exposure_cannot_authorize_retry(monkeypatch):
     harness.sample_policy = lambda row: None
 
     def deliver_old_ack():
+        if harness.current == 18:
+            harness.stop.set()
         if harness.current == 9:
             harness.allow_ack = False
             # Freshly queued, but identifies the PREVIOUS presentation of point0.
@@ -73,8 +75,9 @@ def test_late_ack_for_previous_exposure_cannot_authorize_retry(monkeypatch):
 
     harness.on_read = deliver_old_ack
     result = harness.run()
-    assert result['error'] == 'SCREEN_TARGET_NOT_PRESENTED'
-    assert [row[0] for row in harness.targets] == [0, 9]
+    assert result['error'] == 'SCREEN_CALIBRATION_CANCELLED'
+    assert result['capture']['targets']['fit_center']['last_error'] == 'SCREEN_TARGET_NOT_PRESENTED'
+    assert [row[0] for row in harness.targets] == [0, 9, 18]
     assert all(token == 0 for token, _, _ in harness.sample_calls)
     assert not harness.installs
 

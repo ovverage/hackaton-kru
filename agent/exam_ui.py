@@ -9,6 +9,8 @@ from pathlib import Path
 from PySide6.QtCore import QObject, QThread, QTimer, Qt, Signal
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
+    QComboBox,
     QDialog,
     QFileDialog,
     QHBoxLayout,
@@ -69,6 +71,49 @@ def gaze_warning_text(snap):
         return instruction
     prefix = "Предварительная оценка: взгляд" if gaze.get("gaze_observation_uncertain", True) else "Взгляд"
     return f"{prefix} {direction} (по изображению камеры)\n{instruction}"
+
+
+def head_warning_active(snap):
+    gaze = snap.get("gaze_diagnostics") or {}
+    return bool(
+        snap["state"]["lifecycle"] == "RUNNING"
+        and snap["state"]["access"] == "OPEN"
+        and snap.get("camera") and not snap.get("camera_fault")
+        and not snap.get("recognition_paused")
+        and gaze.get("head_reference_ready")
+        and gaze.get("head_tracking_status") == "tracked"
+        and (gaze.get("head_warning") or gaze.get("head_extreme"))
+    )
+
+
+def head_warning_text(snap):
+    gaze = snap.get("gaze_diagnostics") or {}
+    direction = {"LEFT": "влево", "RIGHT": "вправо", "UP": "вверх", "DOWN": "вниз"}.get(
+        gaze.get("head_direction"), "в сторону"
+    )
+    prefix = "Сильный поворот головы" if gaze.get("head_extreme") else "Поворот головы"
+    return f"{prefix} {direction} (по изображению камеры)\nПовернитесь к монитору"
+
+
+class WarningDisplayHold:
+    """One-second UI persistence; observations and rule timers are never changed."""
+
+    def __init__(self):
+        self.parts = {}
+
+    def update(self, snap, now):
+        if (snap["state"]["lifecycle"] != "RUNNING"
+                or snap["state"]["access"] != "OPEN"
+                or not snap.get("camera") or snap.get("camera_fault")
+                or snap.get("recognition_paused")):
+            self.parts.clear()
+            return ""
+        if gaze_warning_active(snap):
+            self.parts['gaze'] = (gaze_warning_text(snap), now + 1.0)
+        if head_warning_active(snap):
+            self.parts['head'] = (head_warning_text(snap), now + 1.0)
+        return "\n".join(self.parts[kind][0] for kind in ('gaze', 'head')
+                         if kind in self.parts and now < self.parts[kind][1])
 
 
 def calibrated_exam_screen(camera, screens):
@@ -186,6 +231,24 @@ class UnlockWorker(QThread):
             self.password = ""
 
 
+class FaceUnlockWorker(QThread):
+    done = Signal(str)
+    progress = Signal(str)
+
+    def __init__(self, agent, parent):
+        super().__init__(parent)
+        self.agent = agent
+
+    def run(self):
+        try:
+            self.agent.teacher_face_unlock(progress=self.progress.emit)
+            self.done.emit("")
+        except ValueError as error:
+            self.done.emit(str(error))
+        except Exception:
+            self.done.emit("Не удалось проверить лицо преподавателя. Используйте пароль.")
+
+
 class LockScreen(QWidget):
     def __init__(self, agent):
         super().__init__()
@@ -228,6 +291,9 @@ class LockScreen(QWidget):
         self.unlock.clicked.connect(self.request_unlock)
         self.password.returnPressed.connect(self.request_unlock)
         form.addWidget(self.unlock)
+        self.face_unlock = QPushButton("Разблокировать по лицу преподавателя")
+        self.face_unlock.clicked.connect(self.request_face_unlock)
+        form.addWidget(self.face_unlock)
         self.finish = QPushButton("Завершить контроль · пароль преподавателя")
         self.finish.clicked.connect(lambda: self.request_unlock("END_AND_RELEASE"))
         form.addWidget(self.finish)
@@ -263,6 +329,7 @@ class LockScreen(QWidget):
             )
         )
         self.form.setVisible(locked)
+        self.face_unlock.setEnabled(not snap.get("teacher_face_scan") and not (self.worker and self.worker.isRunning()))
         self.recover.setVisible(locked and snap["state"].get("reason") in (
             "AGENT_RESTARTED", "CAMERA_UNAVAILABLE", "CAMERA_FROZEN", "DISPLAY_CHANGED"
         ))
@@ -340,14 +407,29 @@ class LockScreen(QWidget):
             self.feedback.setText("Введите пароль преподавателя")
             return
         self.unlock.setEnabled(False)
+        self.face_unlock.setEnabled(False)
         self.finish.setEnabled(False)
         self.feedback.setText("Проверяем пароль и актуальную блокировку…")
         self.worker = UnlockWorker(self.agent, password, self, action)
         self.worker.done.connect(self.unlock_done)
         self.worker.start()
 
+    def request_face_unlock(self):
+        if self.worker and self.worker.isRunning():
+            return
+        self.password.clear()
+        self.unlock.setEnabled(False)
+        self.face_unlock.setEnabled(False)
+        self.finish.setEnabled(False)
+        self.feedback.setText("Преподаватель: посмотрите в камеру и следуйте подсказкам проверки лица.")
+        self.worker = FaceUnlockWorker(self.agent, self)
+        self.worker.progress.connect(self.feedback.setText)
+        self.worker.done.connect(self.unlock_done)
+        self.worker.start()
+
     def unlock_done(self, error):
         self.unlock.setEnabled(True)
+        self.face_unlock.setEnabled(True)
         self.finish.setEnabled(True)
         self.feedback.setText(error or "Преподаватель разрешил продолжить")
 
@@ -372,6 +454,8 @@ class TargetPicker(QDialog):
         )
         self.items = QListWidget()
         layout.addWidget(self.items)
+        self.feedback = text("", 12)
+        layout.addWidget(self.feedback)
         row = QHBoxLayout()
         refresh = QPushButton("Обновить окна")
         refresh.clicked.connect(self.refresh)
@@ -412,6 +496,9 @@ class TargetPicker(QDialog):
                 "opera.exe",
                 "brave.exe",
             }
+            if browser and getattr(self.agent, "mode", "online") == "offline":
+                self.feedback.setText("Для Chrome / Edge выберите отдельную вкладку кнопкой «Выбрать вкладку» в главном окне.")
+                return
             self.selected = {
                 "id": "primary-window",
                 "name": "Главное окно: " + w.title[:100],
@@ -447,6 +534,114 @@ class TargetPicker(QDialog):
             self.accept()
 
 
+class BrowserTabPicker(QDialog):
+    """Use the extension's actual tab roster; window titles never impersonate tabs."""
+
+    def __init__(self, agent, parent):
+        super().__init__(parent)
+        self.agent, self.selected, self.tabs = agent, None, []
+        self.setWindowTitle("Выберите вкладку Chrome / Edge")
+        self.resize(780, 480)
+        layout = QVBoxLayout(self)
+        layout.addWidget(text("Выберите отдельную вкладку из подключённого браузера.", 18))
+        self.items = QListWidget()
+        layout.addWidget(self.items)
+        self.status = text("", 12)
+        layout.addWidget(self.status)
+        buttons = QHBoxLayout()
+        refresh = QPushButton("Обновить вкладки")
+        refresh.clicked.connect(self.refresh)
+        buttons.addWidget(refresh)
+        select = QPushButton("Использовать вкладку")
+        select.clicked.connect(self.choose)
+        buttons.addWidget(select)
+        layout.addLayout(buttons)
+        self.extension_help = text(
+            "Для списка вкладок требуется расширение Qorgau и привязка браузера к приложению. "
+            "Откройте chrome://extensions или edge://extensions, включите режим разработчика "
+            "и загрузите папку extension из комплекта Qorgau.", 12,
+        )
+        layout.addWidget(self.extension_help)
+        folder = QPushButton("Открыть папку расширения")
+        folder.clicked.connect(self.open_extension_folder)
+        layout.addWidget(folder)
+        binding = QPushButton("Подключить расширение к Qorgau")
+        binding.clicked.connect(self.connect_extension)
+        layout.addWidget(binding)
+        self.refresh()
+
+    def refresh(self):
+        self.items.clear()
+        self.tabs = []
+        try:
+            self.tabs = list(self.agent.available_browser_tabs())
+        except (OSError, ValueError):
+            self.status.setText("Не удалось получить вкладки. Проверьте подключение расширения и обновите список.")
+            return
+        for tab in self.tabs:
+            self.items.addItem(f"{tab.get('title') or tab.get('name', 'Вкладка')}\n{tab.get('url', '')}")
+        self.status.setText("" if self.tabs else "Подключённых вкладок пока нет. Окна приложений выбираются отдельно.")
+
+    def choose(self):
+        row = self.items.currentRow()
+        if 0 <= row < len(self.tabs):
+            self.selected = dict(self.tabs[row])
+            self.accept()
+
+    def open_extension_folder(self):
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        try:
+            folder = Path(self.agent.extension_folder())
+            if not folder.is_dir():
+                raise ValueError("EXTENSION_FOLDER_MISSING")
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
+        except (OSError, ValueError):
+            self.status.setText("Папка расширения отсутствует в комплекте. Повторно скачайте полную сборку.")
+
+    def connect_extension(self):
+        dialog = BrowserBindingDialog(self.agent, self)
+        if dialog.exec():
+            self.refresh()
+
+
+class BrowserBindingDialog(QDialog):
+    def __init__(self, agent, parent):
+        super().__init__(parent)
+        self.agent = agent
+        self.setWindowTitle("Подключение расширения Qorgau")
+        self.resize(620, 450)
+        layout = QVBoxLayout(self)
+        layout.addWidget(text("Откройте настройки расширения Qorgau и скопируйте показанные ID расширения и ID профиля.", 16))
+        self.browser = QComboBox()
+        self.browser.addItem("Google Chrome", "chrome")
+        self.browser.addItem("Microsoft Edge", "edge")
+        layout.addWidget(self.browser)
+        layout.addWidget(text("ID расширения", 12))
+        self.extension_id = QLineEdit()
+        self.extension_id.setMaxLength(32)
+        layout.addWidget(self.extension_id)
+        layout.addWidget(text("ID профиля браузера", 12))
+        self.browser_instance = QLineEdit()
+        self.browser_instance.setMaxLength(36)
+        layout.addWidget(self.browser_instance)
+        self.replace = QCheckBox("Заменить существующую привязку этого браузера")
+        layout.addWidget(self.replace)
+        self.status = text("", 12)
+        layout.addWidget(self.status)
+        button = QPushButton("Подключить")
+        button.clicked.connect(self.bind)
+        layout.addWidget(button)
+
+    def bind(self):
+        try:
+            self.agent.bind_browser(self.extension_id.text().strip(), self.browser_instance.text().strip(),
+                                    self.browser.currentData(), self.replace.isChecked())
+            self.accept()
+        except (OSError, ValueError) as error:
+            self.status.setText(str(error))
+
+
 class ExamController(QObject):
     def __init__(self, agent, parent):
         super().__init__(parent)
@@ -454,11 +649,15 @@ class ExamController(QObject):
         self.guard = None
         self.browser = None
         self.browser_exam = None
-        self.completed_browsers = []
+        self.warning_display = WarningDisplayHold()
         self.surfaces = []
         self.gaze_warnings = []
         self.active_exam = None
         self.displays = 0
+        self.preparation = None
+        self.environment_timer = QTimer(self)
+        self.environment_timer.timeout.connect(self.poll_environment_preparation)
+        self.browser_warmup = None
         agent.targets.insert(
             0,
             {
@@ -487,9 +686,161 @@ class ExamController(QObject):
         self.timer.start(100)
         QApplication.instance().aboutToQuit.connect(self.release)
 
+    def warmup_browser(self):
+        """Initialize Chromium on a blank hidden page before exam guards exist."""
+        if self.browser_warmup is not None or self.agent.engine.state.lifecycle == "RUNNING":
+            return
+        from PySide6.QtWebEngineWidgets import QWebEngineView
+        self.browser_warmup = QWebEngineView(self.parent())
+        self.browser_warmup.hide()
+        self.browser_warmup.setHtml("<!doctype html><html><title>Qorgau</title></html>")
+
+    def preparation_screen(self):
+        screens = QApplication.screens()
+        pending = self.agent.snapshot().get("start_pending") or {}
+        hwnd = pending.get("target_hwnd")
+        if hwnd and self.guard:
+            monitor = self.guard.monitor_handle(hwnd)
+            for screen in screens:
+                try:
+                    if int(screen.nativeInterface().handle()) == monitor:
+                        return screen
+                except (AttributeError, TypeError, ValueError, RuntimeError):
+                    continue
+            raise ValueError("TARGET_SCREEN_UNKNOWN")
+        return self.parent().screen() or QApplication.primaryScreen()
+
+    def focus_environment(self):
+        """Restore the exact running target; never relaunch or replace it."""
+        snap = self.agent.snapshot()
+        if snap['state']['lifecycle'] != 'RUNNING' or snap['state']['access'] != 'OPEN':
+            return
+        if self.browser is not None:
+            self.browser.showFullScreen()
+            self.browser.raise_()
+            self.browser.activateWindow()
+        else:
+            selected = self.agent.guard_target or {}
+            if not selected.get('desktop'):
+                from .windows_guard import WindowTarget
+                if self.guard is None or not selected.get('hwnd'):
+                    raise ValueError('TARGET_CLOSED')
+                target = WindowTarget(**selected)
+                if not self.guard.valid(target):
+                    raise ValueError('TARGET_CLOSED')
+                self.guard.u.ShowWindow(target.hwnd, 9)
+                self.guard.u.SetForegroundWindow(target.hwnd)
+        self.parent().hide()
+
+    def prepare_environment(self, token, on_ready, on_error):
+        self.cancel_environment_preparation()
+        self.preparation = {"token": token, "on_ready": on_ready, "on_error": on_error,
+                            "started": time.monotonic(), "focused_since": None, "loaded": True}
+        selected = self.agent.guard_target or {}
+        if selected.get("builtin_url"):
+            from .exam_browser import ExamBrowser
+            self.preparation["loaded"] = None
+            self.browser = ExamBrowser(selected["builtin_url"], self.browser_attempt)
+            self.browser.teacher_button.setEnabled(False)
+            self.browser_exam = self.agent.snapshot().get("exam_id")
+            self.browser.loadFinished.connect(lambda ok: self.browser_prepared(token, ok))
+            place_exam_browser(self.browser, calibrated_exam_screen(getattr(self.agent, "camera", None), QApplication.screens()))
+            if self.guard:
+                target = self.guard.info(int(self.browser.winId()))
+                if target is None:
+                    self.fail_environment_preparation("Не удалось подготовить окно браузера.")
+                    return
+                self.agent.guard_target = target.public()
+        elif selected.get("hwnd") and self.guard:
+            from .windows_guard import WindowTarget
+            target = WindowTarget(**selected)
+            if not self.guard.valid(target):
+                self.fail_environment_preparation("Выбранное окно закрыто. Выберите его заново.")
+                return
+            self.guard.u.ShowWindow(target.hwnd, 9)
+            self.guard.u.SetForegroundWindow(target.hwnd)
+        self.parent().hide()
+        self.environment_timer.start(100)
+
+    def browser_attempt(self, reason):
+        if self.preparation is not None:
+            self.fail_environment_preparation("Страница пытается открыть адрес вне выбранного сайта.")
+        else:
+            self.agent.security_event(reason)
+
+    def browser_prepared(self, token, ok):
+        if self.preparation is not None and self.preparation["token"] == token:
+            self.preparation["loaded"] = bool(ok)
+
+    def poll_environment_preparation(self):
+        preparation = self.preparation
+        if preparation is None:
+            return
+        pending = self.agent.snapshot().get("start_pending") or {}
+        if pending.get("id") != preparation["token"]:
+            self.cancel_environment_preparation()
+            return
+        now = time.monotonic()
+        if now - preparation["started"] >= 120:
+            self.fail_environment_preparation("Подготовка окна не завершена. Закройте системные диалоги и повторите начало.")
+            return
+        if preparation["loaded"] is False:
+            self.fail_environment_preparation("Страница теста не загрузилась. Проверьте подключение и повторите начало.")
+            return
+        selected = self.agent.guard_target or {}
+        if self.guard and selected.get("hwnd"):
+            from .windows_guard import WindowTarget
+            if not self.guard.valid(WindowTarget(**selected)):
+                self.fail_environment_preparation("Выбранное окно закрыто. Выберите его заново.")
+                return
+            focused = int(self.guard.u.GetAncestor(self.guard.u.GetForegroundWindow(), 2)) == selected["hwnd"]
+        elif selected.get("launched_pid") and self.guard:
+            target = next((w for w in self.guard.windows() if w.pid == selected["launched_pid"]
+                           and w.executable.casefold() == selected.get("executable", "").casefold()), None)
+            if target is None:
+                return
+            self.agent.guard_target = target.public()
+            self.guard.u.ShowWindow(target.hwnd, 9)
+            self.guard.u.SetForegroundWindow(target.hwnd)
+            return
+        else:
+            focused = self.browser is None or self.browser.isActiveWindow()
+        if not focused or preparation["loaded"] is None:
+            preparation["focused_since"] = None
+            return
+        if preparation["focused_since"] is None:
+            preparation["focused_since"] = now
+        if now - preparation["focused_since"] >= 1.0:
+            if not self.check_exam_monitor(QApplication.screens()):
+                self.fail_environment_preparation("Окно теста находится на другом экране. Повторите начало и настройку взгляда на экране теста.")
+                return
+            self.preparation = None
+            self.environment_timer.stop()
+            preparation["on_ready"]()
+
+    def fail_environment_preparation(self, message):
+        callback = self.preparation["on_error"] if self.preparation is not None else None
+        self.cancel_environment_preparation()
+        if callback:
+            callback(message)
+
+    def cancel_environment_preparation(self):
+        if self.preparation is None and (self.browser is None or self.agent.engine.state.lifecycle == "RUNNING"):
+            return
+        self.preparation = None
+        self.environment_timer.stop()
+        if self.browser is not None:
+            self.browser.released = True
+            self.browser.close()
+            self.browser.deleteLater()
+            self.browser = None
+            self.browser_exam = None
+
     def release(self):
+        had_exam = bool(self.active_exam or self.browser)
         if self.guard:
             self.guard.stop()
+        self.cancel_environment_preparation()
         self.agent.capabilities["guard_active"] = False
         for surface in self.surfaces:
             surface.hide()
@@ -497,12 +848,17 @@ class ExamController(QObject):
             warning.hide()
         # Keep surfaces alive while a password request finishes.
         self.active_exam = None
+        self.warning_display = WarningDisplayHold()
         if self.browser:
             self.browser.released = True
-            # Keep answers visible after the exam. Closing remains the user's choice.
-            self.completed_browsers.append(self.browser)
+            self.browser.close()
+            self.browser.deleteLater()
             self.browser = None
             self.browser_exam = None
+        if had_exam and not getattr(self.parent(), "shutting_down", False):
+            self.parent().showFullScreen()
+            self.parent().raise_()
+            self.parent().activateWindow()
 
     def invalidate_exam_monitor(self):
         camera = getattr(self.agent, 'camera', None)
@@ -562,8 +918,14 @@ class ExamController(QObject):
     def tick(self):
         snap = self.agent.snapshot()
         screens = QApplication.screens()
-        if self.browser and snap["state"]["lifecycle"] == "COMPLETED":
+        if (self.active_exam or (self.browser and not snap.get("start_pending"))) and snap["state"]["lifecycle"] == "COMPLETED":
             self.release()
+        if snap["state"]["lifecycle"] == "RUNNING" and not self.active_exam:
+            self.active_exam = snap["exam_id"]
+            self.displays = len(screens)
+            self.parent().hide()
+        if self.browser is not None and snap["state"]["lifecycle"] == "RUNNING":
+            self.browser.teacher_button.setEnabled(True)
         selected = self.agent.guard_target
         if (
             selected
@@ -588,11 +950,12 @@ class ExamController(QObject):
             snap = self.agent.snapshot()
         while len(self.gaze_warnings) < len(screens):
             self.gaze_warnings.append(GazeWarning())
-        warn_about_gaze = gaze_warning_active(snap)
+        warning_text = self.warning_display.update(snap, time.monotonic())
+        warn_about_gaze = bool(warning_text)
         for i, screen in enumerate(screens):
             warning = self.gaze_warnings[i]
             if warn_about_gaze:
-                warning.message.setText(gaze_warning_text(snap))
+                warning.message.setText(warning_text)
                 warning.place(screen)
                 warning.show()
                 warning.raise_()
@@ -600,9 +963,11 @@ class ExamController(QObject):
                 warning.hide()
         for extra in self.gaze_warnings[len(screens) :]:
             extra.hide()
-        if snap["state"]["lifecycle"] != "RUNNING" or not snap["guarded"]:
+        if snap["state"]["lifecycle"] != "RUNNING":
             if self.active_exam:
                 self.release()
+            return
+        if not snap["guarded"]:
             return
         desktop = bool((self.agent.guard_target or {}).get("desktop"))
         locked = snap["state"]["access"] == "LOCKED"
@@ -611,7 +976,7 @@ class ExamController(QObject):
             self.displays = len(screens)
             self.parent().hide()
         last_sync = self.agent.last_synced_at or self.agent.guard_started_at
-        if last_sync is None or time.monotonic() - last_sync > 10:
+        if getattr(self.agent, "mode", "online") != "offline" and (last_sync is None or time.monotonic() - last_sync > 10):
             self.agent.security_event("SERVER_UNAVAILABLE")
             snap = self.agent.snapshot()
         if len(screens) != self.displays:

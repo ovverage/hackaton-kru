@@ -27,3 +27,12 @@ Qorgau использует сторонние библиотеки и пред�
 Цитирование исследовательской модели: Petr Kellnhofer, Adrià Recasens, Simon Stent, Wojciech Matusik, Antonio Torralba. **Gaze360: Physically Unconstrained Gaze Estimation in the Wild.** ICCV, 2019. https://doi.org/10.1109/ICCV.2019.00701. Xucong Zhang, Yusuke Sugano, Mario Fritz, Andreas Bulling. **It’s Written All Over Your Face: Full-Face Appearance-Based Gaze Estimation.** CVPR Workshops, 2017, pp. 2299–2308. https://doi.org/10.1109/CVPRW.2017.284.
 
 Исходники версий и команды воспроизведения доступны в Git-репозитории https://github.com/ovverage/hackaton-kru. Точный тег и SHA исходников указываются в соответствующем релизе. Исходные частные фотографии, видео, признаки лиц, токены и пароли не входят в Git и публичные артефакты. Отчёты об обучении и происхождении весов: `training/README.md`, `docs/MODEL_CARD_2026_10_06.md` и `model-manifest.json`.
+
+## Teacher identity components (0.5.0)
+
+Teacher matching uses OpenCV Zoo YuNet (MIT) and SFace (Apache-2.0), pinned to
+commit `47534e27c9851bb1128ccc0102f1145e27f23f98`. Exact sources and SHA-256 values
+are in `teacher-face-manifest.json`; unmodified upstream license texts ship in
+`models/teacher-faces/YuNet-LICENSE.txt` and `models/teacher-faces/SFace-LICENSE.txt`.
+These identity components are separate from the trained gaze/phone/face-counting
+models and do not establish a biometric accuracy or anti-spoofing guarantee.

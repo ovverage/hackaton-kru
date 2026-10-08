@@ -366,6 +366,16 @@ def run(output):
               "model_files": {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in assets},
               "h264_encode_decode": True, "latest_frame_capture": check_frame_transport(),
               "phone_cpu_median_ms": round(statistics.median(times[2:]) * 1000, 2)}
+    from .resources import resource_root
+    from .profile import read_object
+    from shared.teacher_faces import TeacherFaceEngine
+    identity = TeacherFaceEngine(resource_root() / 'models/teacher-faces')
+    assert identity.detect(frame) == []
+    report['teacher_face_model_files'] = {
+        entry['file']: entry['sha256'] for entry in
+        json.loads((resource_root() / 'teacher-face-manifest.json').read_text(encoding='utf-8'))['files']}
+    report['mode'] = read_object(resource_root() / 'build-profile.json').get('mode', 'online')
+    report['teacher_face_runtime'] = True
     if public_gaze_check:
         report['public_gaze'] = public_gaze_check
     Path(output).parent.mkdir(parents=True, exist_ok=True)

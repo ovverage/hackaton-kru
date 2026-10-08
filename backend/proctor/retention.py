@@ -1,11 +1,16 @@
-"""Expire completed-session video only, retaining event/review/audit metadata."""
+"""Delete server video two hours after upload, retaining event/review/audit metadata."""
 import argparse
+import json
 from pathlib import Path
 import time
 from .db import Database, decode, encode
 
 
-def expire_media(base, days=7, now=None, apply=False):
+MEDIA_TTL_SECONDS = 2 * 60 * 60
+
+
+def expire_media(base, days=None, now=None, apply=False):
+    # days is retained solely for old maintenance callers; it cannot extend the policy.
     base = Path(base).resolve()
     media_root = (base / "media").resolve()
     database = base / "proctor.sqlite3"
@@ -15,13 +20,12 @@ def expire_media(base, days=7, now=None, apply=False):
     now = time.time() if now is None else now
     removed = []
     with db.connect(write=apply) as c:
-        rows = c.execute("SELECT media.*,events.body AS event_body,exams.body AS exam_body FROM media JOIN events ON media.event_id=events.id JOIN exams ON events.exam_id=exams.id").fetchall()
+        rows = c.execute("SELECT media.*,events.body AS event_body,media_lifetime.expires_at FROM media JOIN events ON media.event_id=events.id LEFT JOIN media_lifetime ON media_lifetime.id=media.id").fetchall()
         for row in rows:
-            import json
-            exam = json.loads(row["exam_body"])
             event = json.loads(row["event_body"])
-            expires = max(event.get("retain_until", 0), event["created_at"] + days * 86400)
-            if exam.get("status") != "COMPLETED" or expires > now:
+            # Legacy rows have no upload clock: use the event time, never reset retention.
+            expires = row["expires_at"] if row["expires_at"] is not None else event["created_at"] + MEDIA_TTL_SECONDS
+            if expires > now:
                 continue
             path = Path(row["path"]).resolve()
             if path.parent != media_root:
@@ -35,6 +39,7 @@ def expire_media(base, days=7, now=None, apply=False):
                 fresh["media_expired_at"] = now
                 c.execute("UPDATE events SET body=? WHERE id=?", (encode(fresh), row["event_id"]))
                 c.execute("DELETE FROM media WHERE id=?", (row["id"],))
+                c.execute("DELETE FROM media_lifetime WHERE id=?", (row["id"],))
                 c.execute("INSERT INTO audit(at,actor,action,body) VALUES(?,?,?,?)", (now, "retention", "MEDIA_EXPIRED", encode({"event_id": row["event_id"], "media_id": row["id"]})))
     return removed
 
@@ -42,11 +47,9 @@ def expire_media(base, days=7, now=None, apply=False):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", type=Path, required=True)
-    parser.add_argument("--days", type=int, default=7)
+    parser.add_argument("--days", type=int, help="Deprecated; video retention is always two hours after upload")
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
-    if args.days < 1:
-        parser.error("Retention must be at least one day")
     print({"apply": args.apply, "media_ids": expire_media(args.data, args.days, apply=args.apply)})
 
 

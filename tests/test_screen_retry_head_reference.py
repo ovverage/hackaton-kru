@@ -38,7 +38,7 @@ def test_late_center_gaze_retry_preserves_original_known_head_reference(monkeypa
     harness.sample_policy = center_wrong_once
     result = harness.run()
     assert result['ready']
-    assert [token for token, *_ in harness.targets] == [*range(9), 9]
+    assert [token for token, *_ in harness.targets] == [*range(9), 9, 14, 15, 16, 17]
     profile, center, head_samples, _ = harness.installs[0]
     assert profile.ready and all(row['presentation'] == 9 for row in center)
     assert all(sample is not None for sample in head_samples)
@@ -48,8 +48,8 @@ def test_late_center_gaze_retry_preserves_original_known_head_reference(monkeypa
     assert rotation_distance(observer.reference, rotation(-11)) <= 12
     assert result['capture']['targets']['fit_center']['attempts'] == 2
     assert result['capture']['targets']['fit_center']['last_error'] == 'SCREEN_SAMPLES_UNSTABLE_IN_SCREEN_SPACE'
-    assert all(stats['attempts'] == 1 for key, stats in result['capture']['targets'].items()
-               if key != 'fit_center')
+    assert all(stats['attempts'] == (2 if key.startswith('validation_') else 1)
+               for key, stats in result['capture']['targets'].items() if key != 'fit_center')
 
 
 def test_late_available_pose_does_not_create_reference_after_original_optional_pose(monkeypatch):
@@ -68,7 +68,7 @@ def test_late_available_pose_does_not_create_reference_after_original_optional_p
     harness.sample_policy = initially_optional_pose
     result = harness.run()
     assert result['ready']
-    assert [token for token, *_ in harness.targets] == [*range(9), 9]
+    assert [token for token, *_ in harness.targets] == [*range(9), 9, 14, 15, 16, 17]
     assert result['capture']['targets']['fit_center']['last_error'] == 'SCREEN_SAMPLES_UNSTABLE_IN_SCREEN_SPACE'
     _, _, head_samples, _ = harness.installs[0]
     assert head_samples and all(sample is None for sample in head_samples)

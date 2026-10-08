@@ -124,7 +124,7 @@
       "settling_seconds": 0.8,
       "target_retry": "Automatically replace only the failed complete point window until success or Esc; preserve other windows",
       "retry_limit": null,
-      "global_geometry_error": "Specific stop when no single failed target can be identified",
+      "global_geometry_error": "Automatic coherent remeasurement: corners plus fresh checks for insufficient span; all nine points for geometry or fit errors",
       "calibration_diagnostics": "Last five aggregate local attempts; no images or raw gaze vectors",
       "capture_transport": "Independent latest-frame producer; original capture timestamp; no FIFO backlog",
       "inference_schedule": "All existing models run on every analyzed frame, including point calibration",

@@ -14,6 +14,8 @@ export function preparationIssue(
   const c = device.capabilities;
   if (!device.online) return "Нет связи с компьютером";
   if (!c.window_guard) return "Нужен Windows-агент с защитой окна";
+  // Current agents queue camera, calibration and target selection on the workstation.
+  if (c.interactive_start) return null;
   if (!c.camera || c.camera_fault) return "Подготовьте камеру в Qorgau";
   if (!c.recording) return "Запись видео не готова";
   if (environment === "BROWSER") {

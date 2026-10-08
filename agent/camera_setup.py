@@ -216,7 +216,7 @@ class CalibrationWorker(QThread):
 
 
 class CameraSetup(QDialog):
-    def __init__(self, agent, parent=None, *, calibrate=False, index=None):
+    def __init__(self, agent, parent=None, *, calibrate=False, index=None, screen=None):
         super().__init__(parent)
         self.agent = agent
         self.calibrate = calibrate
@@ -227,6 +227,7 @@ class CameraSetup(QDialog):
         self.public_reference = False
         self.screen_reference = False
         self.screen_dialog = None
+        self.calibration_screen = screen
         self._handled_worker = None
         self._preview_sequence = None
         self.preview_timer = QTimer(self)
@@ -446,7 +447,7 @@ class CameraSetup(QDialog):
         self.preview_ready = True
         if self.screen_reference:
             self.instruction.setText('Следите глазами за 9 точками: по 3 секунды на каждую, первый проход — примерно 27 секунд.')
-            self.feedback.setText('Проблемная точка повторится автоматически. Пройденные точки сохраняются. Esc — отмена.')
+            self.feedback.setText('Неудачные измерения повторятся автоматически; перезапуск не нужен. Esc — отмена.')
             self.start_button.setText('Настроить по точкам')
             self.start_button.setEnabled(True)
             QTimer.singleShot(0, self.open_screen_calibration)
@@ -472,7 +473,12 @@ class CameraSetup(QDialog):
         from .screen_calibration import ScreenCalibrationDialog
         if self.screen_dialog is not None or self.cancelled or not self.worker.isRunning():
             return
-        dialog = self.screen_dialog = ScreenCalibrationDialog(self)
+        try:
+            dialog = self.screen_dialog = ScreenCalibrationDialog(self, screen=self.calibration_screen)
+        except RuntimeError as error:
+            self.worker.error = str(error)
+            self.reject()
+            return
         dialog.started.connect(self.worker.screen_session.start)
         dialog.target_presented.connect(self.worker.screen_session.presented)
         dialog.cancelled.connect(self.reject)

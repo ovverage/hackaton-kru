@@ -96,12 +96,17 @@ def test_visible_overlay_updates_its_text_when_direction_changes(running):
     {"gaze_observed_direction": "UNKNOWN"},
     {"gaze_observed_direction": None},
 ])
-def test_overlay_hides_for_stale_missing_or_centre_observation(running, change):
+def test_overlay_hides_after_short_hold_for_stale_missing_or_centre_observation(running, change, monkeypatch):
     agent, controller = running
+    clock = [__import__('time').monotonic()]
+    monkeypatch.setattr('agent.exam_ui.time.monotonic', lambda: clock[0])
     controller.tick()
     assert all(w.isVisible() for w in controller.gaze_warnings)
     # An old strict result must not override a missing fresh public observation.
     agent.gaze_diagnostics.update(direction="RIGHT", attention_away=True, **change)
+    controller.tick()
+    assert all(w.isVisible() for w in controller.gaze_warnings)
+    clock[0] += 1.01
     controller.tick()
     assert not any(w.isVisible() for w in controller.gaze_warnings)
 
@@ -133,8 +138,10 @@ def test_release_hides_overlay(running):
     assert not any(w.isVisible() for w in controller.gaze_warnings)
 
 
-def test_legacy_attention_keeps_original_banner_contract(running):
+def test_legacy_attention_keeps_original_banner_contract(running, monkeypatch):
     agent, controller = running
+    clock = [__import__('time').monotonic()]
+    monkeypatch.setattr('agent.exam_ui.time.monotonic', lambda: clock[0])
     agent.gaze_diagnostics = {
         "source": "legacy", "direction": "SCREEN", "reference_ready": True,
         "attention_away": True, "attention_direction": "LEFT",
@@ -143,5 +150,8 @@ def test_legacy_attention_keeps_original_banner_contract(running):
     assert all(w.isVisible() and w.message.text() == "Верните взгляд на монитор"
                for w in controller.gaze_warnings)
     agent.gaze_diagnostics.update(attention_away=False)
+    controller.tick()
+    assert all(w.isVisible() for w in controller.gaze_warnings)
+    clock[0] += 1.01
     controller.tick()
     assert not any(w.isVisible() for w in controller.gaze_warnings)

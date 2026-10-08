@@ -78,7 +78,7 @@ def test_native_browser_navigation_uses_exact_origin():
     assert len(reports) == 8
 
 
-def test_gaze_warning_is_also_visible_in_observe_mode(app, tmp_path):
+def test_gaze_warning_is_also_visible_in_observe_mode(app, tmp_path, monkeypatch):
     from PySide6.QtWidgets import QWidget
     from agent.exam_ui import ExamController
 
@@ -95,16 +95,21 @@ def test_gaze_warning_is_also_visible_in_observe_mode(app, tmp_path):
     controller = ExamController(agent, parent)
     controller.timer.stop()
     agent.engine.start()
+    clock = [__import__('time').monotonic()]
+    monkeypatch.setattr('agent.exam_ui.time.monotonic', lambda: clock[0])
     controller.tick()
     assert controller.gaze_warnings and all(w.isVisible() for w in controller.gaze_warnings)
     agent.gaze_diagnostics.update(attention_away=False, attention_direction=None)
+    controller.tick()
+    assert all(w.isVisible() for w in controller.gaze_warnings)
+    clock[0] += 1.01
     controller.tick()
     assert not any(w.isVisible() for w in controller.gaze_warnings)
     controller.release()
     agent.http.close()
 
 
-def test_desktop_overlay_only_during_lock_and_release_after_end(app, tmp_path):
+def test_desktop_overlay_only_during_lock_and_release_after_end(app, tmp_path, monkeypatch):
     from unittest.mock import Mock
     from PySide6.QtWidgets import QWidget
     from agent.exam_ui import ExamController
@@ -127,6 +132,8 @@ def test_desktop_overlay_only_during_lock_and_release_after_end(app, tmp_path):
     controller.guard = guard
     agent.engine.start()
     agent.last_synced_at = __import__('time').monotonic()
+    clock = [agent.last_synced_at]
+    monkeypatch.setattr('agent.exam_ui.time.monotonic', lambda: clock[0])
     agent.capabilities.update(camera=True, gaze=True)
     agent.gaze_diagnostics = {
         'direction': 'SCREEN', 'reference_ready': True,
@@ -137,6 +144,9 @@ def test_desktop_overlay_only_during_lock_and_release_after_end(app, tmp_path):
     assert controller.gaze_warnings and all(w.isVisible() for w in controller.gaze_warnings)
     assert all(w.message.text() == 'Верните взгляд на монитор' for w in controller.gaze_warnings)
     agent.gaze_diagnostics.update(attention_away=False, attention_direction=None)
+    controller.tick()
+    assert all(w.isVisible() for w in controller.gaze_warnings)
+    clock[0] += 1.01
     controller.tick()
     assert not any(w.isVisible() for w in controller.gaze_warnings)
     agent.engine.lock('PHONE_DETECTED')

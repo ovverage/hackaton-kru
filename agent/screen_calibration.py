@@ -62,7 +62,7 @@ class ScreenCalibrationDialog(QDialog):
     cancelled = Signal()
     invalidated = Signal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, *, screen=None):
         super().__init__(parent)
         self.setWindowTitle("Qorgau — настройка взгляда по экрану")
         self.setWindowFlags(
@@ -81,7 +81,10 @@ class ScreenCalibrationDialog(QDialog):
         self._screens = list(QApplication.screens())
         if not self._screens:
             raise RuntimeError("Нет доступного монитора для настройки взгляда")
-        initial = parent.screen() if parent is not None else QApplication.primaryScreen()
+        if screen is not None and screen not in self._screens:
+            raise RuntimeError("Выбранный монитор отключён. Выберите экран экзамена заново.")
+        initial = screen if screen is not None else (
+            parent.screen() if parent is not None else QApplication.primaryScreen())
         self._screen = initial if initial in self._screens else self._screens[0]
         self._signature = None
         self._active = False
@@ -125,8 +128,8 @@ class ScreenCalibrationDialog(QDialog):
             "Смотрите на появляющуюся точку, сохраняя обычное положение головы. "
             f"Каждая из {point_count} точек показывается {TARGET_VISIBLE_SECONDS:g} {duration_unit} — "
             f"первый проход займёт примерно {point_count * TARGET_VISIBLE_SECONDS:g} секунд. "
-            "Если точка не прошла проверку, она повторится автоматически; "
-            "пройденные точки сохранятся. Нажимать на точки не нужно. Esc — отмена.",
+            "Неудачные измерения повторятся автоматически. При необходимости приложение "
+            "заново уточнит границы экрана без перезапуска. Нажимать на точки не нужно. Esc — отмена.",
             self.panel,
         )
         self.instructions.setWordWrap(True)
@@ -136,6 +139,7 @@ class ScreenCalibrationDialog(QDialog):
             rect = screen.geometry()
             self.screen_selector.addItem(f"{screen.name()} — {rect.width()} × {rect.height()}")
         self.screen_selector.setCurrentIndex(self._screens.index(self._screen))
+        self.screen_selector.setEnabled(screen is None)
         self.screen_selector.currentIndexChanged.connect(self._select_screen)
         layout.addWidget(self.screen_selector)
         self.error_label = QLabel("", self.panel)
@@ -256,7 +260,7 @@ class ScreenCalibrationDialog(QDialog):
         retained = ""
         if self._target_attempt > 1:
             heading = f"Повтор точки {self._target_index + 1} · попытка {self._target_attempt}"
-            retained = "Пройденные точки сохранены.\n"
+            retained = "Повторное измерение идёт автоматически.\n"
         value = (
             f"{heading} · {timing}\n"
             f"{retained}"
