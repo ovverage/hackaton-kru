@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QComboBox,
     QScrollArea,
-    QSizePolicy,
     QStackedWidget,
     QSystemTrayIcon,
     QVBoxLayout,
@@ -34,17 +33,39 @@ from shared.bootstrap import default_bootstrap
 
 
 def label(text="", name="body", wrap=True):
-    widget = QLabel(text)
+    widget = WrappedLabel(text, wrap=wrap)
     widget.setObjectName(name)
-    widget.setWordWrap(wrap)
-    if wrap:
-        # Wrapped labels must keep their full height inside the resizable
-        # dashboard scroll area.  A vertical Preferred policy lets Qt squeeze
-        # them by a few pixels with some Linux font metrics, clipping the last
-        # line even though the page itself can scroll.
-        widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
     widget.setTextFormat(Qt.TextFormat.PlainText)
     return widget
+
+
+class WrappedLabel(QLabel):
+    """A label that cannot be compressed below its wrapped text height."""
+
+    def __init__(self, text="", *, wrap=True, parent=None):
+        super().__init__(parent)
+        self._wrapped_width = -1
+        self.setWordWrap(wrap)
+        self.setText(text)
+
+    def minimumSizeHint(self):
+        hint = super().minimumSizeHint()
+        if self.wordWrap():
+            required = self.heightForWidth(max(1, self.width()))
+            if required >= 0:
+                hint.setHeight(required)
+        return hint
+
+    def setText(self, text):
+        super().setText(text)
+        self._wrapped_width = -1
+        self.updateGeometry()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self.wordWrap() and event.size().width() != self._wrapped_width:
+            self._wrapped_width = event.size().width()
+            self.updateGeometry()
 
 
 def card():
