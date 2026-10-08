@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QMenu,
     QMessageBox,
     QPushButton,
@@ -33,39 +34,11 @@ from shared.bootstrap import default_bootstrap
 
 
 def label(text="", name="body", wrap=True):
-    widget = WrappedLabel(text, wrap=wrap)
+    widget = QLabel(text)
     widget.setObjectName(name)
+    widget.setWordWrap(wrap)
     widget.setTextFormat(Qt.TextFormat.PlainText)
     return widget
-
-
-class WrappedLabel(QLabel):
-    """A label that cannot be compressed below its wrapped text height."""
-
-    def __init__(self, text="", *, wrap=True, parent=None):
-        super().__init__(parent)
-        self._wrapped_width = -1
-        self.setWordWrap(wrap)
-        self.setText(text)
-
-    def minimumSizeHint(self):
-        hint = super().minimumSizeHint()
-        if self.wordWrap():
-            required = self.heightForWidth(max(1, self.width()))
-            if required >= 0:
-                hint.setHeight(required)
-        return hint
-
-    def setText(self, text):
-        super().setText(text)
-        self._wrapped_width = -1
-        self.updateGeometry()
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        if self.wordWrap() and event.size().width() != self._wrapped_width:
-            self._wrapped_width = event.size().width()
-            self.updateGeometry()
 
 
 def card():
@@ -328,6 +301,7 @@ class StudentWindow(QWidget):
     def build_dashboard(self):
         page = QWidget()
         layout = QVBoxLayout(page)
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
         layout.setContentsMargins(32, 28, 32, 28)
         layout.setSpacing(18)
         row = QHBoxLayout()
