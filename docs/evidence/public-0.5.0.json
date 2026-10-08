@@ -1,0 +1,485 @@
+{
+  "fetched_at": "2026-10-08T08:35:21.986535+00:00",
+  "status": "passed",
+  "version": "0.5.0",
+  "expected_commit": "c69d65c8bef018e36f3d0a5e9192d80c022ba567",
+  "expected_run": 37747065403,
+  "expected_tag": "v0.5.0",
+  "tls_verification": "normal certificate and hostname validation; no bypass",
+  "checks": {
+    "source_run_identity": true,
+    "source_run_succeeded": true,
+    "job_verify": true,
+    "job_windows": true,
+    "job_server-face": true,
+    "job_deploy": true,
+    "jobs_match_current_run_attempt": true,
+    "source_version": true,
+    "model_manifest_version": true,
+    "six_pinned_models": true,
+    "teacher_manifest_pinned": true,
+    "server_face_CI_linux_python314_actual_CPU_inference": true,
+    "ci_checksums_and_frozen_selftests": true,
+    "published_release": true,
+    "release_tag_exact_source_commit": true,
+    "unique_release_assets": true,
+    "required_release_assets": true,
+    "release_matches_CI:packaged-selftest.json": true,
+    "release_matches_CI:portable-selftest.json": true,
+    "release_matches_CI:offline-selftest.json": true,
+    "release_matches_CI:installer-selftest.json": true,
+    "release_matches_CI:plain-first-run.json": true,
+    "release_matches_CI:teacher-face-runtime.json": true,
+    "release_matches_CI:SHA256SUMS.txt": true,
+    "release_size:Qorgau-Offline.exe": true,
+    "release_digest:Qorgau-Offline.exe": true,
+    "offline_release_EXE_independent_SHA256": true,
+    "release_size:Qorgau-Student-Setup-0.5.0-x64.exe": true,
+    "release_digest:Qorgau-Student-Setup-0.5.0-x64.exe": true,
+    "release_size:Qorgau-Student-Windows-x64.zip": true,
+    "release_digest:Qorgau-Student-Windows-x64.zip": true,
+    "release_size:Qorgau-Student.exe": true,
+    "release_digest:Qorgau-Student.exe": true,
+    "public_health_version": true,
+    "database_only_backup_migration_complete": true,
+    "deployed_commit": true,
+    "deployed_EXE_hash": true,
+    "public_web_all_assets_match_exact_CI": true,
+    "public_range_MZ": true,
+    "offline_route_exact_release_redirect": true,
+    "offline_range_MZ": true,
+    "public_EXE_independent_SHA256": true,
+    "deployment_unchanged_during_download": true,
+    "public_health_after_download": true,
+    "database_only_backup_policy_still_complete": true
+  },
+  "scope": "Read-only CI, release, model-hash and deployed EXE verification; no physical-camera acceptance test.",
+  "workflow": {
+    "id": 37747065403,
+    "head_sha": "c69d65c8bef018e36f3d0a5e9192d80c022ba567",
+    "head_branch": "main",
+    "event": "workflow_dispatch",
+    "status": "completed",
+    "conclusion": "success",
+    "run_attempt": 2,
+    "url": "https://github.com/ovverage/hackaton-kru/actions/runs/37747065403"
+  },
+  "job_states": [
+    {
+      "id": 113221379901,
+      "name": "deploy",
+      "run_id": 37747065403,
+      "run_attempt": 2,
+      "head_sha": "c69d65c8bef018e36f3d0a5e9192d80c022ba567",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-08T08:30:02Z",
+      "completed_at": "2026-10-08T08:33:01Z"
+    },
+    {
+      "id": 113221380242,
+      "name": "verify",
+      "run_id": 37747065403,
+      "run_attempt": 2,
+      "head_sha": "c69d65c8bef018e36f3d0a5e9192d80c022ba567",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-08T08:01:09Z",
+      "completed_at": "2026-10-08T08:03:17Z"
+    },
+    {
+      "id": 113221380782,
+      "name": "windows",
+      "run_id": 37747065403,
+      "run_attempt": 2,
+      "head_sha": "c69d65c8bef018e36f3d0a5e9192d80c022ba567",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-08T08:01:09Z",
+      "completed_at": "2026-10-08T08:22:40Z"
+    },
+    {
+      "id": 113221381164,
+      "name": "release",
+      "run_id": 37747065403,
+      "run_attempt": 2,
+      "head_sha": "c69d65c8bef018e36f3d0a5e9192d80c022ba567",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-08T08:30:00Z",
+      "completed_at": "2026-10-08T08:22:40Z"
+    },
+    {
+      "id": 113221381180,
+      "name": "server-face",
+      "run_id": 37747065403,
+      "run_attempt": 2,
+      "head_sha": "c69d65c8bef018e36f3d0a5e9192d80c022ba567",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-08T08:01:09Z",
+      "completed_at": "2026-10-08T08:01:30Z"
+    }
+  ],
+  "job_selection": {
+    "filter": "latest",
+    "scope": "GitHub latest-attempt records; successful jobs may be reused from the prior attempt, as shown by their original timestamps."
+  },
+  "models": {
+    "version": "2026.10.07.gaze-demo",
+    "manifest_sha256": "30fd2c509f42d2b96045138810a695b2e791827ed889db47d933120bb2814a90",
+    "files": {
+      "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+      "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+      "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+      "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+      "gaze-public.onnx": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+      "gaze-public.json": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431"
+    },
+    "manifest_application_version": "0.4.16",
+    "scope": "Unchanged six-file model bundle; manifest application_version records its older release metadata."
+  },
+  "teacher_models": {
+    "version": "opencv-zoo-sface-2021dec-yunet-2023mar",
+    "manifest_sha256": "fe467d78dc8253769dd7a582587d9e5739a8d4c5b88aa98d5644e5da69d8aecf",
+    "source_commit": "47534e27c9851bb1128ccc0102f1145e27f23f98",
+    "files": {
+      "face_detection_yunet_2023mar.onnx": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
+      "face_recognition_sface_2021dec.onnx": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"
+    },
+    "licenses": {
+      "YuNet-LICENSE.txt": "c83b8120c50ccbd4c4f96edf53141bdd566ebb8f8e9227e415326aa1b1aba958",
+      "SFace-LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    }
+  },
+  "ci_artifact": {
+    "id": 11537237080,
+    "name": "Qorgau-Student-Windows-x64",
+    "bytes": 1850802856,
+    "digest": "sha256:b353f39c51d3dd00a8673fbb5fdad83220566b90d2e241e8c94c21e34ac7d275",
+    "binary_bytes": {
+      "Qorgau-Offline.exe": 470480768,
+      "Qorgau-Student.exe": 470480309,
+      "Qorgau-Student-Windows-x64.zip": 483976819,
+      "Qorgau-Student-Setup-0.5.0-x64.exe": 425851968
+    }
+  },
+  "server_face_ci_artifact": {
+    "id": 11536372418,
+    "name": "Qorgau-Server-Face-Runtime",
+    "size_in_bytes": 627,
+    "digest": "sha256:089e804f2947248ecd8cddf10b2cf534c3b72f2c253b71f93a8a2e25635c6827"
+  },
+  "web_ci_artifact": {
+    "id": 11536830050,
+    "name": "Qorgau-Web",
+    "size_in_bytes": 191170,
+    "digest": "sha256:a3d9dc0e26e35fdd3315cd3ce78201904fff72cf8e5eae4613346dcb4f217faa",
+    "files": {
+      "assets/Geologica-Variable-Yi5MdAM4.woff": {
+        "bytes": 84172,
+        "sha256": "99526137b4a0fa69a4da1891a017959bdc254de8da16a5e5adf15ce85122a4c0"
+      },
+      "assets/index-CjQw4Erm.js": {
+        "bytes": 296642,
+        "sha256": "d7a540e5899ada2d03837afb71034a65bf98abcc04bcddcab71c9af0a989fa6c"
+      },
+      "assets/index-BJTiP90C.css": {
+        "bytes": 69602,
+        "sha256": "1ed1ad15c31a3580479e714be8c373cc6fd80f49a4ef2a78c6a862e1a44618cd"
+      },
+      "index.html": {
+        "bytes": 444,
+        "sha256": "f8753a85a3e8baa58bd419d88b66722e6ba336a51af19461858e5625c2a8dca1"
+      }
+    }
+  },
+  "server_face_runtime": {
+    "status": "passed",
+    "sha256": "834f737321d96f3e52e7488e48ca78e050196a4b3a38ab81afb123a096d0e753",
+    "python": "3.14.7",
+    "platform": "linux",
+    "opencv": "4.13.0",
+    "numpy": "2.5.3",
+    "asset_sha256": {
+      "face_detection_yunet_2023mar.onnx": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
+      "face_recognition_sface_2021dec.onnx": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79",
+      "YuNet-LICENSE.txt": "c83b8120c50ccbd4c4f96edf53141bdd566ebb8f8e9227e415326aa1b1aba958",
+      "SFace-LICENSE.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    "backend_only_layout": true,
+    "fallback_manifest_loaded": true,
+    "blank_image_status": 422,
+    "face_descriptor_shape": [
+      1,
+      128
+    ],
+    "camera_opened": false,
+    "teacher_photos_used": false,
+    "scope": "Synthetic blank-image CPU inference; no physical camera or biometric accuracy claim."
+  },
+  "ci_sha256sums": {
+    "Qorgau-Student-Windows-x64.zip": "9e5c5a50a5101979474d57233d7fae2e5e96301f8b9d06d0a4a6be3c5203d098",
+    "Qorgau-Student.exe": "f4b1e74b39e9b06100d8479ff13bdfa92beaa3f829d8db6698a8d5914a94cf53",
+    "Qorgau-Offline.exe": "3fe773117ced2102c9ef49561eff2c4e3cc0e40253c2603cec9806181ef4b057",
+    "Qorgau-Student-Setup-0.5.0-x64.exe": "2e3028e19e5770882f0414afa973b4d7064374786430a1f3ec4c33dff1fa25ad"
+  },
+  "selftests": {
+    "packaged-selftest.json": {
+      "status": "passed",
+      "version": "0.5.0",
+      "sha256": "00bccd06e8b75f5d6b3987f20c4f07fb8905db3606097385461950236d7526c6",
+      "frozen": true,
+      "model_version": "2026.10.07.gaze-demo",
+      "model_files": {
+        "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+        "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+        "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+        "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+        "gaze-public.onnx": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+        "gaze-public.json": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431"
+      },
+      "public_gaze": {
+        "onnx_inference": true,
+        "adaptive_screen_calibration": true,
+        "screen_target_seconds": 3.0,
+        "screen_settle_seconds": 0.8,
+        "screen_targets": 9,
+        "screen_automatic_target_retry": true,
+        "screen_margin_degrees": 6,
+        "screen_rule_timer_seconds": 5,
+        "screen_uncertain_display_without_strike": true,
+        "screen_up_banner_only": true
+      },
+      "mode": "online",
+      "teacher_face_model_files": {
+        "face_detection_yunet_2023mar.onnx": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
+        "face_recognition_sface_2021dec.onnx": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"
+      },
+      "teacher_face_runtime": true,
+      "h264_encode_decode": true,
+      "latest_frame_capture": true
+    },
+    "portable-selftest.json": {
+      "status": "passed",
+      "version": "0.5.0",
+      "sha256": "69dc0234a35d3697f8599aebc2d465193422e1cd2908f93298dfb4881e0233fc",
+      "frozen": true,
+      "model_version": "2026.10.07.gaze-demo",
+      "model_files": {
+        "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+        "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+        "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+        "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+        "gaze-public.onnx": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+        "gaze-public.json": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431"
+      },
+      "public_gaze": {
+        "onnx_inference": true,
+        "adaptive_screen_calibration": true,
+        "screen_target_seconds": 3.0,
+        "screen_settle_seconds": 0.8,
+        "screen_targets": 9,
+        "screen_automatic_target_retry": true,
+        "screen_margin_degrees": 6,
+        "screen_rule_timer_seconds": 5,
+        "screen_uncertain_display_without_strike": true,
+        "screen_up_banner_only": true
+      },
+      "mode": "online",
+      "teacher_face_model_files": {
+        "face_detection_yunet_2023mar.onnx": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
+        "face_recognition_sface_2021dec.onnx": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"
+      },
+      "teacher_face_runtime": true,
+      "h264_encode_decode": true,
+      "latest_frame_capture": true
+    },
+    "offline-selftest.json": {
+      "status": "passed",
+      "version": "0.5.0",
+      "sha256": "661b59af06fd6c8f8d86da788eb3672f1c7f2e5b859b8efcb11fd0f2a487e971",
+      "frozen": true,
+      "model_version": "2026.10.07.gaze-demo",
+      "model_files": {
+        "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+        "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+        "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+        "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+        "gaze-public.onnx": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+        "gaze-public.json": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431"
+      },
+      "public_gaze": {
+        "onnx_inference": true,
+        "adaptive_screen_calibration": true,
+        "screen_target_seconds": 3.0,
+        "screen_settle_seconds": 0.8,
+        "screen_targets": 9,
+        "screen_automatic_target_retry": true,
+        "screen_margin_degrees": 6,
+        "screen_rule_timer_seconds": 5,
+        "screen_uncertain_display_without_strike": true,
+        "screen_up_banner_only": true
+      },
+      "mode": "offline",
+      "teacher_face_model_files": {
+        "face_detection_yunet_2023mar.onnx": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
+        "face_recognition_sface_2021dec.onnx": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"
+      },
+      "teacher_face_runtime": true,
+      "h264_encode_decode": true,
+      "latest_frame_capture": true
+    },
+    "installer-selftest.json": {
+      "status": "passed",
+      "version": "0.5.0",
+      "sha256": "02c3af3f483bf62d752ff5a6f148df36ce5b436032cba080adba10ac47057423",
+      "frozen": true,
+      "model_version": "2026.10.07.gaze-demo",
+      "model_files": {
+        "yolo11n.onnx": "fec8c820915ea9d3a5159cf072222d8ac2c72e98a78a187801fbaa5957ded44c",
+        "face_landmarker.task": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+        "face_yolov8n.onnx": "eac00efc8b868d8e0b7a01d1fd69071a730edec8c6f25c8fccf7f9a897821e60",
+        "gaze-direction.json": "7dd6bc87599d7a3adbd44982a301e755d465383bb7648c44e1ef006dc129dba1",
+        "gaze-public.onnx": "062a1096cc7b618893d89429905f15b98436ef48eb920bf654db4a2b4d15c9ee",
+        "gaze-public.json": "6dac90c3ff91bdcba2bc6f16dedb228b3565701a8992f3fac731f68f42406431"
+      },
+      "public_gaze": {
+        "onnx_inference": true,
+        "adaptive_screen_calibration": true,
+        "screen_target_seconds": 3.0,
+        "screen_settle_seconds": 0.8,
+        "screen_targets": 9,
+        "screen_automatic_target_retry": true,
+        "screen_margin_degrees": 6,
+        "screen_rule_timer_seconds": 5,
+        "screen_uncertain_display_without_strike": true,
+        "screen_up_banner_only": true
+      },
+      "mode": "online",
+      "teacher_face_model_files": {
+        "face_detection_yunet_2023mar.onnx": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
+        "face_recognition_sface_2021dec.onnx": "0ba9fbfa01b5270c96627c4ef784da859931e02f04419c829e83484087c34e79"
+      },
+      "teacher_face_runtime": true,
+      "h264_encode_decode": true,
+      "latest_frame_capture": true
+    },
+    "plain-first-run.json": {
+      "status": "passed",
+      "version": "0.5.0",
+      "sha256": "6df3ecd53822d99431a93970b27cdce80a0c12441246e91ad8d497e0f314cca6"
+    }
+  },
+  "release": {
+    "id": 406601380,
+    "tag_name": "v0.5.0",
+    "draft": false,
+    "prerelease": true,
+    "published_at": "2026-10-08T08:31:03Z",
+    "url": "https://github.com/ovverage/hackaton-kru/releases/tag/v0.5.0",
+    "commit": "c69d65c8bef018e36f3d0a5e9192d80c022ba567"
+  },
+  "release_assets": {
+    "Qorgau-Offline.exe": {
+      "bytes": 470480768,
+      "url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.5.0/Qorgau-Offline.exe",
+      "sha256": "3fe773117ced2102c9ef49561eff2c4e3cc0e40253c2603cec9806181ef4b057",
+      "verified_by": "independent HTTPS byte stream plus GitHub uploaded-asset SHA256 digest",
+      "download_seconds": 25.27,
+      "magic_hex": "4d5a"
+    },
+    "Qorgau-Student-Setup-0.5.0-x64.exe": {
+      "bytes": 425851968,
+      "url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.5.0/Qorgau-Student-Setup-0.5.0-x64.exe",
+      "sha256": "2e3028e19e5770882f0414afa973b4d7064374786430a1f3ec4c33dff1fa25ad",
+      "verified_by": "GitHub uploaded-asset SHA256 digest"
+    },
+    "Qorgau-Student-Windows-x64.zip": {
+      "bytes": 483976819,
+      "url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.5.0/Qorgau-Student-Windows-x64.zip",
+      "sha256": "9e5c5a50a5101979474d57233d7fae2e5e96301f8b9d06d0a4a6be3c5203d098",
+      "verified_by": "GitHub uploaded-asset SHA256 digest"
+    },
+    "Qorgau-Student.exe": {
+      "bytes": 470480309,
+      "url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.5.0/Qorgau-Student.exe",
+      "sha256": "f4b1e74b39e9b06100d8479ff13bdfa92beaa3f829d8db6698a8d5914a94cf53",
+      "verified_by": "GitHub uploaded-asset SHA256 digest"
+    }
+  },
+  "health": {
+    "status": "ok",
+    "version": "0.5.0",
+    "backup_policy_status": {
+      "policy": "database_only_v1",
+      "status": "complete",
+      "archives_checked": 6,
+      "archives_migrated": 6,
+      "video_entries_removed": 810,
+      "archives_retained": 7,
+      "failed_archives": 0
+    }
+  },
+  "deployment": {
+    "commit": "c69d65c8bef018e36f3d0a5e9192d80c022ba567",
+    "archive_sha256": "f1c29054b21af57692cfec06794e4f183b358d8de5baefcc69dc0ca257c2e071",
+    "student_sha256": "f4b1e74b39e9b06100d8479ff13bdfa92beaa3f829d8db6698a8d5914a94cf53"
+  },
+  "public_web": {
+    "assets/Geologica-Variable-Yi5MdAM4.woff": {
+      "bytes": 84172,
+      "sha256": "99526137b4a0fa69a4da1891a017959bdc254de8da16a5e5adf15ce85122a4c0"
+    },
+    "assets/index-BJTiP90C.css": {
+      "bytes": 69602,
+      "sha256": "1ed1ad15c31a3580479e714be8c373cc6fd80f49a4ef2a78c6a862e1a44618cd"
+    },
+    "assets/index-CjQw4Erm.js": {
+      "bytes": 296642,
+      "sha256": "d7a540e5899ada2d03837afb71034a65bf98abcc04bcddcab71c9af0a989fa6c"
+    },
+    "index.html": {
+      "bytes": 444,
+      "sha256": "f8753a85a3e8baa58bd419d88b66722e6ba336a51af19461858e5625c2a8dca1"
+    }
+  },
+  "download_ranges": {
+    "online": {
+      "status": 206,
+      "content_range": "bytes 0-1/470480309",
+      "magic_hex": "4d5a"
+    },
+    "offline": {
+      "status": 206,
+      "content_range": "bytes 0-1/470480768",
+      "magic_hex": "4d5a"
+    }
+  },
+  "public_offline_exe": {
+    "bytes": 470480768,
+    "url": "https://github.com/ovverage/hackaton-kru/releases/download/v0.5.0/Qorgau-Offline.exe",
+    "sha256": "3fe773117ced2102c9ef49561eff2c4e3cc0e40253c2603cec9806181ef4b057",
+    "verified_by": "independent HTTPS byte stream plus GitHub uploaded-asset SHA256 digest",
+    "download_seconds": 25.27,
+    "magic_hex": "4d5a",
+    "download_route": "https://212.19.134.23/api/student/download-offline"
+  },
+  "public_exe": {
+    "bytes": 470480309,
+    "sha256": "f4b1e74b39e9b06100d8479ff13bdfa92beaa3f829d8db6698a8d5914a94cf53",
+    "download_seconds": 73.16,
+    "magic_hex": "4d5a",
+    "url": "https://212.19.134.23/api/student/download"
+  },
+  "backup_policy_after_download": {
+    "policy": "database_only_v1",
+    "status": "complete",
+    "archives_checked": 6,
+    "archives_migrated": 6,
+    "video_entries_removed": 810,
+    "archives_retained": 7,
+    "failed_archives": 0
+  },
+  "completed_at": "2026-10-08T08:37:18.304446+00:00"
+}
