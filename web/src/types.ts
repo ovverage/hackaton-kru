@@ -102,6 +102,11 @@ export type Snapshot = {
   }[];
 };
 export async function api<T = any>(path: string, body?: unknown): Promise<T> {
+  if (import.meta.env?.DEV) {
+    const { fixtureApi } = await import("./dev/fixtures");
+    const result = await fixtureApi(path);
+    if (result.handled) return result.value as T;
+  }
   const response = await fetch("/api" + path, {
     method: body === undefined ? "GET" : "POST",
     headers: {
@@ -121,35 +126,35 @@ export async function api<T = any>(path: string, body?: unknown): Promise<T> {
   return response.json();
 }
 export const eventNames: Record<string, string> = {
-  TEACHER_REQUEST: "Вызов преподавателя",
+  TEACHER_REQUEST: "Ученик позвал преподавателя",
   GAZE_DOWN: "Взгляд вниз",
   GAZE_LEFT: "Взгляд влево",
   GAZE_RIGHT: "Взгляд вправо",
-  PHONE_DETECTED: "Обнаружен телефон",
+  PHONE_DETECTED: "Телефон в кадре",
   SECOND_FACE_REVIEW: "Второе лицо в кадре",
   FREQUENT_GAZE_REVIEW: "Частые отвлечения",
   CAMERA_UNAVAILABLE: "Камера недоступна",
   EXTENSION_DISCONNECTED: "Нет связи с расширением",
-  BROWSER_ATTEMPT: "Смена вкладки или сайта",
+  BROWSER_ATTEMPT: "Попытка открыть другой сайт",
   HEAD_TURN_REVIEW: "Поворот головы",
-  FACE_ABSENCE_REVIEW: "Нет лица в кадре",
+  FACE_ABSENCE_REVIEW: "Лица не видно",
   TARGET_CLOSED: "Окно теста закрыто",
   REMOTE_SESSION: "Удалённый рабочий стол",
   ENVIRONMENT_ATTEMPT: "Попытка выйти из теста",
   SERVER_UNAVAILABLE: "Нет связи с сервером",
-  GUARD_UNAVAILABLE: "Защита окна недоступна",
+  GUARD_UNAVAILABLE: "Защита окна не работает",
   DISPLAY_CHANGED: "Изменилось число экранов",
-  CAMERA_FROZEN: "Зависшее изображение камеры",
-  AGENT_RESTARTED: "Перезапуск агента",
-  AGENT_FAILURE: "Ошибка агента",
+  CAMERA_FROZEN: "Камера замерла",
+  AGENT_RESTARTED: "Qorgau перезапущен",
+  AGENT_FAILURE: "Сбой Qorgau",
 
-  FACE_ABSENCE_TECHNICAL: "Лицо отсутствует 10 секунд · техническая блокировка",
-  PHONE_AIM_REVIEW: "Возможная попытка съёмки",
+  FACE_ABSENCE_TECHNICAL: "Лица не видно 10 секунд",
+  PHONE_AIM_REVIEW: "Возможная съёмка телефоном",
 };
 export const decisionNames = {
-  PENDING: "На проверке",
-  CONFIRMED: "Подтверждено",
-  REJECTED: "Отклонено",
+  PENDING: "Ждёт решения",
+  CONFIRMED: "Нарушение",
+  REJECTED: "Нарушения нет",
 };
 export const clock = (n: number) =>
   new Date(n * 1000).toLocaleTimeString("ru-RU", {
