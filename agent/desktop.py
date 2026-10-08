@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import os
 import socket
 import sys
 import threading
 from pathlib import Path
 
 from PySide6.QtCore import QLockFile, Qt, QThread, QTimer, Signal
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -20,6 +19,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QComboBox,
     QScrollArea,
+    QSizePolicy,
     QStackedWidget,
     QSystemTrayIcon,
     QVBoxLayout,
@@ -37,6 +37,12 @@ def label(text="", name="body", wrap=True):
     widget = QLabel(text)
     widget.setObjectName(name)
     widget.setWordWrap(wrap)
+    if wrap:
+        # Wrapped labels must keep their full height inside the resizable
+        # dashboard scroll area.  A vertical Preferred policy lets Qt squeeze
+        # them by a few pixels with some Linux font metrics, clipping the last
+        # line even though the page itself can scroll.
+        widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
     widget.setTextFormat(Qt.TextFormat.PlainText)
     return widget
 
