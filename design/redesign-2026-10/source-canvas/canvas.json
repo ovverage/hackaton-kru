@@ -1,0 +1,247 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-07T17:25:00Z"
+  },
+  "title": "Qorgau — редизайн .exe и кабинета",
+  "launch": {
+    "view": "canvas",
+    "page": "exe"
+  },
+  "pages": [
+    {
+      "id": "exe",
+      "name": "Приложение ученика (.exe)"
+    },
+    {
+      "id": "web",
+      "name": "Кабинет преподавателя (сайт)"
+    }
+  ],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 600,
+      "h": 724,
+      "title": "Подготовка компьютера",
+      "page": "exe",
+      "expand": "fill"
+    },
+    "Exe-Connect.dc.html": {
+      "x": 680,
+      "y": 0,
+      "w": 600,
+      "h": 560,
+      "title": "Первое подключение",
+      "page": "exe",
+      "expand": "fill"
+    },
+    "Exe-Camera.dc.html": {
+      "x": 1360,
+      "y": 0,
+      "w": 680,
+      "h": 760,
+      "title": "Проверка камеры",
+      "page": "exe",
+      "expand": "fill"
+    },
+    "Exe-Window.dc.html": {
+      "x": 2120,
+      "y": 0,
+      "w": 760,
+      "h": 600,
+      "title": "Выбор окна программы",
+      "page": "exe",
+      "expand": "fill"
+    },
+    "Exe-Tray.dc.html": {
+      "x": 2960,
+      "y": 0,
+      "w": 360,
+      "h": 320,
+      "title": "Меню в трее",
+      "page": "exe"
+    },
+    "Exe-Exam.dc.html": {
+      "x": 0,
+      "y": 1180,
+      "w": 1366,
+      "h": 768,
+      "title": "Тест в Qorgau Browser и напоминание о взгляде",
+      "page": "exe",
+      "expand": "fill"
+    },
+    "Exe-Pause.dc.html": {
+      "x": 1446,
+      "y": 1180,
+      "w": 1366,
+      "h": 768,
+      "title": "Пауза: позовите преподавателя",
+      "page": "exe",
+      "expand": "fill"
+    },
+    "Web-Room.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 1420,
+      "title": "Аудитория во время теста",
+      "page": "web",
+      "expand": "fill"
+    },
+    "Web-Empty.dc.html": {
+      "x": 1520,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Аудитория до сеанса",
+      "page": "web",
+      "expand": "fill"
+    },
+    "Web-Login.dc.html": {
+      "x": 3040,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "Вход",
+      "page": "web",
+      "expand": "fill"
+    },
+    "Web-Mobile.dc.html": {
+      "x": 4560,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "Аудитория с телефона",
+      "page": "web"
+    },
+    "Web-NewSession.dc.html": {
+      "x": 0,
+      "y": 1840,
+      "w": 1440,
+      "h": 1173,
+      "title": "Новый сеанс",
+      "page": "web",
+      "expand": "fill"
+    },
+    "Web-Device.dc.html": {
+      "x": 1520,
+      "y": 1840,
+      "w": 1440,
+      "h": 920,
+      "title": "Карточка компьютера",
+      "page": "web",
+      "expand": "fill"
+    },
+    "Web-Event.dc.html": {
+      "x": 3040,
+      "y": 1840,
+      "w": 1440,
+      "h": 1000,
+      "title": "Разбор события",
+      "page": "web",
+      "expand": "fill"
+    },
+    "Web-Review.dc.html": {
+      "x": 0,
+      "y": 3433,
+      "w": 1440,
+      "h": 900,
+      "title": "События на проверку",
+      "page": "web",
+      "expand": "fill"
+    },
+    "Web-History.dc.html": {
+      "x": 1520,
+      "y": 3433,
+      "w": 1440,
+      "h": 1093,
+      "title": "Сеансы и отчёты",
+      "page": "web",
+      "expand": "fill"
+    },
+    "Web-Computers.dc.html": {
+      "x": 3040,
+      "y": 3433,
+      "w": 1440,
+      "h": 1274,
+      "title": "Компьютеры",
+      "page": "web",
+      "expand": "fill"
+    },
+    "Web-Rules.dc.html": {
+      "x": 4560,
+      "y": 3433,
+      "w": 1440,
+      "h": 1451,
+      "title": "Правила контроля",
+      "page": "web",
+      "expand": "fill"
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Exe-Connect.dc.html",
+    "Exe-Camera.dc.html",
+    "Exe-Window.dc.html",
+    "Exe-Tray.dc.html",
+    "Exe-Exam.dc.html",
+    "Exe-Pause.dc.html",
+    "Web-Room.dc.html",
+    "Web-Empty.dc.html",
+    "Web-Login.dc.html",
+    "Web-Mobile.dc.html",
+    "Web-NewSession.dc.html",
+    "Web-Device.dc.html",
+    "Web-Event.dc.html",
+    "Web-Review.dc.html",
+    "Web-History.dc.html",
+    "Web-Computers.dc.html",
+    "Web-Rules.dc.html"
+  ],
+  "notes": {
+    "exeTitle1": {
+      "x": 0,
+      "y": -300,
+      "text": "Ученик: подготовка за минуту",
+      "kind": "title1",
+      "maxW": 3320,
+      "page": "exe"
+    },
+    "exeTitle2": {
+      "x": 0,
+      "y": 880,
+      "text": "Ученик: во время теста",
+      "kind": "title1",
+      "maxW": 2812,
+      "page": "exe"
+    },
+    "webTitle1": {
+      "x": 0,
+      "y": -300,
+      "text": "Преподаватель: аудитория",
+      "kind": "title1",
+      "maxW": 4950,
+      "page": "web"
+    },
+    "webTitle2": {
+      "x": 0,
+      "y": 1540,
+      "text": "Преподаватель: решения",
+      "kind": "title1",
+      "maxW": 4480,
+      "page": "web"
+    },
+    "webTitle3": {
+      "x": 0,
+      "y": 3133,
+      "text": "Преподаватель: история и настройки",
+      "kind": "title1",
+      "maxW": 6000,
+      "page": "web"
+    }
+  },
+  "designSystems": []
+}
