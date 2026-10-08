@@ -454,7 +454,7 @@ class Agent:
             self.environment = config["environment"]
             for command in config["commands"]:
                 self.apply(command)
-            self.status = "Сервер подключён"
+            self.status = "Сервер на связи"
             self.last_synced_at = time.monotonic()
             self.session = config.get("session")
             self.save()

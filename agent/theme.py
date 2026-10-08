@@ -111,8 +111,8 @@ class Bubble(QWidget):
         painter.drawEllipse(QRectF(1.5, 1.5, self.width() - 3, self.height() - 3))
         if self.state == "done":
             painter.setPen(QPen(Qt.GlobalColor.white, 1.7))
-            painter.drawLine(self.width() * .28, self.height() * .52, self.width() * .44, self.height() * .68)
-            painter.drawLine(self.width() * .44, self.height() * .68, self.width() * .74, self.height() * .34)
+            painter.drawLine(int(self.width() * .28), int(self.height() * .52), int(self.width() * .44), int(self.height() * .68))
+            painter.drawLine(int(self.width() * .44), int(self.height() * .68), int(self.width() * .74), int(self.height() * .34))
 
 
 class StepBubble(Bubble):

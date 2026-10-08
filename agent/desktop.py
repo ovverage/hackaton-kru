@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
 from .client import Agent
 from .provision import EnrollmentUnavailable, auto_enroll
 from .student_state import present
-from .theme import APP_QSS as STYLE, load_fonts, logo_icon
+from .theme import APP_QSS as STYLE, RegMarks, StepBubble, load_fonts, logo_icon
 from shared.bootstrap import default_bootstrap
 
 
@@ -301,23 +301,31 @@ class StudentWindow(QWidget):
     def build_dashboard(self):
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setContentsMargins(30, 28, 30, 28)
-        layout.setSpacing(16)
+        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setSpacing(18)
         row = QHBoxLayout()
-        row.addWidget(label("qorgau.", "title"))
+        row.addWidget(label("Qorgau", "brand"))
         row.addStretch()
         self.connection = label("Подключаемся…", "small")
         row.addWidget(self.connection)
         layout.addLayout(row)
         self.device_name = label("Компьютер аудитории", "small")
         layout.addWidget(self.device_name)
-        layout.addWidget(label("Окно теста", "field"))
-        self.target_button = QPushButton("Выбрать открытое окно")
-        self.target_button.clicked.connect(self.select_target)
-        layout.addWidget(self.target_button)
-        self.target_status = label("Для Qorgau Browser тест откроет преподаватель. Окно выбирайте только для отдельного приложения.", "small")
-        layout.addWidget(self.target_status)
-        layout.addWidget(label("Камера", "field"))
+        layout.addWidget(label("Подготовка к тесту", "title"))
+        layout.addWidget(label("Выполните три шага. После этого Qorgau можно свернуть в трей.", "body"))
+
+        sheet = RegMarks()
+        sheet_layout = QVBoxLayout(sheet)
+        sheet_layout.setContentsMargins(28, 28, 28, 28)
+        sheet_layout.setSpacing(18)
+
+        camera_row = QHBoxLayout()
+        camera_row.setSpacing(16)
+        camera_row.addWidget(StepBubble(1, "active"), 0, Qt.AlignmentFlag.AlignTop)
+        camera_content = QVBoxLayout()
+        camera_content.setSpacing(9)
+        camera_content.addWidget(label("Проверьте камеру", "heading"))
+        camera_content.addWidget(label("Лицо должно быть хорошо видно. Звук не записывается.", "small"))
         self.camera_choice = QComboBox()
         self.camera_choice.setAccessibleName("Камера")
         try:
@@ -330,23 +338,51 @@ class StudentWindow(QWidget):
         if not self.camera_choice.count():
             for index in range(4):
                 self.camera_choice.addItem(f"Камера {index + 1}", index)
-        layout.addWidget(self.camera_choice)
-        self.camera_button = QPushButton("Готово")
+        camera_content.addWidget(self.camera_choice)
+        self.camera_button = QPushButton("Проверить камеру")
         self.camera_button.setObjectName("primary")
         self.camera_button.clicked.connect(self.prepare_camera)
-        layout.addWidget(self.camera_button)
-        self.camera_status = label("Выберите камеру и нажмите «Готово», глядя на экран. Для Qorgau Browser окно выбирать не нужно.", "small")
-        layout.addWidget(self.camera_status)
+        camera_content.addWidget(self.camera_button)
+        self.camera_status = label("Выберите камеру и проверьте изображение.", "small")
+        camera_content.addWidget(self.camera_status)
         self.gaze_status = label("", "small")
         self.gaze_status.setWordWrap(True)
-        layout.addWidget(self.gaze_status)
+        camera_content.addWidget(self.gaze_status)
+        camera_row.addLayout(camera_content, 1)
+        sheet_layout.addLayout(camera_row)
+
+        target_row = QHBoxLayout()
+        target_row.setSpacing(16)
+        target_row.addWidget(StepBubble(2), 0, Qt.AlignmentFlag.AlignTop)
+        target_content = QVBoxLayout()
+        target_content.setSpacing(9)
+        target_content.addWidget(label("Выберите среду теста", "heading"))
+        self.target_button = QPushButton("Выбрать окно программы")
+        self.target_button.clicked.connect(self.select_target)
+        target_content.addWidget(self.target_button)
+        self.target_status = label("Для Qorgau Browser тест откроет преподаватель. Окно выбирайте только для отдельной программы.", "small")
+        target_content.addWidget(self.target_status)
+        target_row.addLayout(target_content, 1)
+        sheet_layout.addLayout(target_row)
+
+        wait_row = QHBoxLayout()
+        wait_row.setSpacing(16)
+        wait_row.addWidget(StepBubble(3), 0, Qt.AlignmentFlag.AlignTop)
+        wait_content = QVBoxLayout()
+        wait_content.setSpacing(9)
+        wait_content.addWidget(label("Дождитесь начала", "heading"))
         self.assignment_title = label("", "small")
-        layout.addWidget(self.assignment_title)
+        wait_content.addWidget(self.assignment_title)
+        wait_content.addWidget(label("Преподаватель назначит тест и запустит его со своего компьютера.", "small"))
+        wait_row.addLayout(wait_content, 1)
+        sheet_layout.addLayout(wait_row)
+        layout.addWidget(sheet)
+
         self.runtime_error = label("", "error")
         self.runtime_error.hide()
         layout.addWidget(self.runtime_error)
         layout.addStretch()
-        layout.addWidget(label("Во время теста фиксируются события и видео с камеры. Звук не записывается.", "small"))
+        layout.addWidget(label("Во время теста Qorgau фиксирует события и короткие видео. Решение принимает преподаватель.", "small"))
         self.dashboard_scroll = QScrollArea()
         self.dashboard_scroll.setObjectName('dashboard-scroll')
         self.dashboard_scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -460,7 +496,7 @@ class StudentWindow(QWidget):
                     )
                 self.last_notification = marker
         self.connection.setText(
-            "● Сервер подключён"
+            "● Сервер на связи"
             if snap.get("connected") and not self.failure
             else "○ Нет связи с сервером"
         )
@@ -468,17 +504,17 @@ class StudentWindow(QWidget):
         selected = next((t for t in self.agent.targets if t.get("id") == "primary-window"), None)
         self.agent.capabilities["selected_window"] = bool(selected)
         self.target_button.setEnabled(not active)
-        self.target_button.setText("Изменить окно" if selected else "Выбрать открытое окно")
+        self.target_button.setText("Изменить окно" if selected else "Выбрать окно программы")
         self.target_status.setText(selected["name"] if selected else "Для Qorgau Browser тест откроет преподаватель. Окно выбирайте только для отдельного приложения.")
         self.camera_choice.setEnabled(not active and not snap.get("camera_preparing"))
         self.camera_button.setEnabled(model["can_calibrate"] and not self.failure)
-        self.camera_button.setText("Изменить камеру" if snap.get("camera") else "Готово")
+        self.camera_button.setText("Изменить камеру" if snap.get("camera") else "Проверить камеру")
         self.camera_status.setText(
             "Камера недоступна — выберите её повторно" if snap.get("camera_fault")
             else "Включаем камеру…" if snap.get("camera_preparing")
             else "Камера включена. Ждём преподавателя." if snap.get("camera") and not active
             else model["title"] if active
-            else "Выберите камеру и нажмите «Готово», глядя на экран. Для Qorgau Browser окно выбирать не нужно."
+            else "Выберите камеру и проверьте изображение. Для Qorgau Browser окно выбирать не нужно."
         )
         session = snap.get("session") or {}
         self.assignment_title.setText(session.get("title", ""))

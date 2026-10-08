@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from .student_state import REASONS
+from .theme import APP_QSS, COLORS, RegMarks
 
 
 def text(value, size=14):
@@ -59,7 +60,7 @@ def gaze_warning_active(snap):
 def gaze_warning_text(snap):
     """Name the displayed camera-image direction without implying a penalty."""
     gaze = snap.get("gaze_diagnostics") or {}
-    instruction = "Верните взгляд на монитор"
+    instruction = "Смотрите на экран"
     if gaze.get("source") != "public_gaze_model":
         return instruction
     direction = {
@@ -122,7 +123,7 @@ class GazeWarning(QWidget):
     def __init__(self):
         super().__init__()
         self.setObjectName("gazeWarning")
-        self.setWindowTitle("Qorgau — верните взгляд на монитор")
+        self.setWindowTitle("Qorgau — смотрите на экран")
         self.setWindowFlags(
             Qt.WindowType.Tool
             | Qt.WindowType.FramelessWindowHint
@@ -133,12 +134,12 @@ class GazeWarning(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setStyleSheet(
-            "QWidget#gazeWarning {background:#ffd34f;border:2px solid #9d6b00;border-radius:12px;}"
-            "QLabel {background:transparent;color:#2b2100;font-family:'Segoe UI';font-size:24px;font-weight:700;}"
+            "QWidget#gazeWarning {background:#FCF1DC;border:2px solid #F0B33E;border-radius:10px;}"
+            "QLabel {background:transparent;color:#22252B;font-family:'Geologica','Segoe UI';font-size:24px;font-weight:700;}"
         )
         layout = QVBoxLayout(self)
         layout.setContentsMargins(26, 15, 26, 15)
-        self.message = QLabel("Верните взгляд на монитор")
+        self.message = QLabel("Смотрите на экран")
         self.message.setWordWrap(True)
         self.message.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.message.setTextFormat(Qt.TextFormat.PlainText)
@@ -197,21 +198,25 @@ class LockScreen(QWidget):
         self.setWindowFlags(
             Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
         )
-        self.setStyleSheet(
-            "QWidget {background:#101a2c;color:#eef3ff;font-family:'Segoe UI';}"
-            "QLineEdit {background:#1e304d;border:1px solid #536987;border-radius:8px;padding:14px;}"
-            "QPushButton {background:#376ad8;border:0;border-radius:8px;padding:14px;color:white;font-size:15px;font-weight:600;min-height:20px;}"
-            "QPushButton:disabled {background:#33415b;color:#cbd5e1;}"
-        )
+        self.setObjectName("pauseScreen")
+        self.setStyleSheet(APP_QSS + f"""
+            QWidget#pauseScreen {{background:{COLORS['paper']};}}
+            QLabel {{background:transparent;}}
+            QLineEdit {{font-size:16px;padding:14px;}}
+            QPushButton {{font-size:15px;padding:14px;}}
+            QScrollArea {{background:{COLORS['sheet']};border:1px solid {COLORS['rule']};border-radius:10px;}}
+        """)
         root = QHBoxLayout(self)
         root.setContentsMargins(60, 50, 60, 50)
         root.setSpacing(50)
         main = QVBoxLayout()
-        main.addWidget(text("QORGAU  /  КОНТРОЛЬ ЭКЗАМЕНА", 14))
+        pause_mark = text("●  ТЕСТ НА ПАУЗЕ", 14)
+        pause_mark.setStyleSheet(f"color:{COLORS['red']};font-weight:700;letter-spacing:1px;")
+        main.addWidget(pause_mark)
         main.addStretch()
         self.heading = text("Позовите преподавателя", 38)
         main.addWidget(self.heading)
-        self.reason = text("Доступ к тесту приостановлен", 18)
+        self.reason = text("Тест на паузе", 18)
         main.addWidget(self.reason)
         main.addSpacing(25)
         self.form = QWidget()
@@ -224,11 +229,12 @@ class LockScreen(QWidget):
         self.password.setPlaceholderText("Пароль кабинета преподавателя")
         self.password.setAccessibleName("Пароль преподавателя")
         form.addWidget(self.password)
-        self.unlock = QPushButton("Разблокировать тест")
+        self.unlock = QPushButton("Продолжить тест")
+        self.unlock.setObjectName("primary")
         self.unlock.clicked.connect(self.request_unlock)
         self.password.returnPressed.connect(self.request_unlock)
         form.addWidget(self.unlock)
-        self.finish = QPushButton("Завершить контроль · пароль преподавателя")
+        self.finish = QPushButton("Завершить контроль на этом компьютере")
         self.finish.clicked.connect(lambda: self.request_unlock("END_AND_RELEASE"))
         form.addWidget(self.finish)
         self.recover = QPushButton("Восстановить камеру")
@@ -361,22 +367,33 @@ class TargetPicker(QDialog):
         self.agent = agent
         self.setWindowTitle("Выберите главное окно или приложение")
         self.resize(740, 450)
+        self.setObjectName("window")
+        self.setStyleSheet(APP_QSS)
         self.selected = None
         self.windows = []
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(28, 26, 28, 24)
+        layout.setSpacing(14)
+        layout.addWidget(text("Выберите окно программы", 28))
         layout.addWidget(
             text(
                 "Откройте нужную вкладку теста и выберите её окно. При начале контроля оно развернётся на весь экран; переход в другие окна и инструменты разработчика будут ограничены.",
                 17,
             )
         )
+        watched = RegMarks()
+        watched_layout = QVBoxLayout(watched)
+        watched_layout.setContentsMargins(22, 22, 22, 22)
         self.items = QListWidget()
-        layout.addWidget(self.items)
+        self.items.setStyleSheet(f"QListWidget{{border:0;background:{COLORS['sheet']};}} QListWidget::item{{padding:12px;border-bottom:1px solid {COLORS['rule_soft']};}} QListWidget::item:selected{{background:{COLORS['ink_tint']};color:{COLORS['ink_strong']};}}")
+        watched_layout.addWidget(self.items)
+        layout.addWidget(watched, 1)
         row = QHBoxLayout()
         refresh = QPushButton("Обновить окна")
         refresh.clicked.connect(self.refresh)
         row.addWidget(refresh)
         use = QPushButton("Использовать окно")
+        use.setObjectName("primary")
         use.clicked.connect(self.choose_window)
         row.addWidget(use)
         layout.addLayout(row)

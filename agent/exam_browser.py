@@ -72,8 +72,8 @@ class ExamBrowser(QWebEngineView):
             settings.setAttribute(attribute, False)
         self.setUrl(QUrl(url))
         self.released = False
-        self.teacher_button = QPushButton("Преподаватель · Ctrl+Alt+Q", self)
-        self.teacher_button.setStyleSheet("background:#183052;color:white;padding:8px;border-radius:5px;")
+        self.teacher_button = QPushButton("Позвать преподавателя · Ctrl+Alt+Q", self)
+        self.teacher_button.setStyleSheet("background:#0B6474;color:white;padding:10px 14px;border:0;border-radius:8px;font-family:'Geologica','Segoe UI';font-weight:600;")
         self.teacher_button.clicked.connect(lambda: on_attempt("TEACHER_REQUEST"))
         self.teacher_button.adjustSize()
         self.teacher_button.show()

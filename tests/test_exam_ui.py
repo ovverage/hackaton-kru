@@ -135,7 +135,7 @@ def test_desktop_overlay_only_during_lock_and_release_after_end(app, tmp_path):
     controller.tick()
     assert controller.surfaces and not any(s.isVisible() for s in controller.surfaces)
     assert controller.gaze_warnings and all(w.isVisible() for w in controller.gaze_warnings)
-    assert all(w.message.text() == 'Верните взгляд на монитор' for w in controller.gaze_warnings)
+    assert all(w.message.text() == 'Смотрите на экран' for w in controller.gaze_warnings)
     agent.gaze_diagnostics.update(attention_away=False, attention_direction=None)
     controller.tick()
     assert not any(w.isVisible() for w in controller.gaze_warnings)

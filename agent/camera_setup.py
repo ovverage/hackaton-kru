@@ -4,7 +4,7 @@ from pathlib import Path
 import threading
 import time
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
-from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtGui import QColor, QImage, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -15,12 +15,59 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QSpinBox,
     QProgressBar,
+    QSizePolicy,
 )
 from .client import atomic_json
 from .behavior import POSITIONS
 
 REFERENCE_SETTLE_SECONDS = 2
 REFERENCE_TIMEOUT_SECONDS = 45
+
+
+class CameraPreview(QLabel):
+    """Live preview that keeps its frame visible through DPI and resize changes."""
+
+    def __init__(self, placeholder: str, parent=None):
+        super().__init__(placeholder, parent)
+        self._camera_image = None
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setMinimumSize(480, 270)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+    def set_image(self, image: QImage):
+        self._camera_image = image.copy()
+        self._fit_image()
+
+    def _fit_image(self):
+        if self._camera_image is None or self._camera_image.isNull():
+            return
+        target = self.contentsRect().size()
+        if target.width() <= 1 or target.height() <= 1:
+            return
+        self.setPixmap(QPixmap.fromImage(self._camera_image).scaled(
+            target, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation,
+        ))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._fit_image()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if self._camera_image is None:
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        teal = QColor("#8DD0D6")
+        painter.setPen(QPen(teal, 2))
+        margin, length = 14, 18
+        for x, y, sx, sy in ((margin, margin, 1, 1), (self.width()-margin, margin, -1, 1), (margin, self.height()-margin, 1, -1), (self.width()-margin, self.height()-margin, -1, -1)):
+            painter.drawLine(x, y, x + sx * length, y)
+            painter.drawLine(x, y, x, y + sy * length)
+        pen = QPen(QColor(255, 255, 255, 190), 2, Qt.PenStyle.DashLine)
+        painter.setPen(pen)
+        oval_width, oval_height = self.width() * .34, self.height() * .68
+        painter.drawEllipse(int((self.width()-oval_width)/2), int((self.height()-oval_height)/2), int(oval_width), int(oval_height))
 
 
 class CameraStartWorker(QThread):
@@ -173,7 +220,7 @@ class CalibrationWorker(QThread):
             if getattr(camera, "public_gaze", None) is not None:
                 raise ValueError(
                     "Для этой сборки настройте взгляд при обычном включении камеры: "
-                    "закройте это окно и нажмите «Готово» рядом с выбранной камерой."
+                    "закройте это окно и нажмите «Проверить камеру» рядом с выбранной камерой."
                 )
             for index, (key, prompt) in enumerate(POSITIONS):
                 self.collect.clear()
@@ -288,11 +335,9 @@ class CameraSetup(QDialog):
                 "small",
             )
         )
-        self.preview = QLabel("Предпросмотр камеры появится здесь")
-        self.preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.preview.setMinimumHeight(230)
+        self.preview = CameraPreview("Предпросмотр камеры появится здесь")
         self.preview.setStyleSheet(
-            "background:#e9eee1;border:1px solid #dce5d0;border-radius:9px;color:#829773;"
+            "background:#2A2E35;border:1px solid #D9DDE3;border-radius:8px;color:#FFFFFF;"
         )
         layout.addWidget(self.preview, 1)
         self.instruction = label(
@@ -319,7 +364,7 @@ class CameraSetup(QDialog):
         self.capture.clicked.connect(self.capture_position)
         self.capture.hide()
         buttons.addWidget(self.capture)
-        self.start_button = QPushButton("Включить камеру")
+        self.start_button = QPushButton("Проверить камеру")
         self.start_button.setObjectName("primary")
         self.start_button.clicked.connect(self.primary_action)
         buttons.addWidget(self.start_button)
@@ -543,13 +588,7 @@ class CameraSetup(QDialog):
                               QImage.Format.Format_RGB888).copy())
 
     def show_frame(self, image):
-        self.preview.setPixmap(
-            QPixmap.fromImage(image).scaled(
-                self.preview.size(),
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-        )
+        self.preview.set_image(image)
 
     def phase(self, index, n, valid):
         self.instruction.setText(
