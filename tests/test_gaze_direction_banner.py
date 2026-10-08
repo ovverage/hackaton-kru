@@ -66,7 +66,7 @@ def test_actual_overlay_names_all_directions_and_marks_uncertainty(running, dire
         message = warning.message.text()
         assert russian in message
         assert "по изображению камеры" in message
-        assert "Верните взгляд на монитор" in message
+        assert "Смотрите на экран" in message
         assert ("Предварительная оценка" in message) is uncertain
         assert warning.height() >= warning.message.heightForWidth(warning.width() - 52) + 30
         assert warning.message.wordWrap()
@@ -147,7 +147,7 @@ def test_legacy_attention_keeps_original_banner_contract(running, monkeypatch):
         "attention_away": True, "attention_direction": "LEFT",
     }
     controller.tick()
-    assert all(w.isVisible() and w.message.text() == "Верните взгляд на монитор"
+    assert all(w.isVisible() and w.message.text() == "Смотрите на экран"
                for w in controller.gaze_warnings)
     agent.gaze_diagnostics.update(attention_away=False)
     controller.tick()

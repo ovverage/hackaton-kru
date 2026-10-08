@@ -56,6 +56,7 @@ command = [
 command.extend(["--hidden-import", "PySide6.QtWebEngineWidgets"])
 for path, destination in ((root / 'extension', 'extension'),
                           (root / 'packaging/windows/qorgau.ico', 'packaging/windows'),
+                          (root / 'agent/fonts', 'agent/fonts'),
                           (profile_folder / 'build-profile.json', '.')):
     command.extend(['--add-data', str(path) + os.pathsep + destination])
 if os.name == "nt":

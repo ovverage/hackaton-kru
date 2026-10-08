@@ -1,6 +1,15 @@
 import Classroom from "./Classroom";
 import TeacherFaces from "./TeacherFaces";
 import ControlStatus from "./ControlStatus";
+import {
+  Bubble,
+  Clock,
+  Logo,
+  NavOption,
+  RegMarks,
+  Sheet,
+  StepBubble,
+} from "./components/Design";
 import { preparationIssue, type TestEnvironment } from "./sessionStatus";
 import { useDialogFocus } from "./useDialogFocus";
 import {
@@ -98,7 +107,7 @@ function Modal({
         aria-label={title}
         className={"modal " + (wide ? "wide" : "")}
       >
-        <header>
+        <header className="modal-head">
           <div>
             <h2>{title}</h2>
             {subtitle && <p>{subtitle}</p>}
@@ -138,45 +147,59 @@ function Auth({
     }
   }
   return (
-    <div className="auth-layout">
-      <aside className="auth-story">
-        <div className="brand">
-          <ShieldCheck />
-          <span>
-            qorgau<span className="brand-dot">.</span>
-          </span>
-        </div>
-        <div>
-          <span className="eyebrow">ЛОКАЛЬНЫЙ ПРОКТОРИНГ</span>
-          <h1>
-            Тест проходит
-            <br />
-            привычно.
-            <br />
-            <em>Контроль — рядом.</em>
-          </h1>
+    <div className="q auth-layout redesign-auth">
+      <section className="auth-story">
+        <Logo />
+        <div className="auth-message">
+          <h1>Вся аудитория на&nbsp;одном экране</h1>
           <p>
-            Единая панель преподавателя для наблюдения за аудиторией и разбора
-            спорных моментов.
+            Qorgau замечает телефон, второе лицо и долгий взгляд в сторону прямо
+            на компьютере ученика и присылает вам короткое видео. Было ли
+            нарушение, решаете вы.
           </p>
-          <div className="auth-points">
-            <span>
-              <Monitor size={18} /> Любая согласованная среда теста
-            </span>
-            <span>
-              <Eye size={18} /> События с контекстом и видео
-            </span>
-            <span>
-              <ShieldCheck size={18} /> Решение остаётся за преподавателем
-            </span>
-          </div>
+          <Sheet className="auth-answer-sheet">
+            <RegMarks />
+            <div className="auth-bubbles" aria-hidden="true">
+              {Array.from({ length: 24 }, (_, index) => (
+                <Bubble
+                  key={index}
+                  size="lg"
+                  state={
+                    index === 6 || index === 13
+                      ? "pause"
+                      : index === 10 || index === 19
+                        ? "off"
+                        : "on"
+                  }
+                  flag={index === 3 || index === 15}
+                />
+              ))}
+            </div>
+            <div className="legend auth-legend">
+              <span>
+                <Bubble state="on" size="sm" />
+                пишет тест
+              </span>
+              <span className="danger-text">
+                <Bubble state="pause" size="sm" />
+                на паузе
+              </span>
+              <span>
+                <Bubble size="sm" />
+                ждёт старта
+              </span>
+              <span>
+                <Bubble state="off" size="sm" />
+                нет связи
+              </span>
+            </div>
+          </Sheet>
         </div>
-        <footer>Qostanai Industry Hackathon · 2026</footer>
-      </aside>
+        <footer>Команда PEEP. Кейс КРУ и Qostanai Hub, 2026</footer>
+      </section>
       <main className="auth-form">
-        <div>
-          <span className="eyebrow">ПАНЕЛЬ ПРЕПОДАВАТЕЛЯ</span>
-          <h2>{setup ? "Начнём с вашего кабинета" : "С возвращением"}</h2>
+        <div className="auth-card">
+          <h2>{setup ? "Создание кабинета" : "Вход в кабинет"}</h2>
           <p>
             {setup
               ? "Создайте локальную учётную запись. Она будет управлять сеансами этой установки."
@@ -206,7 +229,7 @@ function Auth({
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete={setup ? "new-password" : "current-password"}
-                placeholder="Не менее 8 символов"
+                placeholder="Не меньше 8 символов"
               />
             </label>
             {error && <div className="error">{error}</div>}
@@ -216,12 +239,12 @@ function Auth({
               ) : (
                 <ArrowUpRight size={18} />
               )}{" "}
-              {setup ? "Создать кабинет" : "Войти в кабинет"}
+              {setup ? "Создать кабинет" : "Войти"}
             </button>
           </form>
           <p className="fine">
-            Данные этой установки хранятся на локальном сервере. Камеры
-            включаются только при запуске агента с режимом видео.
+            Видео и решения хранятся на сервере этой установки Qorgau. Камеры
+            работают только на компьютерах с открытым Qorgau.
           </p>
         </div>
       </main>
@@ -253,6 +276,16 @@ export default function App() {
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    import("./dev/fixtures").then(({ fixtureView }) => {
+      const view = fixtureView();
+      setPage(view.page);
+      if (view.modal === "new") setNewExam(true);
+      if (view.modal === "device") setDeviceId("device-14");
+      if (view.modal === "event") setEventId("event-1");
+    });
   }, []);
   function receive(snapshot: Snapshot) {
     setData({
@@ -299,6 +332,15 @@ export default function App() {
   }, []);
   useEffect(() => {
     if (!user) return;
+    if (
+      import.meta.env.DEV &&
+      new URLSearchParams(location.search).has("fixture")
+    ) {
+      refresh()
+        .then(() => setConnected(true))
+        .catch((e) => setToast(e.message));
+      return;
+    }
     let stopped = false;
     let socket: WebSocket;
     let timer: number;
@@ -372,36 +414,31 @@ export default function App() {
     );
   const nav = sessionActive
     ? [
-        { id: "room", name: "Текущие компьютеры", icon: Monitor },
-        { id: "blocked", name: "Заблокированные", icon: LockKeyhole },
+        { id: "room", name: "Пишут тест", icon: Monitor },
+        { id: "blocked", name: "На паузе", icon: LockKeyhole },
         { id: "teachers", name: "Преподаватели", icon: Users },
       ]
     : [
         { id: "room", name: "Аудитория", icon: LayoutDashboard },
-        { id: "review", name: "Проверка событий", icon: ClipboardCheck },
+        { id: "review", name: "События", icon: ClipboardCheck },
         { id: "history", name: "Сеансы и отчёты", icon: History },
         { id: "devices", name: "Компьютеры", icon: Monitor },
         { id: "rules", name: "Правила контроля", icon: Settings2 },
         { id: "teachers", name: "Преподаватели", icon: Users },
       ];
   return (
-    <div className="app">
-      <aside className="sidebar">
-        <a
-          className="brand"
-          href="#"
+    <div className="q shell app">
+      <aside className="side sidebar">
+        <button
+          className="brand-action"
           onClick={(e) => {
             e.preventDefault();
             setPage("room");
           }}
         >
-          <ShieldCheck />
-          <span>
-            qorgau<span className="brand-dot">.</span>
-          </span>
-        </a>
-        <span className="nav-label">ПРЕПОДАВАТЕЛЬ</span>
-        <nav>
+          <Logo />
+        </button>
+        <nav className="nav" aria-label="Разделы">
           {nav.map((n) => (
             <button
               key={n.id}
@@ -410,28 +447,27 @@ export default function App() {
               onClick={() => setPage(n.id)}
               className={page === n.id ? "active" : ""}
             >
-              <n.icon size={19} />
-              <span>{n.name}</span>
-              {n.id === "blocked" &&
-                devices.some((d) => d.state.access === "LOCKED") && (
-                  <b>
-                    {devices.filter((d) => d.state.access === "LOCKED").length}
-                  </b>
-                )}
-              {n.id === "review" && pending.length > 0 && (
-                <b>{pending.length}</b>
-              )}
+              <NavOption
+                badge={
+                  n.id === "blocked"
+                    ? devices.filter((d) => d.state.access === "LOCKED").length
+                    : n.id === "review"
+                      ? pending.length
+                      : 0
+                }
+              >
+                {n.name}
+              </NavOption>
             </button>
           ))}
         </nav>
-        <div className="sidebar-tip">
-          <ShieldCheck size={24} />
-          <strong>Вы принимаете решение</strong>
+        <div className="side-note sidebar-tip">
+          <strong>Решение за вами</strong>
           <p>
             Система отмечает события. Спорные моменты проверяет преподаватель.
           </p>
         </div>
-        <div className="profile">
+        <div className="me profile">
           <div className="avatar">{user.name.slice(0, 1)}</div>
           <div>
             <strong>{user.name}</strong>
@@ -450,33 +486,28 @@ export default function App() {
           </button>
         </div>
       </aside>
-      <div className="workspace">
+      <div className="content workspace">
         <header className="topbar">
-          <div className="breadcrumb">
-            Кабинет преподавателя <ChevronRight size={14} />
-            <strong>{nav.find((n) => n.id === page)?.name}</strong>
-          </div>
-          <div className="connection">
-            {connected ? <Wifi size={15} /> : <WifiOff size={15} />}
+          <Clock since={sessionActive ? exam?.created_at : undefined} />
+          <div className="link-status connection">
+            <Bubble state={connected ? "ink" : "warn"} size="xs" />
             <span>
-              {connected ? "Сервер подключён" : "Восстанавливаем связь"}
+              {connected ? "Сервер на связи" : "Восстанавливаем связь"}
             </span>
-            <span className={"dot " + (connected ? "green" : "amber")} />
           </div>
         </header>
         <main className="main">
-          <div className="page-heading">
+          <div className="page-head page-heading">
             <div>
-              <div className="eyebrow">QORGAU / КАБИНЕТ ПРЕПОДАВАТЕЛЯ</div>
-              <h1>
+              <h1 className="t-h1">
                 {page === "blocked"
-                  ? "Заблокированные"
+                  ? "На паузе"
                   : page === "room"
                     ? sessionActive
-                      ? "Текущие компьютеры"
+                      ? exam?.title || "Пишут тест"
                       : "Аудитория"
                     : page === "review"
-                      ? "Проверка событий"
+                      ? "События"
                       : page === "history"
                         ? "Сеансы и отчёты"
                         : page === "devices"
@@ -697,7 +728,7 @@ export default function App() {
                               <th>Вправо</th>
                               <th>Телефон</th>
                               <th>На проверке</th>
-                              <th>Блокировки</th>
+                              <th>Паузы</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -776,14 +807,15 @@ export default function App() {
               {liveDevices.length === 0 ? (
                 <Empty text="Нет работающих агентов. Запустите Qorgau на компьютере ученика." />
               ) : (
-                <div className="panel table-scroll">
-                  <table>
+                <div className="panel table-scroll table-box">
+                  <table className="table omr">
                     <thead>
                       <tr>
                         <th>Рабочее место</th>
-                        <th>Связь</th>
-                        <th>Камера</th>
-                        <th>Возможности</th>
+                        <th className="c">Приложение</th>
+                        <th className="c">Камера</th>
+                        <th className="c">Взгляд</th>
+                        <th className="c">Защита</th>
                         <th>Доступ</th>
                       </tr>
                     </thead>
@@ -793,24 +825,34 @@ export default function App() {
                           <td>
                             <strong>{d.name}</strong>
                             <small>{d.student}</small>
+                            {preparationIssue(d, "BROWSER") && (
+                              <small className="todo">
+                                {preparationIssue(d, "BROWSER")}
+                              </small>
+                            )}
                           </td>
-                          <td>
-                            <Badge tone={d.online ? "green" : "red"}>
-                              Подключён
-                            </Badge>
+                          <td className="c">
+                            <Bubble state={d.online ? "ink" : "off"} />
                           </td>
-                          <td>
-                            {d.capabilities.camera &&
-                            !d.capabilities.camera_fault
-                              ? "Включена"
-                              : "Включите в Qorgau"}
+                          <td className="c">
+                            <Bubble
+                              state={
+                                d.capabilities.camera &&
+                                !d.capabilities.camera_fault
+                                  ? "ink"
+                                  : "warn"
+                              }
+                            />
                           </td>
-                          <td>
-                            {!d.capabilities.desktop_monitor
-                              ? "Обновите Qorgau"
-                              : gazeEnabled(d)
-                                ? "Телефон · лица · взгляд"
-                                : "Телефон · лица. Взгляд выключен"}
+                          <td className="c">
+                            <Bubble state={gazeEnabled(d) ? "ink" : "warn"} />
+                          </td>
+                          <td className="c">
+                            <Bubble
+                              state={
+                                d.capabilities.desktop_monitor ? "ink" : "warn"
+                              }
+                            />
                           </td>
                           <td>
                             {d.revoked_at
@@ -850,47 +892,70 @@ export default function App() {
                   значения видны ученику и преподавателю.
                 </span>
               </div>
-              <div className="rules-grid">
-                <Rule
-                  icon={<Eye />}
-                  title="Три независимых счётчика"
-                  text="Вниз, влево и вправо считаются отдельно. Непрерывный эпизод от 5 секунд даёт один балл. На третьем в одном направлении — блокировка по правилам."
-                />
-                <Rule
-                  icon={<Smartphone />}
-                  title="Телефон — критическое событие"
-                  text="Два уверенных обнаружения на коротком интервале вызывают блокировку без накопления баллов. Наличие телефона не доказывает факт фотографирования."
-                />
-                <Rule
-                  icon={<Users />}
-                  title="Второе лицо — на проверку"
-                  text="Появление второго лица на секунду и дольше сохраняется как спорный момент. Само по себе не блокирует ученика."
-                />
-                <Rule
-                  icon={<History />}
-                  title="Частые короткие отвлечения"
-                  text="Три коротких эпизода за минуту общей длительностью от 6 секунд отправляются преподавателю. Не добавляют баллы за взгляд."
-                />
-                <Rule
-                  icon={<Users />}
-                  title="Лицо не видно"
-                  text="Отсутствие лица от 3 секунд направляется на проверку; после 10 секунд возникает техническая причина приостановки. Это не автоматическое обвинение в нарушении."
-                />
-                <Rule
-                  icon={<Smartphone />}
-                  title="Вероятное наведение телефона"
-                  text="Подъём и удержание телефона отмечаются отдельной эвристикой для ручной проверки. Направление объектива и факт снимка не определяются."
-                />
-                <Rule
-                  icon={<UnlockKeyhole />}
-                  title="Продолжение только по решению"
-                  text="Возврат взгляда и отклонение события не снимают блокировку. Преподаватель разрешает продолжить с указанием причины. Начинается новый цикл счётчиков, история остаётся."
-                />
-                <Rule
-                  icon={<Monitor />}
-                  title="Внешний тест, отдельный контроль"
-                  text="Перед стартом выберите сайт или приложение. На Windows доступно ограничение одного окна и горячих клавиш; для сайта выберите Qorgau Browser."
-                />
+              <div className="panel rules-sheet">
+                <section className="rule-group">
+                  <h2>
+                    <Bubble state="pause" />
+                    Ставят тест на паузу
+                  </h2>
+                  <Rule
+                    number={1}
+                    title="Три отметки за взгляд в одну сторону"
+                    text="Взгляд вниз, влево или вправо дольше 5 секунд даёт одну отметку. Стороны считаются отдельно; третья отметка ставит тест на паузу."
+                  />
+                  <Rule
+                    number={2}
+                    title="Телефон в кадре"
+                    text="Два уверенных обнаружения подряд сразу ставят тест на паузу, без отметок. Телефон в кадре ещё не доказывает, что ученик фотографировал."
+                  />
+                  <Rule
+                    number={3}
+                    title="Лица не видно"
+                    text="После 10 секунд тест ставится на паузу по технической причине: ученик мог отойти или заслонить камеру."
+                  />
+                  <Rule
+                    number={4}
+                    title="Сбой окружения"
+                    text="Окно теста закрыто, нет связи с сервером, изменилось число экранов, открыт удалённый рабочий стол или камера замерла."
+                  />
+                </section>
+                <section className="rule-group">
+                  <h2>
+                    <Bubble state="warn" />
+                    Уходят вам на проверку, тест продолжается
+                  </h2>
+                  <Rule
+                    number={5}
+                    title="Второе лицо в кадре"
+                    text="Рядом с учеником секунду и дольше видно ещё одно лицо."
+                  />
+                  <Rule
+                    number={6}
+                    title="Частые короткие отвлечения"
+                    text="Три коротких взгляда в сторону за минуту, в сумме от 6 секунд. Отметок за взгляд не добавляют."
+                  />
+                  <Rule
+                    number={7}
+                    title="Подъём телефона"
+                    text="Телефон подняли и держат, возможна съёмка экрана. Куда смотрит его камера и был ли снимок, Qorgau не определяет."
+                  />
+                </section>
+                <section className="rule-group">
+                  <h2>
+                    <Bubble state="ink" />
+                    После паузы
+                  </h2>
+                  <Rule
+                    number={8}
+                    title="Продолжает только преподаватель"
+                    text="Взгляд на экран и решение «Нарушения нет» паузу не снимают. Вы продолжаете тест в кабинете или своим паролем на компьютере ученика. История остаётся в отчёте."
+                  />
+                  <Rule
+                    number={9}
+                    title="Внешний тест, отдельный контроль"
+                    text="Перед стартом выберите сайт или приложение. Для сайта используется Qorgau Browser, для приложения — выбранное окно программы."
+                  />
+                </section>
               </div>
             </>
           )}
@@ -931,14 +996,14 @@ export default function App() {
                 }
               >
                 {selectedDevice.state.access === "LOCKED"
-                  ? "Блокировка по правилам"
+                  ? "Тест на паузе"
                   : selectedDevice.state.lifecycle === "RUNNING"
                     ? "Под контролем"
                     : selectedDevice.state.lifecycle === "COMPLETED"
                       ? "Сеанс завершён"
                       : "Ожидает начала"}
               </Badge>
-              <span>Цикл {selectedDevice.state.epoch}</span>
+              <span>Круг {selectedDevice.state.epoch}</span>
               {selectedDevice.state.reason && (
                 <span>
                   {eventNames[selectedDevice.state.reason] ||
@@ -990,14 +1055,14 @@ export default function App() {
                         <LockKeyhole size={16} />
                       )}{" "}
                       {selectedDevice.state.access === "LOCKED"
-                        ? "Разрешить продолжить"
-                        : "Заблокировать"}
+                        ? "Продолжить тест"
+                        : "Поставить на паузу"}
                     </button>
                     <button
                       className="btn"
                       onClick={() => ask(selectedDevice, "END_AND_RELEASE")}
                     >
-                      Завершить контроль
+                      Завершить контроль на этом компьютере
                     </button>
                   </>
                 )}
@@ -1074,9 +1139,9 @@ export default function App() {
                   Команда{" "}
                   {{
                     START: "Начать контроль",
-                    LOCK: "Заблокировать",
-                    UNLOCK: "Разрешить продолжить",
-                    END_AND_RELEASE: "Завершить контроль",
+                    LOCK: "Поставить на паузу",
+                    UNLOCK: "Продолжить тест",
+                    END_AND_RELEASE: "Завершить контроль на этом компьютере",
                     REVIEW: "Пересмотреть событие",
                   }[c.type] || "Управление сеансом"}
                   :{" "}
@@ -1105,9 +1170,9 @@ export default function App() {
             action.type === "REVOKE"
               ? "Отозвать доступ компьютера?"
               : action.type === "UNLOCK"
-                ? "Разрешить продолжить?"
+                ? "Продолжить тест?"
                 : action.type === "LOCK"
-                  ? "Заблокировать ученика?"
+                  ? "Поставить тест на паузу?"
                   : "Завершить контроль?"
           }
           subtitle={action.device.student + " · " + action.device.name}
@@ -1228,19 +1293,21 @@ function Empty({ text }: { text: string }) {
   );
 }
 function Rule({
-  icon,
+  number,
   title,
   text,
 }: {
-  icon: ReactNode;
+  number: number;
   title: string;
   text: string;
 }) {
   return (
-    <article className="panel rule">
-      <span className="rule-icon">{icon}</span>
-      <h2>{title}</h2>
-      <p>{text}</p>
+    <article className="rule">
+      <div className="rule-text">
+        <StepBubble number={number} />
+        <h3>{title}</h3>
+        <p>{text}</p>
+      </div>
     </article>
   );
 }
@@ -1532,6 +1599,61 @@ function NewExam({
     </Modal>
   );
 }
+function EvidenceTimeline({
+  event,
+  mediaIndex,
+}: {
+  event: Incident;
+  mediaIndex: number;
+}) {
+  const media = event.media[mediaIndex];
+  if (!media) return null;
+  const clipStart = media.clip_start ?? Math.max(0, event.start - 5);
+  const clipEnd = media.clip_end ?? Math.max(event.at + 5, clipStart + 1);
+  const span = Math.max(0.1, clipEnd - clipStart);
+  const position = (value: number) =>
+    `${Math.max(0, Math.min(100, ((value - clipStart) / span) * 100))}%`;
+  const absoluteStart = event.created_at - (event.at - clipStart);
+  return (
+    <div className="evidence-timeline" aria-label="Временная шкала записи">
+      <div className="timeline-labels">
+        <span>{clock(absoluteStart)}</span>
+        <strong>Событие {clock(absoluteStart + event.at - clipStart)}</strong>
+        <span>{clock(absoluteStart + span)}</span>
+      </div>
+      <div className="timeline-track">
+        {(media.gaps || []).map(([start, end], gap) => (
+          <i
+            key={gap}
+            className="timeline-gap"
+            style={{
+              left: position(start),
+              width: `${Math.max(1, ((end - start) / span) * 100)}%`,
+            }}
+          />
+        ))}
+        <i className="timeline-event" style={{ left: position(event.at) }} />
+        <i className="timeline-start" style={{ left: position(event.start) }} />
+      </div>
+      <div className="timeline-legend">
+        <span>
+          <Bubble state="ink" size="xs" />
+          начало эпизода
+        </span>
+        <span>
+          <Bubble state="warn" size="xs" />
+          срабатывание
+        </span>
+        {media.complete === false && (
+          <span>
+            <Bubble state="off" size="xs" />
+            нет записи
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 function EventReview({
   event: e,
   onClose,
@@ -1635,6 +1757,7 @@ function EventReview({
             </p>
           </div>
         )}
+        <EvidenceTimeline event={e} mediaIndex={index} />
         <div className="evidence-info">
           <span>
             Начало: <strong>{e.start.toFixed(1)} с</strong>
@@ -1681,14 +1804,14 @@ function EventReview({
             disabled={busy || !reason.trim()}
             onClick={() => decide("REJECTED")}
           >
-            <X size={16} /> Отклонить событие
+            <X size={16} /> Нарушения нет
           </button>
           <button
             className="btn primary"
             disabled={busy || !reason.trim()}
             onClick={() => decide("CONFIRMED")}
           >
-            <Check size={16} /> Подтвердить событие
+            <Check size={16} /> Это нарушение
           </button>
         </div>
         <p className="fine">

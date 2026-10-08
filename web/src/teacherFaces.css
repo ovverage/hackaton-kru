@@ -6,20 +6,20 @@
   display: flex;
   gap: 16px;
   padding: 24px;
-  border: 1px solid #dce5ec;
-  border-radius: 18px;
-  background: #f6f9fc;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--sheet);
 }
 .teacher-face-intro > svg {
   flex-shrink: 0;
-  color: #246788;
+  color: var(--ink);
   margin-top: 4px;
 }
-.teacher-face-intro h2 {
+.q .teacher-face-intro h2 {
   margin: 0 0 10px;
   font-size: 21px;
 }
-.teacher-face-intro p {
+.q .teacher-face-intro p {
   margin: 8px 0;
   line-height: 1.55;
   max-width: 820px;
@@ -31,12 +31,13 @@
 }
 .teacher-face-card {
   padding: 24px;
-  border: 1px solid #e0e6ec;
-  border-radius: 18px;
-  background: white;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--sheet);
 }
-.teacher-face-card h3 {
+.q .teacher-face-card h3 {
   margin: 0 0 22px;
+  font-size: 16px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -51,7 +52,7 @@
   min-width: 0;
   width: 100%;
   padding: 12px;
-  border: 1px solid #cfd9e1;
+  border: 1px solid var(--rule);
   border-radius: 9px;
 }
 .teacher-face-list {
@@ -64,7 +65,7 @@
   align-items: center;
   gap: 12px;
   padding: 16px 0;
-  border-top: 1px solid #edf0f3;
+  border-top: 1px solid var(--rule-soft);
 }
 .teacher-face-list li > div {
   flex: 1;
@@ -73,18 +74,18 @@
 }
 .teacher-face-list small {
   display: block;
-  color: #637388;
+  color: var(--pencil);
   margin-top: 6px;
 }
 .teacher-face-feedback {
   padding: 14px 18px;
   border-radius: 10px;
-  background: #e9f5ed;
-  color: #246342;
+  background: var(--ink-tint);
+  color: var(--ink-strong);
 }
 .teacher-face-feedback.error {
-  background: #fff0ed;
-  color: #9b3020;
+  background: var(--red-tint);
+  color: var(--red);
 }
 @media (max-width: 900px) {
   .teacher-face-columns {

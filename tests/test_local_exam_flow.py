@@ -104,7 +104,7 @@ def test_offline_no_transport_and_end_deletes_only_local_evidence(tmp_path):
     agent.http.close()
 
 
-def test_online_password_fallback_only_for_transport_failure(tmp_path):
+def test_online_password_never_bypasses_server_release_authority(tmp_path):
     agent = make_agent(tmp_path)
     agent.local_access.set_password('teacher-password')
     agent.engine.start()
@@ -115,8 +115,9 @@ def test_online_password_fallback_only_for_transport_failure(tmp_path):
             agent.teacher_unlock('teacher-password')
     assert agent.engine.state.access == 'LOCKED'
     with patch.object(agent, '_online_teacher_unlock', side_effect=httpx.ConnectError('offline')):
-        agent.teacher_unlock('teacher-password')
-    assert agent.engine.state.access == 'OPEN'
+        with pytest.raises(ValueError, match='Нет связи'):
+            agent.teacher_unlock('teacher-password')
+    assert agent.engine.state.access == 'LOCKED'
     agent.http.close()
 
 

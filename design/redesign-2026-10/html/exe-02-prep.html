@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Ученик: подготовка компьютера</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="qorgau.css">
+<style>@font-face{font-family:'Geologica';src:url('fonts/Geologica-Variable.woff') format('woff');font-weight:100 900;font-style:normal;font-display:swap}</style>
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#0B6474}a:hover{color:#08505D}
+</style>
+</head>
+<body>
+<div class="q win" style="min-height: 720px; font-family: 'Geologica', 'Segoe UI', sans-serif; color: #22252B">
+  <header class="win-head">
+    <span class="brand">
+      <svg class="logo" viewBox="0 0 26 26" aria-hidden="true"><circle cx="11" cy="12" r="8" fill="#0B6474"></circle><rect x="15.5" y="4" width="4.5" height="20" rx="2.25" fill="#0B6474"></rect></svg>
+      Qorgau
+    </span>
+    <span class="pill ok"><span class="bub ink"></span>На связи с сервером</span>
+  </header>
+
+  <main class="win-body">
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h1 class="t-h1" style="max-width: 15ch">Всё готово. Ждём преподавателя</h1>
+      <p class="t-lead" style="max-width: 46ch">Тест откроется сам, на весь экран, когда преподаватель его начнёт. Это окно можно свернуть.</p>
+      <p class="t-small">У преподавателя этот компьютер называется <strong style="color: #22252B">K301-PC14</strong></p>
+    </section>
+
+    <ol class="steps" aria-label="Подготовка к тесту">
+      <li class="step">
+        <span class="bub-num done" aria-label="Готово">
+          <svg class="i s" viewBox="0 0 24 24" style="stroke-width: 2.5"><path d="M20 6 9 17l-5-5"></path></svg>
+        </span>
+        <div class="step-main">
+          <div class="step-title"><h3>Камера</h3><span class="t-small">проверена в 09:41</span></div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap">
+            <label class="select" style="flex: 1 1 220px">
+              <span class="sr-only">Камера</span>
+              <select class="input"><option>Logitech C270 HD</option><option>Встроенная камера</option></select>
+              <svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg>
+            </label>
+            <button class="btn">Проверить снова</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+            <span class="pill">
+              <svg class="i s" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              Взгляд: на экран
+            </span>
+            <span class="t-small">Поверните голову, и здесь появится направление</span>
+          </div>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="bub-num skip">2</span>
+        <div class="step-main">
+          <div class="step-title"><h3>Окно программы</h3><span class="t-small">не нужно для сайта</span></div>
+          <p class="t-body muted" style="max-width: 50ch">Тест на сайте откроется в Qorgau Browser. Если тест в отдельной программе, откройте её и выберите окно.</p>
+          <div><a class="btn sm" href="exe-04-window.html">
+            <svg class="i s" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M2 9h20"></path></svg>
+            Выбрать окно программы
+          </a></div>
+        </div>
+      </li>
+
+      <li class="step">
+        <span class="bub-num now">3</span>
+        <div class="step-main">
+          <div class="step-title"><h3>Начало теста</h3><span class="t-small" style="color: #0B6474; font-weight: 500">ждём преподавателя</span></div>
+          <p class="t-body muted" style="max-width: 50ch">Перед стартом Qorgau ещё раз проверит камеру, лицо в кадре и место для записи.</p>
+        </div>
+      </li>
+    </ol>
+  </main>
+
+  <footer class="win-foot">
+    <svg class="i s" viewBox="0 0 24 24"><line x1="2" x2="22" y1="2" y2="22"></line><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"></path><path d="M5 10v2a7 7 0 0 0 12 5"></path><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"></path><path d="M9 9v3a3 3 0 0 0 5.12 2.12"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>
+    <span>Во время теста Qorgau отмечает события и сохраняет короткие видео. Звук не записывается.</span>
+  </footer>
+</div>
+</body>
+</html>

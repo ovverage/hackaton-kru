@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Qorgau Browser — тест и напоминание о взгляде</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./qorgau.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@300..800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#EEF0F3}
+a{color:#0B6474}a:hover{color:#08505D}
+</style>
+</helmet>
+<div class="q" style="position: relative; min-height: 768px; background: #EEF0F3; font-family: 'Geologica', 'Segoe UI', sans-serif; color: #22252B; overflow: hidden">
+
+  <!-- Сторонний сайт теста: нейтральный вид, не стиль Qorgau -->
+  <div style="font-family: system-ui, 'Segoe UI', sans-serif; color: #1F2933">
+    <div style="height: 56px; background: #FFFFFF; border-bottom: 1px solid #D5DAE0; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; font-size: 15px">
+      <span style="font-weight: 600">Тестирование · Билет 12</span>
+      <span style="margin-right: 330px; color: #52606D">Осталось 38:12</span>
+    </div>
+    <div style="max-width: 760px; margin: 56px auto 0; padding: 0 24px">
+      <div style="background: #FFFFFF; border: 1px solid #D5DAE0; border-radius: 6px; padding: 32px 36px">
+        <p style="color: #52606D; font-size: 14px; margin: 0 0 10px">Вопрос 7 из 25</p>
+        <p style="font-size: 20px; line-height: 1.4; margin: 0 0 24px">Какова временная сложность бинарного поиска в отсортированном массиве из n элементов?</p>
+        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 16px">
+          <label style="display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid #D5DAE0; border-radius: 4px"><input type="radio" name="a"> O(n)</label>
+          <label style="display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid #3E6FB0; border-radius: 4px; background: #F1F6FC"><input type="radio" name="a" checked> O(log n)</label>
+          <label style="display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid #D5DAE0; border-radius: 4px"><input type="radio" name="a"> O(n log n)</label>
+          <label style="display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid #D5DAE0; border-radius: 4px"><input type="radio" name="a"> O(1)</label>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 28px">
+          <button style="font: 15px system-ui, sans-serif; padding: 10px 18px; border: 1px solid #D5DAE0; background: #FFFFFF; border-radius: 4px">Назад</button>
+          <button style="font: 15px system-ui, sans-serif; padding: 10px 18px; border: 1px solid #3E6FB0; background: #3E6FB0; color: #FFFFFF; border-radius: 4px">Далее</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Qorgau: кнопка вызова преподавателя -->
+  <button class="btn sm dark" style="position: absolute; top: 10px; right: 12px; gap: 10px; box-shadow: 0 4px 14px rgba(20, 22, 26, 0.18)">
+    <svg class="i s" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+    Позвать преподавателя
+    <span class="kbd">Ctrl+Alt+Q</span>
+  </button>
+
+  <!-- Qorgau: напоминание о взгляде, не забирает фокус -->
+  <div role="status" style="position: absolute; top: 76px; left: 50%; transform: translateX(-50%); width: 520px; max-width: calc(100% - 32px); background: #F0B33E; color: #22252B; border-radius: 14px; box-shadow: 0 12px 32px rgba(20, 22, 26, 0.22); overflow: hidden">
+    <div style="display: flex; align-items: center; gap: 16px; padding: 16px 22px">
+      <svg class="i l" viewBox="0 0 24 24" style="stroke-width: 2"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      <div style="flex: 1">
+        <strong style="display: block; font-size: 24px; font-weight: 650; letter-spacing: -0.01em; line-height: 1.15">Смотрите на экран</strong>
+        <span style="font-size: 14px">Взгляд вниз дольше 5 секунд засчитывается</span>
+      </div>
+      <span style="font-size: 16px; font-weight: 600">2,1 с</span>
+    </div>
+    <div style="height: 5px; background: rgba(34, 37, 43, 0.15)"><div style="width: 42%; height: 5px; background: #22252B"></div></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1366,"height":768}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

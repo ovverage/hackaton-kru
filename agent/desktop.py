@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import socket
 import sys
 import threading
@@ -10,12 +9,13 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import QLockFile, Qt, QThread, QTimer, Signal
-from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QMenu,
     QLineEdit,
     QMessageBox,
@@ -31,43 +31,8 @@ from PySide6.QtWidgets import (
 from .client import Agent
 from .provision import EnrollmentUnavailable, auto_enroll
 from .student_state import present
+from .theme import APP_QSS as STYLE, RegMarks, StepBubble, load_fonts, logo_icon
 from shared.bootstrap import default_bootstrap
-
-STYLE = """
-QWidget {font-family: "Segoe UI", "DejaVu Sans";font-size:13px;color:#34415a;}
-QWidget#window {background:#f7f9fc;}
-QFrame#sidebar {background:#244b9b;border:0;}
-QLabel#brand {font-size:32px;font-weight:700;color:#edf4e7;}
-QLabel#sideHeading {font-size:10px;font-weight:600;color:#94b39e;letter-spacing:1px;}
-QLabel#sideStep {color:#b7cdbb;font-size:13px;padding:13px 0;}
-QLabel#sideNote {color:#8daa94;font-size:11px;line-height:1.5;}
-QLabel#eyebrow {font-size:10px;letter-spacing:2px;color:#7e90ad;font-weight:600;}
-QLabel#title {font-size:27px;font-weight:600;color:#243651;}
-QLabel#body {font-size:13px;color:#7d8799;}
-QLabel#small {font-size:11px;color:#8793a6;}
-QLabel#heading {font-size:16px;font-weight:600;}
-QLabel#field {font-size:12px;font-weight:500;color:#687c9e;}
-QFrame#card {background:white;border:1px solid #e1e6f0;border-radius:12px;}
-QLabel#notice {background:#eef3fb;color:#7085a7;padding:13px;border:1px solid #dfe6f2;border-radius:8px;font-size:11px;}
-QLabel#error {color:#ad5247;background:#fff0e9;border:1px solid #efcfc0;border-radius:7px;padding:12px;}
-QLabel#badge {font-size:11px;color:#5778ae;background:#edf3fe;border:1px solid #dce6f7;border-radius:6px;padding:6px 10px;}
-QLabel#heroTitle {font-size:23px;font-weight:600;}
-QLabel#count {font-size:32px;font-weight:600;color:#426cb2;}
-QLabel#countDanger {font-size:32px;font-weight:600;color:#b95f4b;}
-QLineEdit {background:white;border:1px solid #dce3ef;border-radius:7px;padding:11px 12px;color:#34415a;selection-background-color:#5480d4;}
-QLineEdit:focus {border:1px solid #5480d4;}
-QLineEdit:disabled {background:#f2f4f8;color:#9aa8bd;}
-QPushButton {background:white;border:1px solid #d9e2f1;border-radius:7px;padding:11px 15px;color:#405a82;font-size:13px;font-weight:600;min-height:20px;}
-QPushButton:hover {background:#edf3fc;border-color:#a3b9dc;}
-QPushButton:disabled {background:#e7ebf2;color:#5e6e85;border-color:#d6dde8;}
-QPushButton#primary {background:#2859bc;color:white;border-color:#2859bc;}
-QPushButton#primary:hover {background:#214b9f;}
-QPushButton#primary:disabled {background:#a9bbd7;border-color:#9bafce;color:#243b5d;}
-QScrollArea {border:0;background:transparent;}
-QScrollBar:vertical {background:#f3f6fb;width:9px;border:0;}
-QScrollBar::handle:vertical {background:#d5deed;border-radius:4px;min-height:30px;}
-QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical {height:0;}
-"""
 
 
 def label(text="", name="body", wrap=True):
@@ -203,24 +168,7 @@ def public_gaze_status_text(gaze, *, active=False, gaze_seconds=0):
 
 
 def icon():
-    from .resources import resource_root
-    packaged = resource_root() / "packaging/windows/qorgau.ico"
-    if packaged.is_file():
-        result = QIcon(str(packaged))
-        if not result.isNull():
-            return result
-    pixmap = QPixmap(64, 64)
-    pixmap.fill(Qt.GlobalColor.transparent)
-    painter = QPainter(pixmap)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(QColor("#2859bc"))
-    painter.drawRoundedRect(2, 2, 60, 60, 15, 15)
-    painter.setPen(QColor("#edf4e7"))
-    painter.setFont(QFont("DejaVu Sans", 33, QFont.Weight.Bold))
-    painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, "q")
-    painter.end()
-    return QIcon(pixmap)
+    return logo_icon()
 
 
 class EnrollmentWorker(QThread):
@@ -289,7 +237,7 @@ class PasswordSetupWorker(QThread):
         except ValueError as error:
             self.done.emit(str(error))
         except Exception:
-            self.done.emit("Не удалось проверить пароль. Проверьте связь с сервером и повторите.")
+            self.done.emit("Не удалось сохранить пароль на этом компьютере. Проверьте доступ к папке настроек и повторите.")
         finally:
             self.password = ""
 
@@ -415,23 +363,32 @@ class StudentWindow(QWidget):
     def build_dashboard(self):
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setContentsMargins(30, 28, 30, 28)
-        layout.setSpacing(16)
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
+        layout.setContentsMargins(32, 28, 32, 28)
+        layout.setSpacing(18)
         row = QHBoxLayout()
-        row.addWidget(label("qorgau.", "title"))
+        row.addWidget(label("Qorgau", "brand"))
         row.addStretch()
         self.connection = label("Подключаемся…", "small")
         row.addWidget(self.connection)
         layout.addLayout(row)
         self.device_name = label("Компьютер аудитории", "small")
         layout.addWidget(self.device_name)
-        layout.addWidget(label("Окно теста", "field"))
-        self.target_button = QPushButton("Выбрать открытое окно")
-        self.target_button.clicked.connect(self.select_target)
-        layout.addWidget(self.target_button)
-        self.target_status = label("Для Qorgau Browser тест откроет преподаватель. Окно выбирайте только для отдельного приложения.", "small")
-        layout.addWidget(self.target_status)
-        layout.addWidget(label("Камера", "field"))
+        layout.addWidget(label("Подготовка к тесту", "title"))
+        layout.addWidget(label("Выберите камеру и среду теста. Калибровка начнётся после команды начала.", "body"))
+
+        sheet = RegMarks()
+        sheet_layout = QVBoxLayout(sheet)
+        sheet_layout.setContentsMargins(28, 28, 28, 28)
+        sheet_layout.setSpacing(18)
+
+        camera_row = QHBoxLayout()
+        camera_row.setSpacing(16)
+        camera_row.addWidget(StepBubble(1, "active"), 0, Qt.AlignmentFlag.AlignTop)
+        camera_content = QVBoxLayout()
+        camera_content.setSpacing(9)
+        camera_content.addWidget(label("Выберите камеру", "heading"))
+        camera_content.addWidget(label("Лицо должно быть хорошо видно. Звук не записывается.", "small"))
         self.camera_choice = QComboBox()
         self.camera_choice.setAccessibleName("Камера")
         try:
@@ -444,19 +401,58 @@ class StudentWindow(QWidget):
         if not self.camera_choice.count():
             for index in range(4):
                 self.camera_choice.addItem(f"Камера {index + 1}", index)
-        layout.addWidget(self.camera_choice)
-        self.camera_button = QPushButton("Готово")
+        camera_content.addWidget(self.camera_choice)
+        self.camera_button = QPushButton("Проверить камеру")
         self.camera_button.setObjectName("primary")
         self.camera_button.clicked.connect(self.prepare_camera)
-        layout.addWidget(self.camera_button)
+        camera_content.addWidget(self.camera_button)
         self.camera_status = label("Выберите камеру. Настройка по точкам начнётся после команды «Начать».", "small")
-        layout.addWidget(self.camera_status)
+        self.camera_status.setMinimumHeight(40)
+        camera_content.addWidget(self.camera_status)
+        self.gaze_status = label("", "small")
+        self.gaze_status.setWordWrap(True)
+        # Reserve the diagnostic block's full three-line height. Qt can
+        # otherwise shave one text-leading unit from a wrapped QLabel after
+        # other windows change the application font metrics, clipping the
+        # final gaze/head angle line in packaged Linux and Windows builds.
+        self.gaze_status.setMinimumHeight(120)
+        camera_content.addWidget(self.gaze_status)
+        camera_row.addLayout(camera_content, 1)
+        sheet_layout.addLayout(camera_row)
+
+        target_row = QHBoxLayout()
+        target_row.setSpacing(16)
+        target_row.addWidget(StepBubble(2), 0, Qt.AlignmentFlag.AlignTop)
+        target_content = QVBoxLayout()
+        target_content.setSpacing(9)
+        target_content.addWidget(label("Выберите среду теста", "heading"))
+        self.target_button = QPushButton("Выбрать окно программы")
+        self.target_button.clicked.connect(self.select_target)
+        target_content.addWidget(self.target_button)
+        self.tabs_button = QPushButton("Выбрать вкладку Chrome / Edge")
+        self.tabs_button.clicked.connect(self.select_browser_tab)
+        target_content.addWidget(self.tabs_button)
+        self.target_status = label("Для Qorgau Browser тест откроет преподаватель. Окно выбирайте только для отдельной программы.", "small")
+        self.target_status.setMinimumHeight(60)
+        target_content.addWidget(self.target_status)
+        target_row.addLayout(target_content, 1)
+        sheet_layout.addLayout(target_row)
+
+        wait_row = QHBoxLayout()
+        wait_row.setSpacing(16)
+        wait_row.addWidget(StepBubble(3), 0, Qt.AlignmentFlag.AlignTop)
+        wait_content = QVBoxLayout()
+        wait_content.setSpacing(9)
+        self.wait_heading = label("Дождитесь начала", "heading")
+        wait_content.addWidget(self.wait_heading)
+        self.assignment_title = label("", "small")
+        self.assignment_title.setMinimumHeight(40)
+        wait_content.addWidget(self.assignment_title)
+        self.wait_hint = label("Преподаватель назначит тест и запустит его со своего компьютера.", "small")
+        wait_content.addWidget(self.wait_hint)
         self.offline_controls = QWidget()
         offline = QVBoxLayout(self.offline_controls)
         offline.setContentsMargins(0, 0, 0, 0)
-        self.tabs_button = QPushButton("Выбрать вкладку Chrome / Edge")
-        self.tabs_button.clicked.connect(self.select_browser_tab)
-        offline.addWidget(self.tabs_button)
         self.password_setup = QWidget()
         passwords = QVBoxLayout(self.password_setup)
         passwords.setContentsMargins(0, 0, 0, 0)
@@ -477,7 +473,7 @@ class StudentWindow(QWidget):
         passwords.addWidget(self.save_password)
         self.password_feedback = label("", "small")
         passwords.addWidget(self.password_feedback)
-        layout.addWidget(self.password_setup)
+        wait_content.addWidget(self.password_setup)
         self.local_start = QPushButton("Начать экзамен")
         self.local_start.setObjectName("primary")
         self.local_start.clicked.connect(self.start_offline)
@@ -488,12 +484,11 @@ class StudentWindow(QWidget):
         self.offline_feedback = label("", "small")
         offline.addWidget(self.offline_feedback)
         self.offline_controls.hide()
-        layout.addWidget(self.offline_controls)
-        self.gaze_status = label("", "small")
-        self.gaze_status.setWordWrap(True)
-        layout.addWidget(self.gaze_status)
-        self.assignment_title = label("", "small")
-        layout.addWidget(self.assignment_title)
+        wait_content.addWidget(self.offline_controls)
+        wait_row.addLayout(wait_content, 1)
+        sheet_layout.addLayout(wait_row)
+        layout.addWidget(sheet)
+
         self.runtime_error = label("", "error")
         self.runtime_error.hide()
         layout.addWidget(self.runtime_error)
@@ -506,7 +501,7 @@ class StudentWindow(QWidget):
         self.environment_cancel.hide()
         layout.addWidget(self.environment_cancel)
         layout.addStretch()
-        layout.addWidget(label("Во время теста фиксируются события и видео с камеры. Звук не записывается.", "small"))
+        layout.addWidget(label("Во время теста Qorgau фиксирует события и короткие видео. Решение принимает преподаватель.", "small"))
         self.dashboard_scroll = QScrollArea()
         self.dashboard_scroll.setObjectName('dashboard-scroll')
         self.dashboard_scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -560,12 +555,12 @@ class StudentWindow(QWidget):
         self.exam_controller = ExamController(agent, self)
         if self.run_worker and getattr(agent, "mode", "online") != "offline":
             QTimer.singleShot(0, self.exam_controller.warmup_browser)
-        self.offline_controls.setVisible(getattr(agent, "mode", "online") == "offline")
-        if getattr(agent, "mode", "online") != "offline":
-            self.password_heading.setText("Резервный доступ преподавателя при потере сети")
-            self.local_password.setPlaceholderText("Существующий пароль кабинета преподавателя")
-            self.local_password_repeat.hide()
-            self.save_password.setText("Проверить и сохранить резервный доступ")
+        offline = getattr(agent, "mode", "online") == "offline"
+        self.offline_controls.setVisible(offline)
+        self.tabs_button.setVisible(offline)
+        if offline:
+            self.wait_heading.setText("Начните экзамен")
+            self.wait_hint.setText("Сохраните пароль преподавателя и нажмите «Начать экзамен». Затем пройдите настройку взгляда.")
         self.pages.setCurrentIndex(1)
         self.device_name.setText(agent.config.get("name", "Компьютер аудитории"))
         self.camera_choice.setCurrentIndex(max(0, self.camera_choice.findData(agent.config.get("camera_settings", {}).get("index", 0))))
@@ -646,7 +641,7 @@ class StudentWindow(QWidget):
                     )
                 self.last_notification = marker
         self.connection.setText(
-            "● Автономный режим" if offline else "● Сервер подключён"
+            "● Автономный режим" if offline else "● Сервер на связи"
             if snap.get("connected") and not self.failure
             else "○ Нет связи с сервером"
         )
@@ -654,7 +649,7 @@ class StudentWindow(QWidget):
         selected = next((t for t in self.agent.targets if t.get("id") == "primary-window"), None)
         self.agent.capabilities["selected_window"] = bool(selected)
         self.target_button.setEnabled(not active and not pending_id)
-        self.target_button.setText("Изменить окно" if selected else "Выбрать открытое окно")
+        self.target_button.setText("Изменить окно" if selected else "Выбрать окно программы")
         target_text = self.offline_target.get("title", self.offline_target.get("name", "Выбрана вкладка")) if self.offline_target else None
         self.target_status.setText(target_text if offline and target_text else selected["name"] if selected else
                                   "Выберите вкладку или открытое приложение." if offline else
@@ -671,7 +666,7 @@ class StudentWindow(QWidget):
             else "Настройка по точкам начнётся после команды «Начать»."
         )
         password_ready = bool(snap.get("local_password_ready"))
-        self.password_setup.setVisible(not password_ready and not active and not pending_id)
+        self.password_setup.setVisible(offline and not password_ready and not active and not pending_id)
         saving_password = self.password_worker is not None and self.password_worker.isRunning()
         self.save_password.setEnabled(not saving_password)
         self.local_password.setEnabled(not saving_password)
@@ -707,6 +702,7 @@ class StudentWindow(QWidget):
             if (gaze.get("interval_ms") or 0) > 750:
                 gaze_text += " Кадры поступают редко — таймер отвлечения сброшен."
         self.gaze_status.setText(gaze_text)
+        self.gaze_status.setVisible(bool(gaze_text))
 
     def check_calibrated_monitor(self):
         """Screen geometry/DPI is read only on the GUI thread."""
@@ -864,15 +860,17 @@ class StudentWindow(QWidget):
         self.refresh()
 
     def setup_local_password(self):
+        if not self.agent or getattr(self.agent, 'mode', 'online') != 'offline':
+            return
         if self.password_worker is not None and self.password_worker.isRunning():
             return
         password, repeat = self.local_password.text(), self.local_password_repeat.text()
         self.local_password.clear()
         self.local_password_repeat.clear()
-        if getattr(self.agent, "mode", "online") == "offline" and password != repeat:
+        if password != repeat:
             self.password_feedback.setText("Пароли не совпали. Введите их ещё раз.")
             return
-        self.password_feedback.setText("Проверяем и сохраняем резервный доступ…")
+        self.password_feedback.setText("Сохраняем локальный пароль преподавателя…")
         self.password_worker = PasswordSetupWorker(self.agent, password, self)
         self.password_worker.done.connect(self.password_setup_done)
         self.password_worker.finished.connect(self.refresh)
@@ -1044,7 +1042,7 @@ def launch(
     app.setApplicationName("Qorgau Agent")
     app.setQuitOnLastWindowClosed(False)
     app.setApplicationDisplayName("Qorgau — агент аудитории")
-    app.setFont(QFont("Segoe UI" if os.name == "nt" else "DejaVu Sans", 10))
+    app.setFont(QFont(load_fonts(), 10))
     app.setStyle("Fusion")
     folder.mkdir(parents=True, exist_ok=True)
     lock = QLockFile(str(folder / "desktop.lock"))

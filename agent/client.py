@@ -485,7 +485,7 @@ class Agent(SessionControl, TeacherAccess):
             self.environment = config["environment"]
             for command in config["commands"]:
                 self.apply(command)
-            self.status = "Сервер подключён"
+            self.status = "Сервер на связи"
             self.last_synced_at = time.monotonic()
             self.session = config.get("session")
             self.save()
@@ -523,10 +523,8 @@ class Agent(SessionControl, TeacherAccess):
     def teacher_unlock(self, password, action="UNLOCK"):
         try:
             return self._online_teacher_unlock(password, action)
-        except httpx.HTTPError:
-            if not self.local_access.ready:
-                raise ValueError('Нет связи. Резервный пароль ещё не был настроен на этом компьютере.') from None
-            self.local_authorize(password, action)
+        except httpx.HTTPError as error:
+            raise ValueError('Нет связи с сервером онлайн-сеанса. Восстановите связь для подтверждения преподавателя.') from error
 
     def _online_teacher_unlock(self, password, action="UNLOCK"):
         # Serialize sync + unlock to prevent concurrent queue deletion/command delivery.
@@ -548,7 +546,6 @@ class Agent(SessionControl, TeacherAccess):
                 except (ValueError, KeyError):
                     detail = "Не удалось проверить пароль преподавателя"
                 raise ValueError(str(detail))
-            self.local_access.set_password(password)
             self.sync()
             # Confirm application immediately, even if the background worker
             # stopped because of a camera/runtime failure.

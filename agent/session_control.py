@@ -108,13 +108,12 @@ class SessionControl:
         return install(self.folder, extension_id, browser_instance, browser, replace)
 
     def setup_password(self, password):
+        if self.mode != 'offline':
+            raise ValueError('Для онлайн-сеанса используется пароль преподавателя на сервере.')
         if self.engine.state.lifecycle == 'RUNNING' or self.start_pending:
             raise ValueError('Пароль задаётся до начала экзамена.')
         if self.local_access.ready:
             raise ValueError('Резервный пароль уже установлен на этом компьютере.')
-        if self.mode != 'offline':
-            from .teacher_access import checked
-            checked(self.http.post('/api/agent/teacher-password', json={'password': password}))
         self.local_access.set_password(password)
 
     def local_authorize(self, password, action):

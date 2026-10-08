@@ -160,7 +160,9 @@ class TeacherAccess:
                 raise ValueError('Причина блокировки сохраняется. Проверьте окно и камеру.')
             progress('Преподаватель подтверждён. Прокторинг продолжен.')
         except httpx.HTTPError as error:
-            raise ValueError('Нет связи с базой преподавателей. Используйте резервный пароль.') from error
+            message = ('Нет связи с базой преподавателей. Используйте резервный пароль.' if self.mode == 'offline'
+                       else 'Нет связи с сервером онлайн-сеанса. Восстановите соединение для проверки преподавателя.')
+            raise ValueError(message) from error
         finally:
             with self.mutex:
                 self.teacher_face_scan = False

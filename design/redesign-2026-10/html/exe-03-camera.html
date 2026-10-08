@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Ученик: проверка камеры</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="qorgau.css">
+<style>@font-face{font-family:'Geologica';src:url('fonts/Geologica-Variable.woff') format('woff');font-weight:100 900;font-style:normal;font-display:swap}</style>
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#0B6474}a:hover{color:#08505D}
+</style>
+</head>
+<body>
+<div class="q win" style="min-height: 760px; font-family: 'Geologica', 'Segoe UI', sans-serif; color: #22252B">
+  <header class="win-head" style="padding-top: 18px; padding-bottom: 18px">
+    <h1 class="t-h2">Проверка камеры</h1>
+    <button class="icon-btn" aria-label="Закрыть">
+      <svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+    </button>
+  </header>
+
+  <main class="win-body" style="gap: 20px">
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+      <label class="select" style="flex: 1 1 260px">
+        <span class="sr-only">Камера</span>
+        <select class="input"><option>Logitech C270 HD</option><option>Встроенная камера</option></select>
+        <svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg>
+      </label>
+      <span class="t-small">Изображение остаётся на этом компьютере</span>
+    </div>
+
+    <figure class="cam" style="border-radius: 6px">
+      <svg class="scene" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <rect width="640" height="360" fill="#2A2E35"></rect>
+        <rect width="640" height="250" fill="#30353D"></rect>
+        <rect x="470" y="40" width="120" height="150" rx="4" fill="#353B44"></rect>
+        <path d="M180 360 C186 292 240 262 320 262 C400 262 454 292 460 360 Z" fill="#4A515C"></path>
+        <rect x="297" y="214" width="46" height="56" rx="14" fill="#444B55"></rect>
+        <ellipse cx="320" cy="168" rx="58" ry="70" fill="#565E6A"></ellipse>
+        <path d="M262 160 C262 110 290 96 320 96 C352 96 378 112 378 160 C366 134 344 126 320 126 C296 126 274 136 262 160 Z" fill="#3B414A"></path>
+        <ellipse cx="320" cy="172" rx="96" ry="116" fill="none" stroke="#FFFFFF" stroke-opacity="0.75" stroke-width="2" stroke-dasharray="7 7"></ellipse>
+      </svg>
+      <span class="reg light tl"></span><span class="reg light tr"></span><span class="reg light bl"></span><span class="reg light br"></span>
+      <span class="tc" style="left: 24px; top: 22px; bottom: auto">Предпросмотр</span>
+    </figure>
+
+    <section style="display: flex; flex-direction: column; gap: 12px">
+      <h2 class="t-h3">Посмотрите на экран и подтвердите камеру</h2>
+      <p class="t-body muted" style="max-width: 60ch">Qorgau запомнит, как вы сидите, и дальше будет сравнивать с этим положением. Настраивать ничего не нужно.</p>
+      <ul style="display: flex; flex-wrap: wrap; gap: 8px">
+        <li class="pill">
+          <svg class="i s" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><path d="M9 9h.01"></path><path d="M15 9h.01"></path></svg>
+          Лицо целиком в овале
+        </li>
+        <li class="pill">
+          <svg class="i s" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+          Свет спереди, а не за спиной
+        </li>
+        <li class="pill">
+          <svg class="i s" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2"></rect><path d="M12 18h.01"></path></svg>
+          Телефон убран
+        </li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="modal-foot" style="justify-content: space-between">
+    <button class="btn">Отмена</button>
+    <a class="btn primary" href="exe-02-prep.html">
+      <svg class="i s" viewBox="0 0 24 24" style="stroke-width: 2.25"><path d="M20 6 9 17l-5-5"></path></svg>
+      Использовать эту камеру
+    </a>
+  </footer>
+</div>
+</body>
+</html>

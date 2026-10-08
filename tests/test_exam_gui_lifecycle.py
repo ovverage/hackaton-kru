@@ -385,16 +385,18 @@ def test_webengine_preflight_flags_preserve_security_and_existing_features(monke
     assert "no-sandbox" not in result and "NetworkServiceInProcess" not in result
 
 
-def test_online_reserve_password_is_verified_off_gui_thread_and_cleared(gui, monkeypatch):
+def test_offline_password_is_stored_off_gui_thread_and_cleared(gui, monkeypatch):
     from PySide6.QtCore import QThread
     from PySide6.QtTest import QTest
     agent, window = gui
+    monkeypatch.setattr(agent, 'mode', 'offline', raising=False)
+    window.refresh()
     calls = []
     monkeypatch.setattr(agent, "setup_password", lambda password: calls.append((password, QThread.currentThread())), raising=False)
     assert not window.password_setup.isHidden()
-    assert window.local_password_repeat.isHidden()
-    assert "Существующий" in window.local_password.placeholderText()
+    assert not window.local_password_repeat.isHidden()
     window.local_password.setText("fixture-password")
+    window.local_password_repeat.setText("fixture-password")
     window.setup_local_password()
     assert window.local_password.text() == ""
     for _ in range(100):
@@ -405,6 +407,20 @@ def test_online_reserve_password_is_verified_off_gui_thread_and_cleared(gui, mon
     assert calls[0][1] != window.thread()
     assert window.password_worker.password == ""
     assert "сохранён" in window.password_feedback.text()
+
+
+def test_online_has_no_local_password_setup_but_keeps_server_password(gui, monkeypatch):
+    from agent.exam_ui import LockScreen
+    agent, window = gui
+    setup = Mock()
+    monkeypatch.setattr(agent, 'setup_password', setup, raising=False)
+    assert window.password_setup.isHidden()
+    window.setup_local_password()
+    setup.assert_not_called()
+    lock = LockScreen(agent)
+    assert lock.password.placeholderText() == 'Пароль кабинета преподавателя'
+    assert not lock.face_unlock.isHidden()
+    lock.deleteLater()
 
 
 def test_offline_password_requires_repeat_and_face_unlock_remains_available(gui, monkeypatch):

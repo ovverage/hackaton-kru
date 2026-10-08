@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Ученик: тест на паузе</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="qorgau.css">
+<style>@font-face{font-family:'Geologica';src:url('fonts/Geologica-Variable.woff') format('woff');font-weight:100 900;font-style:normal;font-display:swap}</style>
+<style>
+body{margin:0;background:#FFFFFF}
+a{color:#0B6474}a:hover{color:#08505D}
+</style>
+</head>
+<body>
+<div class="q" style="min-height: 768px; display: flex; flex-direction: column; background: #FFFFFF; font-family: 'Geologica', 'Segoe UI', sans-serif; color: #22252B">
+
+  <header style="background: #C83A36; color: #FFFFFF; padding: 28px 56px 40px; display: flex; flex-direction: column; gap: 36px">
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap">
+      <span class="brand" style="color: #FFFFFF">
+        <svg class="logo" viewBox="0 0 26 26" aria-hidden="true"><circle cx="11" cy="12" r="8" fill="#FFFFFF"></circle><rect x="15.5" y="4" width="4.5" height="20" rx="2.25" fill="#FFFFFF"></rect></svg>
+        Qorgau
+      </span>
+      <span style="font-size: 16px; font-weight: 500">K301-PC14, 09:52</span>
+    </div>
+    <div>
+      <p style="font-size: 24px; font-weight: 500; margin-bottom: 6px">Тест на паузе</p>
+      <h1 class="t-hero">Позовите преподавателя</h1>
+    </div>
+  </header>
+
+  <main style="flex: 1; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 32px 64px; padding: 32px 56px 24px">
+    <section style="flex: 1 1 520px; display: flex; flex-direction: column; gap: 24px; min-width: 0">
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <h2 class="t-h2" style="font-size: 24px">Камера заметила телефон в 09:52</h2>
+        <p class="t-lead" style="color: #22252B; max-width: 52ch">Преподаватель посмотрит запись и решит, продолжать ли тест. Окно теста остаётся открытым под этим экраном.</p>
+        <p class="t-body muted" style="max-width: 56ch">Вернуть взгляд или перезапустить Qorgau не поможет: продолжить тест может только преподаватель.</p>
+      </div>
+
+      <form style="border: 1px solid #D9DDE3; border-radius: 14px; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; max-width: 560px">
+        <h3 class="t-h3" style="display: flex; align-items: center; gap: 8px">
+          <svg class="i s" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Для преподавателя
+        </h3>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap">
+          <label style="flex: 1 1 240px">
+            <span class="sr-only">Пароль преподавателя</span>
+            <input class="input" type="password" placeholder="Пароль кабинета преподавателя">
+          </label>
+          <button class="btn primary" type="button">
+            <svg class="i s" viewBox="0 0 24 24" style="fill: currentColor; stroke: none"><polygon points="7 4 20 12 7 20 7 4"></polygon></svg>
+            Продолжить тест
+          </button>
+        </div>
+        <button class="btn quiet danger" type="button" style="align-self: flex-start; padding: 0">Завершить контроль на этом компьютере</button>
+      </form>
+    </section>
+
+    <aside style="flex: 1 1 380px; max-width: 470px; display: flex; flex-direction: column; gap: 14px; min-width: 0">
+      <h2 class="t-h3">Что заметила камера</h2>
+      <figure style="display: flex; flex-direction: column; gap: 8px">
+        <div class="cam">
+          <svg class="scene" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <rect width="640" height="360" fill="#2A2E35"></rect>
+            <rect width="640" height="250" fill="#30353D"></rect>
+            <path d="M180 360 C186 292 240 262 320 262 C400 262 454 292 460 360 Z" fill="#4A515C"></path>
+            <rect x="297" y="214" width="46" height="56" rx="14" fill="#444B55"></rect>
+            <ellipse cx="318" cy="176" rx="58" ry="70" fill="#565E6A" transform="rotate(8 318 176)"></ellipse>
+            <path d="M262 168 C262 118 290 104 320 104 C352 104 378 120 378 168 C366 142 344 134 320 134 C296 134 274 144 262 168 Z" fill="#3B414A" transform="rotate(8 318 176)"></path>
+            <path d="M400 360 L392 300 C390 288 402 282 410 290 L428 318 L440 360 Z" fill="#5A626E"></path>
+            <rect x="376" y="236" width="38" height="66" rx="6" fill="#1B1E23" transform="rotate(-12 395 269)"></rect>
+            <rect x="381" y="242" width="28" height="50" rx="3" fill="#3A5A78" transform="rotate(-12 395 269)"></rect>
+          </svg>
+          <span class="reg light tl"></span><span class="reg light tr"></span><span class="reg light bl"></span><span class="reg light br"></span>
+          <div class="det" style="left: 56%; top: 62%; width: 12%; height: 24%"><span>телефон 93%</span></div>
+          <span class="tc" style="left: 24px; bottom: 22px">09:52:14</span>
+        </div>
+        <figcaption class="t-small">Телефон в кадре, два раза за 2 секунды</figcaption>
+      </figure>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid #E9ECF0; font-size: 14px">
+        <span style="display: inline-flex; align-items: center; gap: 10px">
+          <svg class="i s" viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg>
+          Взгляд вниз, 6,2 с
+        </span>
+        <span class="muted">09:47:31</span>
+      </div>
+    </aside>
+  </main>
+
+  <footer style="padding: 0 56px 24px; font-size: 12px; color: #5B6270">Событие — повод посмотреть запись. Решение о нарушении принимает преподаватель.</footer>
+</div>
+</body>
+</html>

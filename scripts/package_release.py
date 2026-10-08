@@ -18,6 +18,7 @@ def source_files(root):
     tracked = subprocess.check_output(['git', 'ls-files', '-z'], cwd=root).decode('utf-8').split('\0')
     directories = {'agent','backend','shared','scripts','tests','extension','deploy','training','packaging','.github','web','docs','deliverables'}
     top_level = {'README.md','THIRD_PARTY_NOTICES.md','.gitignore','.gitattributes','Start-Student.cmd','pyproject.toml','requirements-core.lock','requirements-student.lock','requirements-windows.lock','model-manifest.json','package.json'}
+    top_level.update({'requirements-face.lock', 'teacher-face-manifest.json'})
     paths = []
     for name in tracked:
         relative = Path(name)
@@ -41,7 +42,7 @@ def main():
             archive.write(path,path.relative_to(ROOT).as_posix())
     staff=dist/f'Qorgau-Admin-{VERSION}.zip'
     with zipfile.ZipFile(staff,'w',zipfile.ZIP_DEFLATED) as archive:
-        for file in (dist/'Qorgau-SecurityBridge.exe',ROOT/'deploy/Prepare-Qorgau-Exam.ps1',source,ROOT/'README.md',ROOT/'THIRD_PARTY_NOTICES.md',ROOT/'model-manifest.json'):
+        for file in (dist/'Qorgau-SecurityBridge.exe',ROOT/'deploy/Prepare-Qorgau-Exam.ps1',source,ROOT/'README.md',ROOT/'THIRD_PARTY_NOTICES.md',ROOT/'model-manifest.json',ROOT/'teacher-face-manifest.json'):
             archive.write(file,file.name)
         for folder,name in ((ROOT/'extension','extension'),(ROOT/'docs','docs'),(dist/'third-party','third-party')):
             for file in folder.rglob('*'):
@@ -52,7 +53,7 @@ def main():
                 continue
             archive.write(file,'deliverables/'+file.name)
     files=[]
-    for path in (dist/'Qorgau-Student.exe',dist/'Qorgau-NativeHost.exe',dist/'Qorgau-SecurityBridge.exe',source,staff):
+    for path in (dist/'Qorgau-Student.exe',dist/'Qorgau-Offline.exe',dist/'Qorgau-NativeHost.exe',dist/'Qorgau-SecurityBridge.exe',source,staff):
         with path.open('rb') as stream:
             digest=hashlib.file_digest(stream,'sha256').hexdigest()
         files.append({'file':path.name,'bytes':path.stat().st_size,'sha256':digest})
