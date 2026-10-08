@@ -9,7 +9,7 @@ import threading
 from pathlib import Path
 
 from PySide6.QtCore import QLockFile, Qt, QThread, QTimer, Signal
-from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -29,43 +29,8 @@ from PySide6.QtWidgets import (
 from .client import Agent
 from .provision import EnrollmentUnavailable, auto_enroll
 from .student_state import present
+from .theme import APP_QSS as STYLE, load_fonts, logo_icon
 from shared.bootstrap import default_bootstrap
-
-STYLE = """
-QWidget {font-family: "Segoe UI", "DejaVu Sans";font-size:13px;color:#34415a;}
-QWidget#window {background:#f7f9fc;}
-QFrame#sidebar {background:#244b9b;border:0;}
-QLabel#brand {font-size:32px;font-weight:700;color:#edf4e7;}
-QLabel#sideHeading {font-size:10px;font-weight:600;color:#94b39e;letter-spacing:1px;}
-QLabel#sideStep {color:#b7cdbb;font-size:13px;padding:13px 0;}
-QLabel#sideNote {color:#8daa94;font-size:11px;line-height:1.5;}
-QLabel#eyebrow {font-size:10px;letter-spacing:2px;color:#7e90ad;font-weight:600;}
-QLabel#title {font-size:27px;font-weight:600;color:#243651;}
-QLabel#body {font-size:13px;color:#7d8799;}
-QLabel#small {font-size:11px;color:#8793a6;}
-QLabel#heading {font-size:16px;font-weight:600;}
-QLabel#field {font-size:12px;font-weight:500;color:#687c9e;}
-QFrame#card {background:white;border:1px solid #e1e6f0;border-radius:12px;}
-QLabel#notice {background:#eef3fb;color:#7085a7;padding:13px;border:1px solid #dfe6f2;border-radius:8px;font-size:11px;}
-QLabel#error {color:#ad5247;background:#fff0e9;border:1px solid #efcfc0;border-radius:7px;padding:12px;}
-QLabel#badge {font-size:11px;color:#5778ae;background:#edf3fe;border:1px solid #dce6f7;border-radius:6px;padding:6px 10px;}
-QLabel#heroTitle {font-size:23px;font-weight:600;}
-QLabel#count {font-size:32px;font-weight:600;color:#426cb2;}
-QLabel#countDanger {font-size:32px;font-weight:600;color:#b95f4b;}
-QLineEdit {background:white;border:1px solid #dce3ef;border-radius:7px;padding:11px 12px;color:#34415a;selection-background-color:#5480d4;}
-QLineEdit:focus {border:1px solid #5480d4;}
-QLineEdit:disabled {background:#f2f4f8;color:#9aa8bd;}
-QPushButton {background:white;border:1px solid #d9e2f1;border-radius:7px;padding:11px 15px;color:#405a82;font-size:13px;font-weight:600;min-height:20px;}
-QPushButton:hover {background:#edf3fc;border-color:#a3b9dc;}
-QPushButton:disabled {background:#e7ebf2;color:#5e6e85;border-color:#d6dde8;}
-QPushButton#primary {background:#2859bc;color:white;border-color:#2859bc;}
-QPushButton#primary:hover {background:#214b9f;}
-QPushButton#primary:disabled {background:#a9bbd7;border-color:#9bafce;color:#243b5d;}
-QScrollArea {border:0;background:transparent;}
-QScrollBar:vertical {background:#f3f6fb;width:9px;border:0;}
-QScrollBar::handle:vertical {background:#d5deed;border-radius:4px;min-height:30px;}
-QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical {height:0;}
-"""
 
 
 def label(text="", name="body", wrap=True):
@@ -201,18 +166,7 @@ def public_gaze_status_text(gaze, *, active=False, gaze_seconds=0):
 
 
 def icon():
-    pixmap = QPixmap(64, 64)
-    pixmap.fill(Qt.GlobalColor.transparent)
-    painter = QPainter(pixmap)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(QColor("#2859bc"))
-    painter.drawRoundedRect(2, 2, 60, 60, 15, 15)
-    painter.setPen(QColor("#edf4e7"))
-    painter.setFont(QFont("DejaVu Sans", 33, QFont.Weight.Bold))
-    painter.drawText(pixmap.rect(), Qt.AlignmentFlag.AlignCenter, "q")
-    painter.end()
-    return QIcon(pixmap)
+    return logo_icon()
 
 
 class EnrollmentWorker(QThread):
@@ -722,7 +676,7 @@ def launch(
     app.setApplicationName("Qorgau Agent")
     app.setQuitOnLastWindowClosed(False)
     app.setApplicationDisplayName("Qorgau — агент аудитории")
-    app.setFont(QFont("Segoe UI" if os.name == "nt" else "DejaVu Sans", 10))
+    app.setFont(QFont(load_fonts(), 10))
     app.setStyle("Fusion")
     folder.mkdir(parents=True, exist_ok=True)
     lock = QLockFile(str(folder / "desktop.lock"))

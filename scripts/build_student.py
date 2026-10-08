@@ -47,6 +47,7 @@ command = [
     "certifi",
 ]
 command.extend(["--hidden-import", "PySide6.QtWebEngineWidgets"])
+command.extend(["--add-data", str(root / "agent/fonts") + os.pathsep + "agent/fonts"])
 if os.name == "nt":
     command.extend(["--icon", str(root / "packaging/windows/qorgau.ico")])
 if not args.with_cv:

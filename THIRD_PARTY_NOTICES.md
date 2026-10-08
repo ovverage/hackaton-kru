@@ -16,6 +16,7 @@ Qorgau использует сторонние библиотеки и пред�
 | PySide6 / Qt | Интерфейс студента | https://doc.qt.io/qtforpython-6/licenses.html ; условия Qt for Python и используемых модулей |
 | imageio-ffmpeg / FFmpeg | Поставка кодировщика / видео | https://github.com/imageio/imageio-ffmpeg ; BSD для Python-обёртки, отдельные условия FFmpeg |
 | PyInstaller | Сборка EXE | https://github.com/pyinstaller/pyinstaller ; GPL с исключением для bootloader |
+| Geologica | Шрифт интерфейсов преподавателя и ученика | https://github.com/googlefonts/geologica ; SIL Open Font License 1.1, текст включён в `agent/fonts/OFL.txt` |
 | Safe Exam Browser | Отдельно устанавливаемая экзаменационная среда | https://github.com/SafeExamBrowser/seb-win-refactoring ; условия официального проекта |
 
 Тексты лицензий и доступные notices установленных пакетов собираются `scripts/prepare_licenses.py` в `dist/third-party/`; этот каталог включается в полный EXE и комплект сотрудника. В каталоге также находятся условия upstream-моделей и сведения о конкретном FFmpeg binary. Полные условия приведены в текстах лицензий.

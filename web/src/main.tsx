@@ -4,6 +4,7 @@ import App from "./App";
 import "./styles.css";
 import "./classroom.css";
 import "./session.css";
+import "./redesign.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />
