@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (
 from .client import Agent
 from .provision import EnrollmentUnavailable, auto_enroll
 from .student_state import present
-from .theme import APP_QSS as STYLE, RegMarks, StepBubble, load_fonts, logo_icon
+from .theme import APP_QSS as STYLE, COLORS, StepBubble, StepsPanel, ProgressPoint, brand_widget, ui_icon, load_fonts, logo_icon
 from shared.bootstrap import default_bootstrap
 
 
@@ -297,7 +297,7 @@ class StudentWindow(QWidget):
         self.setWindowIcon(icon())
         screen = QApplication.primaryScreen()
         available_height = screen.availableGeometry().height() - 60 if screen else 640
-        self.resize(560, min(640, max(400, available_height)))
+        self.resize(740, min(900, max(400, available_height)))
         self.setMinimumSize(480, 400)
         self.setStyleSheet(STYLE)
         root = QHBoxLayout(self)
@@ -331,32 +331,42 @@ class StudentWindow(QWidget):
     def build_auto_setup(self):
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setContentsMargins(38, 30, 38, 28)
-        layout.setSpacing(18)
-        layout.addWidget(label("QORGAU / ПОДКЛЮЧЕНИЕ", "eyebrow"))
-        layout.addWidget(label("Подключаем компьютер", "title"))
-        layout.addWidget(
-            label(f"Компьютер · {socket.gethostname()}")
-        )
-        layout.addWidget(
-            label(
-                "Подключение произойдёт автоматически. Преподаватель увидит этот компьютер в списке и сможет назначить тест."
-            )
-        )
-        self.setup_error = label("", "error")
+        layout.setContentsMargins(36, 30, 36, 28)
+        layout.setSpacing(22)
+        header = QHBoxLayout()
+        header.addWidget(brand_widget())
+        header.addStretch()
+        header.addWidget(label("Подключаемся", "badge"))
+        layout.addLayout(header)
+        layout.addSpacing(12)
+        layout.addWidget(label("Подключаем компьютер к аудитории", "title"))
+        layout.addWidget(label("Вводить ничего не нужно. Qorgau подключится сам, и преподаватель увидит этот компьютер в кабинете."))
+        progress, steps = card()
+        for number, state, title, detail in (
+            (1, "done", "Сервер найден", "Адрес встроен в приложение"),
+            (2, "now", "Регистрируем компьютер", socket.gethostname()),
+            (3, "empty", "Откроется подготовка к тесту", "Камера и окно программы"),
+        ):
+            row = QHBoxLayout()
+            row.setSpacing(14)
+            row.addWidget(ProgressPoint(state), 0, Qt.AlignmentFlag.AlignTop)
+            content = QVBoxLayout()
+            content.setSpacing(5)
+            content.addWidget(label(title, "heading"))
+            content.addWidget(label(detail, "small"))
+            row.addLayout(content, 1)
+            steps.addLayout(row)
+        layout.addWidget(progress)
+        layout.addWidget(label("Если связи нет, Qorgau сам повторит попытку через 10 секунд.", "small"))
+        self.setup_error = label("", "warning")
         self.setup_error.hide()
         layout.addWidget(self.setup_error)
-        self.connect_button = QPushButton("Подключаем компьютер…")
+        self.connect_button = QPushButton("Повторить подключение")
         self.connect_button.setObjectName("primary")
         self.connect_button.setEnabled(False)
+        self.connect_button.hide()
         self.connect_button.clicked.connect(self.register)
         layout.addWidget(self.connect_button)
-        layout.addWidget(
-            label(
-                "Подключение не включает камеру и не запускает тест. Подготовка камеры доступна в состоянии компьютера.",
-                "notice",
-            )
-        )
         layout.addStretch()
         return page
 
@@ -367,29 +377,48 @@ class StudentWindow(QWidget):
         layout.setContentsMargins(32, 28, 32, 28)
         layout.setSpacing(18)
         row = QHBoxLayout()
-        row.addWidget(label("Qorgau", "brand"))
+        row.addWidget(brand_widget())
         row.addStretch()
-        self.connection = label("Подключаемся…", "small")
+        self.device_name = label("Компьютер аудитории", "badge")
+        self.device_name.setToolTip("Так этот компьютер называется у преподавателя")
+        row.addWidget(self.device_name)
+        self.connection = label("Подключаемся…", "badge")
         row.addWidget(self.connection)
         layout.addLayout(row)
-        self.device_name = label("Компьютер аудитории", "small")
-        layout.addWidget(self.device_name)
-        self.face_access_note = label("", "small")
-        layout.addWidget(self.face_access_note)
-        layout.addWidget(label("Подготовка к тесту", "title"))
-        layout.addWidget(label("Выберите камеру и среду теста. Калибровка начнётся после команды начала.", "body"))
-
-        sheet = RegMarks()
+        self.band = QFrame()
+        self.band.setObjectName("band")
+        band_layout = QHBoxLayout(self.band)
+        band_layout.setContentsMargins(20, 20, 20, 20)
+        band_layout.setSpacing(16)
+        self.band_icon = QLabel()
+        self.band_icon.setFixedSize(40, 40)
+        self.band_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.band_icon.setStyleSheet(f"background:{COLORS['navy800']};border-radius:10px;")
+        band_layout.addWidget(self.band_icon, 0, Qt.AlignmentFlag.AlignTop)
+        band_text = QVBoxLayout()
+        self.band_title = label("Подготовка к тесту", "heroTitle")
+        self.band_message = label("Выберите камеру и среду теста.", "body")
+        band_text.addWidget(self.band_title)
+        band_text.addWidget(self.band_message)
+        band_layout.addLayout(band_text, 1)
+        layout.addWidget(self.band)
+        sheet = StepsPanel()
         sheet_layout = QVBoxLayout(sheet)
-        sheet_layout.setContentsMargins(28, 28, 28, 28)
-        sheet_layout.setSpacing(18)
+        sheet_layout.setContentsMargins(0, 0, 0, 0)
+        sheet_layout.setSpacing(22)
 
         camera_row = QHBoxLayout()
         camera_row.setSpacing(16)
-        camera_row.addWidget(StepBubble(1, "active"), 0, Qt.AlignmentFlag.AlignTop)
+        self.camera_step = StepBubble(1, "now")
+        camera_row.addWidget(self.camera_step, 0, Qt.AlignmentFlag.AlignTop)
         camera_content = QVBoxLayout()
         camera_content.setSpacing(9)
-        camera_content.addWidget(label("Выберите камеру", "heading"))
+        camera_heading = QHBoxLayout()
+        camera_heading.addWidget(label("Камера", "heading"))
+        camera_heading.addStretch()
+        self.camera_step_status = label("не включена", "small")
+        camera_heading.addWidget(self.camera_step_status)
+        camera_content.addLayout(camera_heading)
         camera_content.addWidget(label("Лицо должно быть хорошо видно. Звук не записывается.", "small"))
         self.camera_choice = QComboBox()
         self.camera_choice.setAccessibleName("Камера")
@@ -403,11 +432,16 @@ class StudentWindow(QWidget):
         if not self.camera_choice.count():
             for index in range(4):
                 self.camera_choice.addItem(f"Камера {index + 1}", index)
-        camera_content.addWidget(self.camera_choice)
+        camera_controls = QHBoxLayout()
+        camera_controls.setSpacing(10)
+        self.camera_choice.setMinimumContentsLength(8)
+        self.camera_choice.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        camera_controls.addWidget(self.camera_choice, 1)
         self.camera_button = QPushButton("Проверить камеру")
         self.camera_button.setObjectName("primary")
         self.camera_button.clicked.connect(self.prepare_camera)
-        camera_content.addWidget(self.camera_button)
+        camera_controls.addWidget(self.camera_button)
+        camera_content.addLayout(camera_controls)
         self.camera_status = label("Выберите камеру. Настройка по точкам начнётся после команды «Начать».", "small")
         self.camera_status.setMinimumHeight(40)
         camera_content.addWidget(self.camera_status)
@@ -424,10 +458,16 @@ class StudentWindow(QWidget):
 
         target_row = QHBoxLayout()
         target_row.setSpacing(16)
-        target_row.addWidget(StepBubble(2), 0, Qt.AlignmentFlag.AlignTop)
+        self.target_step = StepBubble(2, "skip")
+        target_row.addWidget(self.target_step, 0, Qt.AlignmentFlag.AlignTop)
         target_content = QVBoxLayout()
         target_content.setSpacing(9)
-        target_content.addWidget(label("Выберите среду теста", "heading"))
+        target_heading = QHBoxLayout()
+        target_heading.addWidget(label("Окно программы", "heading"))
+        target_heading.addStretch()
+        self.target_step_status = label("не нужно для сайта", "small")
+        target_heading.addWidget(self.target_step_status)
+        target_content.addLayout(target_heading)
         self.target_button = QPushButton("Выбрать окно программы")
         self.target_button.clicked.connect(self.select_target)
         target_content.addWidget(self.target_button)
@@ -442,10 +482,11 @@ class StudentWindow(QWidget):
 
         wait_row = QHBoxLayout()
         wait_row.setSpacing(16)
-        wait_row.addWidget(StepBubble(3), 0, Qt.AlignmentFlag.AlignTop)
+        self.wait_step = StepBubble(3)
+        wait_row.addWidget(self.wait_step, 0, Qt.AlignmentFlag.AlignTop)
         wait_content = QVBoxLayout()
         wait_content.setSpacing(9)
-        self.wait_heading = label("Дождитесь начала", "heading")
+        self.wait_heading = label("Начало теста", "heading")
         wait_content.addWidget(self.wait_heading)
         self.assignment_title = label("", "small")
         self.assignment_title.setMinimumHeight(40)
@@ -502,8 +543,15 @@ class StudentWindow(QWidget):
         self.environment_cancel.clicked.connect(self.cancel_pending_environment)
         self.environment_cancel.hide()
         layout.addWidget(self.environment_cancel)
+        self.face_access_note = label("", "small")
+        layout.addWidget(self.face_access_note)
         layout.addStretch()
-        layout.addWidget(label("Во время теста Qorgau фиксирует события и короткие видео. Решение принимает преподаватель.", "small"))
+        footer = QHBoxLayout()
+        mic = QLabel()
+        mic.setPixmap(ui_icon('mic-off', COLORS['muted'], 18).pixmap(18, 18))
+        footer.addWidget(mic)
+        footer.addWidget(label("Во время теста Qorgau отмечает события и сохраняет короткие видео. Звук не записывается.", "small"), 1)
+        layout.addLayout(footer)
         self.dashboard_scroll = QScrollArea()
         self.dashboard_scroll.setObjectName('dashboard-scroll')
         self.dashboard_scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -521,6 +569,7 @@ class StudentWindow(QWidget):
         self.retry_timer.stop()
         self.setup_error.hide()
         self.connect_button.setEnabled(False)
+        self.connect_button.hide()
         self.connect_button.setText("Подключаем компьютер…")
         self.enrollment = EnrollmentWorker(self.folder, bootstrap=self.bootstrap)
         self.enrollment.failed.connect(self.registration_failed)
@@ -532,6 +581,7 @@ class StudentWindow(QWidget):
         self.setup_error.show()
         self.connect_button.setEnabled(True)
         self.connect_button.setText("Повторить подключение")
+        self.connect_button.show()
         if self.enrollment and self.enrollment.retryable:
             self.retry_timer.start(10000)
 
@@ -600,6 +650,13 @@ class StudentWindow(QWidget):
         offline = getattr(self.agent, "mode", "online") == "offline"
         from .exam_ui import teacher_template_access_note
         self.face_access_note.setText(teacher_template_access_note(self.agent))
+        self.face_access_note.setVisible(bool(self.face_access_note.text()))
+        self.band_title.setText(model["title"])
+        self.band_message.setText(model["message"])
+        self.band.setProperty("pause", model["locked"])
+        self.band.style().unpolish(self.band)
+        self.band.style().polish(self.band)
+        self.band_icon.setPixmap(ui_icon("pause" if model["locked"] else "check" if state["lifecycle"] == "RUNNING" else "clock", COLORS["surface"]).pixmap(24, 24))
         pending = snap.get("start_pending") or {}
         pending_id = pending.get("id")
         if pending_id and self.preparing_start_id != pending_id and self.calibration is None:
@@ -621,7 +678,7 @@ class StudentWindow(QWidget):
                 "Нет связи с сервером" if not snap.get("connected") else model["title"]
             )
             self.tray.setToolTip(f"Qorgau · {snap.get('device_name', '')}\n{status}")
-            self.tray_status.setText(status)
+            self.tray_status.setText(f"{snap.get('device_name', self.device_name.text())} — {status}")
             self.tray_exit.setEnabled(
                 state["lifecycle"] != "RUNNING" and not snap.get("camera_preparing")
             )
@@ -645,12 +702,20 @@ class StudentWindow(QWidget):
                     )
                 self.last_notification = marker
         self.connection.setText(
-            "● Автономный режим" if offline else "● Сервер на связи"
+            "Автономный режим" if offline else "На связи"
             if snap.get("connected") and not self.failure
-            else "○ Нет связи с сервером"
+            else "Нет связи, переподключаемся"
         )
+        self.connection.setProperty("tone", "ok" if offline or snap.get("connected") else "warn")
+        self.connection.style().unpolish(self.connection)
+        self.connection.style().polish(self.connection)
         active = state["lifecycle"] == "RUNNING"
         selected = next((t for t in self.agent.targets if t.get("id") == "primary-window"), None)
+        self.camera_step.set_state("done" if snap.get("camera") and not snap.get("camera_fault") else "now")
+        self.camera_step_status.setText("недоступна" if snap.get("camera_fault") else "включаем…" if snap.get("camera_preparing") else "работает" if snap.get("camera") else "не включена")
+        self.target_step.set_state("done" if selected or self.offline_target else "empty" if offline else "skip")
+        self.target_step_status.setText("выбрано" if selected or self.offline_target else "выберите среду" if offline else "не нужно для сайта")
+        self.wait_step.set_state("done" if active else "now" if snap.get("exam_id") else "empty")
         self.agent.capabilities["selected_window"] = bool(selected)
         self.target_button.setEnabled(not active and not pending_id)
         self.target_button.setText("Изменить окно" if selected else "Выбрать окно программы")
@@ -682,6 +747,7 @@ class StudentWindow(QWidget):
             self.local_end.setEnabled(active)
         session = snap.get("session") or {}
         self.assignment_title.setText(session.get("title", ""))
+        self.assignment_title.setVisible(bool(self.assignment_title.text()))
         gaze = snap.get("gaze_diagnostics") or {}
         names = {"SCREEN": "на экран", "LEFT": "влево", "RIGHT": "вправо",
                  "DOWN": "вниз", "UP": "вверх", "UNKNOWN": "не определён"}
@@ -940,12 +1006,15 @@ class StudentWindow(QWidget):
             return
         self.tray = QSystemTrayIcon(icon(), self)
         self.tray_menu = QMenu(self)
+        self.tray_menu.setStyleSheet(STYLE)
         self.tray_status = self.tray_menu.addAction("Qorgau · подключение")
         self.tray_status.setEnabled(False)
         self.tray_menu.addSeparator()
-        self.tray_menu.addAction("Состояние компьютера", self.show_status)
+        self.tray_menu.addAction("Открыть Qorgau", self.show_status)
         self.tray_menu.addSeparator()
-        self.tray_exit = self.tray_menu.addAction("Завершить агент", self.request_exit)
+        self.tray_exit = self.tray_menu.addAction("Выйти из Qorgau", self.request_exit)
+        self.tray_exit.setToolTip("Можно после окончания теста")
+        self.tray_menu.setToolTipsVisible(True)
         self.tray.setContextMenu(self.tray_menu)
         self.tray.activated.connect(self.tray_activated)
         self.tray.messageClicked.connect(self.show_status)

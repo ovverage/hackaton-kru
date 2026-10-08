@@ -3,13 +3,16 @@
 from urllib.parse import urlparse
 
 from PySide6.QtCore import QUrl, Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWebEngineCore import (
     QWebEnginePage,
     QWebEngineProfile,
     QWebEngineSettings,
 )
 from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtWidgets import QPushButton
+from PySide6.QtWidgets import QGraphicsDropShadowEffect, QHBoxLayout, QLabel, QPushButton
+
+from .theme import COLORS, TEACHER_BUTTON_QSS, app_font, ui_icon
 
 
 def origin(url):
@@ -74,10 +77,32 @@ class ExamBrowser(QWebEngineView):
             settings.setAttribute(attribute, False)
         self.setUrl(QUrl(url))
         self.released = False
-        self.teacher_button = QPushButton("Позвать преподавателя · Ctrl+Alt+Q", self)
-        self.teacher_button.setStyleSheet("background:#0B6474;color:white;padding:10px 14px;border:0;border-radius:8px;font-family:'Geologica','Segoe UI';font-weight:600;")
+        self.teacher_button = QPushButton(self)
+        self.teacher_button.setAccessibleName("Позвать преподавателя (Ctrl+Alt+Q)")
+        self.teacher_button.setFont(app_font())
+        self.teacher_button.setStyleSheet(TEACHER_BUTTON_QSS)
+        button_layout = QHBoxLayout(self.teacher_button)
+        button_layout.setContentsMargins(14, 9, 14, 9)
+        button_layout.setSpacing(10)
+        bell = QLabel(self.teacher_button)
+        bell.setPixmap(ui_icon("bell", COLORS["surface"]).pixmap(20, 20))
+        text = QLabel("Позвать преподавателя", self.teacher_button)
+        shortcut = QLabel("Ctrl+Alt+Q", self.teacher_button)
+        shortcut.setObjectName("teacherShortcut")
+        for widget in (bell, text, shortcut):
+            widget.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            widget.setFont(app_font())
+            button_layout.addWidget(widget)
+        shadow = QGraphicsDropShadowEffect(self.teacher_button)
+        shadow.setBlurRadius(20)
+        shadow.setOffset(0, 4)
+        shadow_color = QColor(COLORS["navy900"])
+        shadow_color.setAlpha(65)
+        shadow.setColor(shadow_color)
+        self.teacher_button.setGraphicsEffect(shadow)
         self.teacher_button.clicked.connect(lambda: on_attempt("TEACHER_REQUEST"))
-        self.teacher_button.adjustSize()
+        self.teacher_button.ensurePolished()
+        self.teacher_button.setFixedSize(button_layout.sizeHint())
         self.teacher_button.show()
 
     def resizeEvent(self, event):

@@ -6,7 +6,8 @@ import os
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QThread, QTimer, Qt, Signal
+from PySide6.QtCore import QObject, QThread, QTimer, Qt, Signal, QSize, QRectF
+from PySide6.QtGui import QColor, QPainter, QPen, QFont, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -14,6 +15,10 @@ from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
     QHBoxLayout,
+    QBoxLayout,
+    QFrame,
+    QStyledItemDelegate,
+    QStyle,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -23,7 +28,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 from .student_state import REASONS
-from .theme import APP_QSS, COLORS, RegMarks
+from .theme import APP_QSS, COLORS, CountdownRing, CameraEvidence, brand_widget, ui_icon, app_font
 
 
 def text(value, size=14):
@@ -192,34 +197,59 @@ class GazeWarning(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setStyleSheet(
-            "QWidget#gazeWarning {background:#FCF1DC;border:2px solid #F0B33E;border-radius:10px;}"
-            "QLabel {background:transparent;color:#22252B;font-family:'Geologica','Segoe UI';font-size:24px;font-weight:700;}"
+            f"QWidget#gazeWarning {{background:{COLORS['navy900']};border-radius:18px;}}"
+            f"QLabel {{background:transparent;color:{COLORS['surface']};font-family:'Geologica','Segoe UI';}}"
         )
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(26, 15, 26, 15)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(16)
+        self.direction = QLabel("↓")
+        self.direction.setFixedSize(54, 54)
+        self.direction.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.direction.setStyleSheet(f"background:{COLORS['amber_fill']};color:{COLORS['navy900']};border-radius:14px;font-size:34px;")
+        layout.addWidget(self.direction, 0, Qt.AlignmentFlag.AlignTop)
+        copy = QVBoxLayout()
+        copy.setSpacing(6)
         self.message = QLabel("Смотрите на экран")
         self.message.setWordWrap(True)
-        self.message.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.message.setStyleSheet("font-size:24px;font-weight:600;")
         self.message.setTextFormat(Qt.TextFormat.PlainText)
-        layout.addWidget(self.message)
+        copy.addWidget(self.message)
+        self.detail = QLabel()
+        self.detail.setWordWrap(True)
+        self.detail.setStyleSheet(f"font-size:13px;color:{COLORS['side_text']};")
+        copy.addWidget(self.detail)
+        layout.addLayout(copy, 1)
+        self.countdown = CountdownRing()
+        layout.addWidget(self.countdown, 0, Qt.AlignmentFlag.AlignVCenter)
+
+    def update_countdown(self, snap):
+        gaze = snap.get("gaze_diagnostics") or {}
+        direction = snap.get("attention_direction") or gaze.get("attention_direction") or gaze.get("direction")
+        observed = gaze.get("gaze_observed_direction") or gaze.get("head_direction") or direction
+        self.direction.setText({"DOWN": "↓", "LEFT": "←", "RIGHT": "→", "UP": "◉"}.get(observed, "◉"))
+        seconds = max(0.0, float(snap.get("gaze_seconds") or 0))
+        # Only a confirmed rule timer can promise a future mark. Public model
+        # uncertainty and independent head feedback retain their honest copy.
+        counting = direction in ("DOWN", "LEFT", "RIGHT") and 0 < seconds < self.countdown.threshold
+        remaining = max(0.0, self.countdown.threshold - seconds) if counting else None
+        self.countdown.remaining = remaining
+        self.countdown.update()
+        if counting:
+            word = {"DOWN": "вниз", "LEFT": "влево", "RIGHT": "вправо"}[direction]
+            self.detail.setText(f"Взгляд {word} засчитается как отметка через {remaining:.1f} с".replace('.', ','))
+        else:
+            self.detail.setText("Посмотрите на экран и продолжайте тест")
 
     def place(self, screen):
         geometry = screen.geometry()
-        width = min(720, max(360, geometry.width() - 48))
-        # Apply the stylesheet font before measuring the first shown banner.
-        # Uncertain feedback can wrap onto three lines at the actual font size.
+        width = min(660, max(360, geometry.width() - 48))
         self.ensurePolished()
         self.message.ensurePolished()
-        layout_margins, frame_margins = self.layout().contentsMargins(), self.contentsMargins()
-        horizontal = layout_margins.left() + layout_margins.right() + frame_margins.left() + frame_margins.right()
-        vertical = layout_margins.top() + layout_margins.bottom() + frame_margins.top() + frame_margins.bottom()
-        height = max(68, self.message.heightForWidth(width - horizontal) + vertical)
-        self.setGeometry(
-            geometry.x() + (geometry.width() - width) // 2,
-            geometry.y() + 28,
-            width,
-            height,
-        )
+        text_width = max(100, width - 180)
+        height = max(106, self.message.heightForWidth(text_width) + self.detail.heightForWidth(text_width) + 44)
+        self.setGeometry(geometry.x() + (geometry.width() - width) // 2,
+                         geometry.y() + 28, width, height)
 
 
 class UnlockWorker(QThread):
@@ -278,91 +308,130 @@ class LockScreen(QWidget):
         )
         self.setObjectName("pauseScreen")
         self.setStyleSheet(APP_QSS + f"""
-            QWidget#pauseScreen {{background:{COLORS['paper']};}}
-            QLabel {{background:transparent;}}
-            QLineEdit {{font-size:16px;padding:14px;}}
-            QPushButton {{font-size:15px;padding:14px;}}
-            QScrollArea {{background:{COLORS['sheet']};border:1px solid {COLORS['rule']};border-radius:10px;}}
+            QWidget#pauseScreen {{background:{COLORS['surface']};}}
+            QFrame#pauseHeader {{background:{COLORS['red_fill']};}}
+            QFrame#pauseHeader QLabel {{color:{COLORS['surface']};}}
+            QFrame#teacherForm {{background:{COLORS['surface']};border:1px solid {COLORS['line']};border-radius:14px;}}
+            QLineEdit {{font-size:13px;}}
+            QPushButton {{font-size:13px;}}
         """)
-        root = QHBoxLayout(self)
-        root.setContentsMargins(60, 50, 60, 50)
-        root.setSpacing(50)
-        main = QVBoxLayout()
-        pause_mark = text("●  ТЕСТ НА ПАУЗЕ", 14)
-        pause_mark.setStyleSheet(f"color:{COLORS['red']};font-weight:700;letter-spacing:1px;")
-        main.addWidget(pause_mark)
-        main.addStretch()
-        self.heading = text("Позовите преподавателя", 38)
-        main.addWidget(self.heading)
-        self.reason = text("Тест на паузе", 18)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+        header = QFrame()
+        header.setObjectName('pauseHeader')
+        header_layout = QVBoxLayout(header)
+        header_layout.setContentsMargins(56, 25, 56, 28)
+        header_layout.setSpacing(17)
+        brand = QHBoxLayout()
+        brand.addWidget(brand_widget(paused=True))
+        brand.addStretch()
+        self.device_time = text("", 16)
+        brand.addWidget(self.device_time)
+        header_layout.addLayout(brand)
+        header_layout.addWidget(text("Тест на паузе", 24))
+        self.heading = text("Позовите преподавателя", 72)
+        self.heading.setStyleSheet("font-size:72px;font-weight:600;")
+        header_layout.addWidget(self.heading)
+        root.addWidget(header)
+        self.body_scroll = QScrollArea()
+        self.body_scroll.setWidgetResizable(True)
+        self.body_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        body = QWidget()
+        body.setObjectName("pauseBody")
+        body.setStyleSheet(f"QWidget#pauseBody {{background:{COLORS['surface']};}}")
+        self.columns = QBoxLayout(QBoxLayout.Direction.LeftToRight, body)
+        self.columns.setContentsMargins(56, 25, 56, 20)
+        self.columns.setSpacing(48)
+        main_widget = QWidget()
+        main = QVBoxLayout(main_widget)
+        main.setContentsMargins(0, 0, 0, 0)
+        main.setSpacing(10)
+        self.reason = text("Тест на паузе", 24)
         main.addWidget(self.reason)
-        main.addSpacing(25)
-        self.form = QWidget()
+        main.addWidget(text("Преподаватель посмотрит запись и решит, продолжать ли тест. Окно теста остаётся открытым под этим экраном.", 15))
+        main.addWidget(text("Вернуть взгляд или перезапустить Qorgau не поможет: продолжить тест может только преподаватель.", 12))
+        self.online_notice = text("Преподаватель уже видит это у себя в кабинете", 12)
+        self.online_notice.setObjectName('badge')
+        self.online_notice.setVisible(getattr(agent, 'mode', 'online') != 'offline')
+        main.addWidget(self.online_notice)
+        self.form = QFrame()
+        self.form.setObjectName('teacherForm')
         form = QVBoxLayout(self.form)
-        form.setContentsMargins(0, 0, 0, 0)
-        form.addWidget(text("Преподаватель проверяет события и разрешает продолжить."))
+        form.setContentsMargins(16, 12, 16, 12)
+        form.setSpacing(7)
+        form.addWidget(text("Для преподавателя", 16))
+        credentials = QHBoxLayout()
         self.password = QLineEdit()
         self.password.setEchoMode(QLineEdit.EchoMode.Password)
         self.password.setMaxLength(128)
         self.password.setPlaceholderText("Локальный пароль преподавателя" if getattr(agent, 'mode', 'online') == 'offline'
                                          else "Пароль кабинета преподавателя")
         self.password.setAccessibleName("Пароль преподавателя")
-        form.addWidget(self.password)
+        credentials.addWidget(self.password, 1)
         self.unlock = QPushButton("Продолжить тест")
         self.unlock.setObjectName("primary")
         self.unlock.clicked.connect(self.request_unlock)
         self.password.returnPressed.connect(self.request_unlock)
-        form.addWidget(self.unlock)
-        self.face_unlock = QPushButton("Разблокировать по лицу преподавателя")
+        credentials.addWidget(self.unlock)
+        form.addLayout(credentials)
+        self.face_unlock = QPushButton("Продолжить по лицу преподавателя")
         self.face_unlock.clicked.connect(self.request_face_unlock)
         form.addWidget(self.face_unlock)
-        self.face_access_note = text(teacher_template_access_note(agent), 12)
+        self.face_access_note = text(teacher_template_access_note(agent), 11)
         form.addWidget(self.face_access_note)
         self.finish = QPushButton("Завершить контроль на этом компьютере")
+        self.finish.setObjectName('danger')
         self.finish.clicked.connect(lambda: self.request_unlock("END_AND_RELEASE"))
         form.addWidget(self.finish)
         self.recover = QPushButton("Восстановить камеру")
         self.recover.clicked.connect(self.recover_camera)
         form.addWidget(self.recover)
-        self.feedback = text("")
+        self.feedback = text("", 12)
+        self.feedback.setObjectName('error')
         form.addWidget(self.feedback)
         main.addWidget(self.form)
         main.addStretch()
-        main.addWidget(
-            text(
-                "Событие — повод для проверки. Окончательное решение принимает преподаватель.",
-                12,
-            )
-        )
-        root.addLayout(main, 3)
+        self.columns.addWidget(main_widget, 3)
         self.evidence = QWidget()
         self.evidence_layout = QVBoxLayout(self.evidence)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(self.evidence)
-        scroll.setMinimumWidth(310)
-        scroll.setStyleSheet("QScrollArea {border:0;}")
-        root.addWidget(scroll, 2)
+        self.evidence_layout.setContentsMargins(0, 0, 0, 0)
+        self.evidence_layout.setSpacing(12)
+        self.columns.addWidget(self.evidence, 2)
+        self.body_scroll.setWidget(body)
+        root.addWidget(self.body_scroll, 1)
+        footer = text("Событие — повод посмотреть запись. Решение о нарушении принимает преподаватель.", 12)
+        footer.setContentsMargins(56, 0, 56, 18)
+        root.addWidget(footer)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        narrow = self.width() < 1000
+        self.columns.setDirection(QBoxLayout.Direction.TopToBottom if narrow else QBoxLayout.Direction.LeftToRight)
+        self.heading.setStyleSheet(f"font-size:{36 if narrow else 72}px;font-weight:600;")
 
     def update_state(self, snap):
         self.face_access_note.setText(teacher_template_access_note(self.agent))
+        self.face_access_note.setVisible(bool(self.face_access_note.text()))
+        self.feedback.setVisible(bool(self.feedback.text()))
         locked = snap["state"]["access"] == "LOCKED"
         self.heading.setText("Позовите преподавателя" if locked else "Идёт экзамен")
-        self.reason.setText(
-            REASONS.get(
-                snap["state"].get("reason"), "Работайте в выбранном окне теста."
-            )
-        )
+        events = [e for e in snap.get("recent_events", []) if e.get("epoch") == snap["state"]["epoch"]]
+        trigger = next((e for e in reversed(events) if e.get('type') == snap['state'].get('reason')), None)
+        timestamp = trigger.get('created_at') if trigger else None
+        happened = time.strftime('%H:%M', time.localtime(timestamp)) if isinstance(timestamp, (int, float)) else ''
+        reason = REASONS.get(snap["state"].get("reason"), "Работайте в выбранном окне теста.").rstrip('.')
+        self.reason.setText(reason + (f" в {happened}" if happened else ''))
+        self.device_time.setText(snap.get('device_name') or getattr(self.agent, 'config', {}).get('name', 'Компьютер'))
+        if happened:
+            self.device_time.setText(self.device_time.text() + ', ' + happened)
         self.form.setVisible(locked)
         self.face_unlock.setEnabled(not snap.get("teacher_face_scan") and not (self.worker and self.worker.isRunning()))
         self.recover.setVisible(locked and snap["state"].get("reason") in (
             "AGENT_RESTARTED", "CAMERA_UNAVAILABLE", "CAMERA_FROZEN", "DISPLAY_CHANGED"
         ))
-        marker = (
-            snap["state"]["lock_id"],
-            snap["state"]["epoch"],
-            tuple((e["id"], e.get("thumbnail_path"), e.get("end")) for e in snap.get("recent_events", [])),
-        )
+        marker = (snap["state"]["lock_id"], snap["state"]["epoch"],
+                  tuple((e["id"], e.get("thumbnail_path"), e.get("end")) for e in events))
         if marker == self.marker:
             return
         self.marker = marker
@@ -370,46 +439,35 @@ class LockScreen(QWidget):
             item = self.evidence_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-        self.evidence_layout.addWidget(text("Моменты срабатывания", 22))
-        events = [
-            e
-            for e in snap.get("recent_events", [])
-            if e.get("epoch") == snap["state"]["epoch"]
-        ]
-        for event in events[-8:][::-1]:
-            happened = time.strftime("%H:%M:%S", time.localtime(event.get("created_at", time.time())))
-            label = REASONS.get(event["type"], event["type"])
-            label = {
-                "GAZE_DOWN": "Длительный взгляд вниз",
-                "GAZE_LEFT": "Длительный взгляд влево",
-                "GAZE_RIGHT": "Длительный взгляд вправо",
-                "HEAD_TURN_REVIEW": "Устойчивый поворот головы — на проверку",
-            }.get(event["type"], label)
-            self.evidence_layout.addWidget(
-                text(f"{happened}  ·  {label}", 16)
-            )
-            if event.get("duration"):
-                self.evidence_layout.addWidget(
-                    text(f"Длительность: {event['duration']:.1f} с", 12)
-                )
-            if event.get("thumbnail_path"):
-                from PySide6.QtGui import QPixmap
-
-                picture = QPixmap(event["thumbnail_path"])
-                if not picture.isNull():
-                    preview = QLabel()
-                    preview.setPixmap(
-                        picture.scaledToWidth(
-                            max(280, min(640, self.evidence.width() - 24)), Qt.TransformationMode.SmoothTransformation
-                        )
-                    )
-                    self.evidence_layout.addWidget(preview)
+        self.evidence_layout.addWidget(text("Что заметила камера", 18))
+        thumbnail = next((e for e in reversed(events) if e.get('thumbnail_path')), None)
+        if thumbnail:
+            picture = QPixmap(thumbnail['thumbnail_path'])
+            if not picture.isNull():
+                preview = CameraEvidence()
+                preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                preview.setStyleSheet(f"background:{COLORS['scene']};border-radius:12px;")
+                preview.setPixmap(picture.scaled(420, 236, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+                preview.setMaximumHeight(236)
+                self.evidence_layout.addWidget(preview)
+                caption = REASONS.get(thumbnail['type'], thumbnail['type'])
+                if isinstance(thumbnail.get('created_at'), (int, float)):
+                    caption += ' — ' + time.strftime('%H:%M:%S', time.localtime(thumbnail['created_at']))
+                self.evidence_layout.addWidget(text(caption, 12))
+        other_events = [e for e in events if e is not thumbnail]
+        for event in other_events[-5:][::-1]:
+            happened = time.strftime("%H:%M:%S", time.localtime(event['created_at'])) if isinstance(event.get('created_at'), (int, float)) else ''
+            caption = {
+                "GAZE_DOWN": "↓ Взгляд вниз", "GAZE_LEFT": "← Взгляд влево",
+                "GAZE_RIGHT": "→ Взгляд вправо", "HEAD_TURN_REVIEW": "Поворот головы — ждёт решения",
+            }.get(event["type"], REASONS.get(event['type'], event['type']))
+            if event.get('duration'):
+                caption += f", {event['duration']:.1f} с"
+            self.evidence_layout.addWidget(text(caption, 14))
+            if happened:
+                self.evidence_layout.addWidget(text(happened, 12))
         if not events:
-            self.evidence_layout.addWidget(
-                text(
-                    "Причина указана слева. История и видео доступны в кабинете преподавателя."
-                )
-            )
+            self.evidence_layout.addWidget(text("Причина указана слева. История и видео доступны в кабинете преподавателя."))
         self.evidence_layout.addStretch()
 
     def recover_camera(self):
@@ -462,6 +520,43 @@ class LockScreen(QWidget):
         event.ignore()
 
 
+class PickerDelegate(QStyledItemDelegate):
+    """Native list selection with a status point, icon tile and two text lines."""
+
+    def sizeHint(self, option, index):
+        return QSize(300, 82)
+
+    def paint(self, painter, option, index):
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        selected = bool(option.state & QStyle.StateFlag.State_Selected)
+        muted = bool(index.data(Qt.ItemDataRole.UserRole + 1))
+        rect = option.rect
+        painter.fillRect(rect, QColor(COLORS['blue_tint'] if selected else COLORS['surface']))
+        painter.setPen(QPen(QColor(COLORS['blue'] if selected else COLORS['line']), 1.5))
+        painter.setBrush(QColor(COLORS['navy800'] if selected else COLORS['surface']))
+        painter.drawEllipse(QRectF(rect.x()+16, rect.center().y()-8, 16, 16))
+        tile = QRectF(rect.x()+46, rect.center().y()-18, 36, 36)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(COLORS['surface2'] if muted else COLORS['blue_tint']))
+        painter.drawRoundedRect(tile, 9, 9)
+        ui_icon(index.data(Qt.ItemDataRole.UserRole) or 'window', COLORS['muted'] if muted else COLORS['navy800']).paint(painter, int(tile.x()+8), int(tile.y()+8), 20, 20)
+        title, _, detail = str(index.data() or '').partition('\n')
+        painter.setPen(QColor(COLORS['muted'] if muted else COLORS['text']))
+        painter.setFont(app_font(14, QFont.Weight.Medium))
+        title_width = max(40, rect.width()-110-(85 if selected else 0))
+        painter.drawText(rect.x()+96, rect.y()+31, painter.fontMetrics().elidedText(title, Qt.TextElideMode.ElideRight, title_width))
+        painter.setPen(QColor(COLORS['muted']))
+        painter.setFont(app_font(12))
+        painter.drawText(rect.x()+96, rect.y()+54, painter.fontMetrics().elidedText(detail, Qt.TextElideMode.ElideRight, max(40, rect.width()-110)))
+        if selected:
+            painter.setPen(QColor(COLORS['blue']))
+            painter.drawText(rect.right()-88, rect.y()+31, '✓ выбрано')
+        painter.setPen(QColor(COLORS['line_soft']))
+        painter.drawLine(rect.bottomLeft(), rect.bottomRight())
+        painter.restore()
+
+
 class TargetPicker(QDialog):
     def __init__(self, agent, parent):
         super().__init__(parent)
@@ -478,24 +573,30 @@ class TargetPicker(QDialog):
         layout.addWidget(text("Выберите окно программы", 28))
         layout.addWidget(
             text(
-                "Откройте нужную вкладку теста и выберите её окно. При начале контроля оно развернётся на весь экран; переход в другие окна и инструменты разработчика будут ограничены.",
-                17,
+                "Откройте программу тестирования и выберите её окно. Для сайта преподаватель откроет Qorgau Browser.",
+                14,
             )
         )
-        watched = RegMarks()
+        watched = QFrame()
+        watched.setObjectName("card")
         watched_layout = QVBoxLayout(watched)
         watched_layout.setContentsMargins(22, 22, 22, 22)
         self.items = QListWidget()
+        self.items.setItemDelegate(PickerDelegate(self.items))
         self.items.setStyleSheet(f"QListWidget{{border:0;background:{COLORS['sheet']};}} QListWidget::item{{padding:12px;border-bottom:1px solid {COLORS['rule_soft']};}} QListWidget::item:selected{{background:{COLORS['ink_tint']};color:{COLORS['ink_strong']};}}")
         watched_layout.addWidget(self.items)
         layout.addWidget(watched, 1)
         self.feedback = text("", 12)
         layout.addWidget(self.feedback)
         row = QHBoxLayout()
-        refresh = QPushButton("Обновить окна")
+        refresh = QPushButton("Обновить список")
         refresh.clicked.connect(self.refresh)
         row.addWidget(refresh)
-        use = QPushButton("Использовать окно")
+        row.addStretch()
+        cancel = QPushButton("Отмена")
+        cancel.clicked.connect(self.reject)
+        row.addWidget(cancel)
+        use = QPushButton("Выбрать это окно")
         use.setObjectName("primary")
         use.clicked.connect(self.choose_window)
         row.addWidget(use)
@@ -519,7 +620,12 @@ class TargetPicker(QDialog):
 
         self.windows = WindowsGuard().windows()
         for window in self.windows:
-            self.items.addItem(f"{window.title}  —  {Path(window.executable).name}")
+            browser = Path(window.executable).name.lower() in {"chrome.exe", "msedge.exe", "firefox.exe", "opera.exe", "brave.exe"}
+            detail = "Браузер не подходит: сайт откроет Qorgau Browser" if browser else f"Программа, {Path(window.executable).name}"
+            self.items.addItem(f"{window.title}\n{detail}")
+            item = self.items.item(self.items.count() - 1)
+            item.setData(Qt.ItemDataRole.UserRole, 'globe' if browser else 'window')
+            item.setData(Qt.ItemDataRole.UserRole + 1, browser)
 
     def choose_window(self):
         row = self.items.currentRow()
@@ -581,8 +687,12 @@ class BrowserTabPicker(QDialog):
         self.setStyleSheet(APP_QSS)
         self.resize(780, 480)
         layout = QVBoxLayout(self)
-        layout.addWidget(text("Выберите отдельную вкладку из подключённого браузера.", 18))
+        layout.setContentsMargins(28, 26, 28, 24)
+        layout.setSpacing(14)
+        layout.addWidget(text("Выберите вкладку Chrome / Edge", 26))
+        layout.addWidget(text("Выберите отдельную вкладку из подключённого браузера.", 14))
         self.items = QListWidget()
+        self.items.setItemDelegate(PickerDelegate(self.items))
         layout.addWidget(self.items)
         self.status = text("", 12)
         layout.addWidget(self.status)
@@ -590,7 +700,9 @@ class BrowserTabPicker(QDialog):
         refresh = QPushButton("Обновить вкладки")
         refresh.clicked.connect(self.refresh)
         buttons.addWidget(refresh)
+        buttons.addStretch()
         select = QPushButton("Использовать вкладку")
+        select.setObjectName("primary")
         select.clicked.connect(self.choose)
         buttons.addWidget(select)
         layout.addLayout(buttons)
@@ -599,6 +711,7 @@ class BrowserTabPicker(QDialog):
             "Откройте chrome://extensions или edge://extensions, включите режим разработчика "
             "и загрузите папку extension из комплекта Qorgau.", 12,
         )
+        self.extension_help.setObjectName("notice")
         layout.addWidget(self.extension_help)
         folder = QPushButton("Открыть папку расширения")
         folder.clicked.connect(self.open_extension_folder)
@@ -618,6 +731,7 @@ class BrowserTabPicker(QDialog):
             return
         for tab in self.tabs:
             self.items.addItem(f"{tab.get('title') or tab.get('name', 'Вкладка')}\n{tab.get('url', '')}")
+            self.items.item(self.items.count() - 1).setData(Qt.ItemDataRole.UserRole, 'globe')
         self.status.setText("" if self.tabs else "Подключённых вкладок пока нет. Окна приложений выбираются отдельно.")
 
     def choose(self):
@@ -650,8 +764,11 @@ class BrowserBindingDialog(QDialog):
         self.setWindowTitle("Подключение расширения Qorgau")
         self.setObjectName("window")
         self.setStyleSheet(APP_QSS)
-        self.resize(620, 450)
+        self.resize(620, 560)
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(28, 26, 28, 24)
+        layout.setSpacing(12)
+        layout.addWidget(text("Подключение расширения", 26))
         layout.addWidget(text("Откройте настройки расширения Qorgau и скопируйте показанные ID расширения и ID профиля.", 16))
         self.browser = QComboBox()
         self.browser.addItem("Google Chrome", "chrome")
@@ -670,6 +787,7 @@ class BrowserBindingDialog(QDialog):
         self.status = text("", 12)
         layout.addWidget(self.status)
         button = QPushButton("Подключить")
+        button.setObjectName("primary")
         button.clicked.connect(self.bind)
         layout.addWidget(button)
 
@@ -996,6 +1114,7 @@ class ExamController(QObject):
             warning = self.gaze_warnings[i]
             if warn_about_gaze:
                 warning.message.setText(warning_text)
+                warning.update_countdown(snap)
                 warning.place(screen)
                 warning.show()
                 warning.raise_()

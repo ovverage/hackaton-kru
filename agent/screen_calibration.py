@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from .screen_capture import TARGET_SETTLE_SECONDS, TARGET_VISIBLE_SECONDS
+from .theme import CALIBRATION_QSS, COLORS, app_font
 
 
 # Five fitting targets and four separate check targets, with no per-target click.
@@ -70,14 +71,8 @@ class ScreenCalibrationDialog(QDialog):
             | Qt.WindowType.WindowStaysOnTopHint
         )
         self.setModal(True)
-        self.setStyleSheet(
-            "QDialog { background: #101d33; }"
-            "QLabel { color: #eef4ff; font: 16px 'Segoe UI'; }"
-            "QWidget#calibrationPanel { background: #1b2d49; border-radius: 16px; }"
-            "QPushButton, QComboBox { padding: 12px; font: 16px 'Segoe UI'; }"
-            "QPushButton { background: #d5e8ff; color: #102440; border-radius: 8px; }"
-            "QComboBox { background: white; color: #102440; }"
-        )
+        self.setFont(app_font())
+        self.setStyleSheet(CALIBRATION_QSS)
         self._screens = list(QApplication.screens())
         if not self._screens:
             raise RuntimeError("Нет доступного монитора для настройки взгляда")
@@ -117,6 +112,7 @@ class ScreenCalibrationDialog(QDialog):
         layout.setContentsMargins(28, 26, 28, 26)
         layout.setSpacing(18)
         self.title = QLabel("Настройка взгляда по всему экрану", self.panel)
+        self.title.setObjectName("calibrationTitle")
         self.title.setWordWrap(True)
         layout.addWidget(self.title)
         point_count = len(FIT_POINTS) + len(VALIDATION_POINTS)
@@ -132,6 +128,7 @@ class ScreenCalibrationDialog(QDialog):
             "заново уточнит границы экрана без перезапуска. Нажимать на точки не нужно. Esc — отмена.",
             self.panel,
         )
+        self.instructions.setObjectName("calibrationInstructions")
         self.instructions.setWordWrap(True)
         layout.addWidget(self.instructions)
         self.screen_selector = QComboBox(self.panel)
@@ -143,16 +140,19 @@ class ScreenCalibrationDialog(QDialog):
         self.screen_selector.currentIndexChanged.connect(self._select_screen)
         layout.addWidget(self.screen_selector)
         self.error_label = QLabel("", self.panel)
+        self.error_label.setObjectName("calibrationError")
         self.error_label.setWordWrap(True)
         self.error_label.hide()
         layout.addWidget(self.error_label)
         self.start_button = QPushButton("Начать настройку", self.panel)
+        self.start_button.setObjectName("primary")
         self.start_button.clicked.connect(self._start)
         layout.addWidget(self.start_button)
         self.cancel_button = QPushButton("Отмена (Esc)", self.panel)
         self.cancel_button.clicked.connect(self.reject)
         layout.addWidget(self.cancel_button)
         self.progress = QLabel("", self)
+        self.progress.setObjectName("calibrationProgress")
         self.progress.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.progress.setWordWrap(True)
         self.progress.hide()
@@ -278,11 +278,11 @@ class ScreenCalibrationDialog(QDialog):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         location = target_position(self.rect(), self._target)
-        painter.setPen(QPen(QColor("#80caff"), 3))
-        painter.setBrush(QColor("#244b76"))
+        painter.setPen(QPen(QColor(COLORS["blue_light"]), 3))
+        painter.setBrush(QColor(COLORS["navy800"]))
         painter.drawEllipse(location, 23, 23)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor("#ffffff"))
+        painter.setBrush(QColor(COLORS["surface"]))
         painter.drawEllipse(location, 6, 6)
         painter.end()
         if self.isVisible() and self._painted_generation != self._generation:
@@ -401,7 +401,14 @@ class ScreenCalibrationDialog(QDialog):
             return
         width = min(660, max(200, self.width() - 48))
         self.panel.setFixedWidth(width)
-        self.panel.adjustSize()
+        # Wrapped text needs its height at the actual card width, after QSS/fonts.
+        # This changes only the introductory panel, never target placement.
+        self.panel.ensurePolished()
+        panel_layout = self.panel.layout()
+        panel_layout.invalidate()
+        panel_layout.activate()
+        self.panel.resize(width, max(panel_layout.totalMinimumSize().height(),
+                                     panel_layout.totalHeightForWidth(width)))
         self.panel.move((self.width() - self.panel.width()) // 2,
                         max(0, (self.height() - self.panel.height()) // 2))
         if hasattr(self, "progress"):

@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 from .client import atomic_json
 from .behavior import POSITIONS
+from .theme import COLORS, StepBubble, camera_marks
 
 REFERENCE_SETTLE_SECONDS = 2
 REFERENCE_TIMEOUT_SECONDS = 45
@@ -58,14 +59,17 @@ class CameraPreview(QLabel):
             return
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        teal = QColor("#8DD0D6")
-        painter.setPen(QPen(teal, 2))
-        margin, length = 14, 18
-        for x, y, sx, sy in ((margin, margin, 1, 1), (self.width()-margin, margin, -1, 1), (margin, self.height()-margin, 1, -1), (self.width()-margin, self.height()-margin, -1, -1)):
-            painter.drawLine(x, y, x + sx * length, y)
-            painter.drawLine(x, y, x, y + sy * length)
+        camera_marks(painter, self.contentsRect())
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(COLORS['navy900']))
+        painter.drawRoundedRect(29, 27, 165, 30, 15, 15)
+        painter.setBrush(QColor(COLORS['blue_light']))
+        painter.drawEllipse(40, 38, 8, 8)
+        painter.setPen(QColor(COLORS['surface']))
+        painter.drawText(56, 48, "Камера включена")
         pen = QPen(QColor(255, 255, 255, 190), 2, Qt.PenStyle.DashLine)
         painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
         oval_width, oval_height = self.width() * .34, self.height() * .68
         painter.drawEllipse(int((self.width()-oval_width)/2), int((self.height()-oval_height)/2), int(oval_width), int(oval_height))
 
@@ -285,7 +289,7 @@ class CameraSetup(QDialog):
         )
         # Leave enough vertical room at Windows display scaling so the preview,
         # instructions and button labels never overlap or get clipped.
-        self.resize(640, 620)
+        self.resize(760, 780)
         self.setMinimumSize(520, 580)
         from .desktop import STYLE, label
 
@@ -295,7 +299,7 @@ class CameraSetup(QDialog):
         layout.setContentsMargins(28, 24, 28, 24)
         layout.setSpacing(12)
         layout.addWidget(
-            label("Настройка взгляда" if calibrate else "Включение камеры", "title")
+            label("Настройка взгляда" if calibrate else "Проверка камеры", "title")
         )
         layout.addWidget(
             label(
@@ -338,9 +342,27 @@ class CameraSetup(QDialog):
         )
         self.preview = CameraPreview("Предпросмотр камеры появится здесь")
         self.preview.setStyleSheet(
-            "background:#2A2E35;border:1px solid #D9DDE3;border-radius:8px;color:#FFFFFF;"
+            f"background:{COLORS['scene']};border:1px solid {COLORS['line']};border-radius:12px;color:{COLORS['surface']};"
         )
         layout.addWidget(self.preview, 1)
+        guides = QHBoxLayout()
+        guides.setSpacing(18)
+        for number, title, hint in (
+            (1, "Лицо в овале", "Свет спереди, не сзади"),
+            (2, "Посмотрите на экран", "Qorgau запомнит позу"),
+            (3, "Нажмите кнопку", "Больше ничего не нужно"),
+        ):
+            guide = QHBoxLayout()
+            guide.setSpacing(6)
+            guide.addWidget(StepBubble(number, "now" if number == 1 else "empty"), 0, Qt.AlignmentFlag.AlignTop)
+            wording = QVBoxLayout()
+            wording.setSpacing(3)
+            wording.addWidget(label(title, "field"))
+            wording.addWidget(label(hint, "small"))
+            guide.addLayout(wording)
+            guides.addLayout(guide, 1)
+        layout.addLayout(guides)
+        layout.addWidget(label("Изображение остаётся на этом компьютере. Звук не записывается.", "small"))
         self.instruction = label(
             "Перед началом уберите телефон и убедитесь, что в кадре только вы."
             if calibrate
