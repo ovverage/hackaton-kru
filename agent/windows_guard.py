@@ -103,6 +103,29 @@ class WindowsGuard:
             raise OSError('Не удалось определить экран теста')
         return info.monitor
 
+    def stack_exam_below(self, warning_handles):
+        """Keep the exam protected without covering a visible/fading warning."""
+        if not self.target:
+            return
+        target = self.target.hwnd
+        flags = 0x13  # SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE
+        if not warning_handles:
+            self.u.SetWindowPos(target, -1, 0, 0, 0, 0, flags)
+            return
+        # Repair a removed topmost style, but do not lift the exam above our
+        # warnings every timer tick: that alternation causes native flicker.
+        if not self.u.GetWindowLongW(target, -20) & 0x8:  # WS_EX_TOPMOST
+            self.u.SetWindowPos(target, -1, 0, 0, 0, 0, flags)
+        for hwnd in warning_handles:
+            if not self.u.SetWindowPos(hwnd, -1, 0, 0, 0, 0, flags):
+                self.u.SetWindowPos(target, -1, 0, 0, 0, 0, flags)
+                raise OSError('Не удалось показать предупреждение поверх теста')
+        # The first warning is lowest after the raises above. Keep the exam
+        # immediately below all our warnings, above unrelated windows.
+        if not self.u.SetWindowPos(target, warning_handles[0], 0, 0, 0, 0, flags):
+            self.u.SetWindowPos(target, -1, 0, 0, 0, 0, flags)
+            raise OSError('Не удалось сохранить порядок окон теста')
+
     def monitor_handle(self, hwnd):
         """Native monitor identity, without mixing physical and Qt coordinates."""
         if not self.u.IsWindow(hwnd):

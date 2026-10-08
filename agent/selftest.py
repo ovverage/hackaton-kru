@@ -508,4 +508,111 @@ def check_presentation():
         set_language(previous, persist=False)
         label.deleteLater()
         app.processEvents()
-    return {'ui_languages': ['ru', 'kk', 'en'], 'attention_warning_hold_seconds': 1.0}
+    return {'ui_languages': ['ru', 'kk', 'en'], 'attention_warning_hold_seconds': 1.0,
+            **check_warning_animation()}
+
+
+def check_warning_animation():
+    """Check real banner animation and, on Windows, its native stacking order.
+
+    The synthetic exam is our own small, non-activating window. This never
+    starts the camera, installs hooks, or changes another application's window.
+    Animation time is advanced explicitly, without waiting for hardware or time.
+    """
+    import os
+    from PySide6.QtCore import QCoreApplication, QEvent, Qt
+    from PySide6.QtWidgets import QApplication, QWidget
+    from .exam_ui import GazeWarning
+
+    app = QApplication.instance() or QApplication([])
+    native = os.name == 'nt' and app.platformName().casefold() == 'windows'
+    warning = GazeWarning()
+    exam, guard = None, None
+
+    def stack_and_check():
+        if not native:
+            return
+        handles = [int(warning.winId())] if warning.isVisible() else []
+        guard.stack_exam_below(handles)
+        assert guard.u.GetWindowLongW(guard.target.hwnd, -20) & 0x8
+        if handles:
+            # Walk upwards from our exam window. A visible/fading warning must
+            # occur above it even after repeated protection timer operations.
+            cursor = guard.target.hwnd
+            seen = set()
+            while cursor and cursor not in seen:
+                seen.add(cursor)
+                cursor = guard.u.GetWindow(cursor, 3)  # GW_HWNDPREV
+                if cursor == handles[0]:
+                    break
+            else:
+                raise AssertionError('The exam covers its visible attention warning')
+
+    try:
+        if native:
+            from ctypes import wintypes as W
+            from types import SimpleNamespace
+            from .windows_guard import WindowsGuard
+            exam = QWidget()
+            exam.setWindowTitle('Qorgau packaged warning check')
+            exam.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint
+                                | Qt.WindowType.WindowDoesNotAcceptFocus
+                                | Qt.WindowType.WindowTransparentForInput)
+            exam.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+            exam.setGeometry(8, 8, 240, 90)
+            exam.show()
+            guard = WindowsGuard()
+            guard.target = SimpleNamespace(hwnd=int(exam.winId()))
+            guard.u.GetWindow.argtypes = [W.HWND, W.UINT]
+            guard.u.GetWindow.restype = W.HWND
+            stack_and_check()
+
+        duration = warning.fade.duration()
+        assert duration == 300
+        warning.setGeometry(16, 16, 660, 130)
+        warning.set_warning_visible(True)
+        warning.fade.pause()
+        warning.fade.setCurrentTime(duration // 2)
+        assert warning.isVisible() and .35 < warning.windowOpacity() < .65
+        stack_and_check()
+        # Identical detector updates must not restart the fade from zero.
+        halfway = warning.windowOpacity()
+        warning.set_warning_visible(True)
+        assert abs(warning.windowOpacity() - halfway) < .01
+        warning.fade.resume()
+        warning.fade.setCurrentTime(duration)
+        assert warning.isVisible() and warning.windowOpacity() > .99
+
+        warning.set_warning_visible(False)
+        warning.fade.pause()
+        for elapsed in (100, 150, 200):
+            warning.fade.setCurrentTime(elapsed)
+            assert warning.isVisible() and 0 < warning.windowOpacity() < 1
+            stack_and_check()
+        # A new observation during fade-out resumes at the current opacity.
+        partial = warning.windowOpacity()
+        warning.set_warning_visible(True)
+        warning.fade.pause()
+        assert warning.isVisible() and abs(warning.windowOpacity() - partial) < .01
+        stack_and_check()
+        warning.fade.resume()
+        warning.fade.setCurrentTime(duration)
+        warning.set_warning_visible(False)
+        warning.fade.setCurrentTime(duration)
+        assert not warning.isVisible()
+        stack_and_check()
+
+        warning.set_warning_visible(True)
+        warning.set_warning_visible(False, immediate=True)
+        assert not warning.isVisible() and warning.windowOpacity() == 0
+        return {'attention_warning_fade_ms': duration,
+                'attention_warning_native_stacking': native}
+    finally:
+        warning.hide()
+        warning.close()
+        warning.deleteLater()
+        if exam is not None:
+            exam.close()
+            exam.deleteLater()
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        app.processEvents()

@@ -119,6 +119,8 @@ jobs:
               assert runtime['browser_navigation_recovery'] is True
               assert runtime['ui_languages'] == ['ru', 'kk', 'en']
               assert runtime['attention_warning_hold_seconds'] == 1.0
+              assert runtime['attention_warning_fade_ms'] == 300
+              assert runtime['attention_warning_native_stacking'] is True
           checksums = dict(line.split('  ', 1)[::-1] for line in (root / 'SHA256SUMS.txt').read_text(encoding='utf-8-sig').splitlines() if line)
           with (root / 'Qorgau-Student.exe').open('rb') as stream:
               assert hashlib.file_digest(stream, 'sha256').hexdigest() == checksums['Qorgau-Student.exe']

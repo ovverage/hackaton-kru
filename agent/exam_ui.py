@@ -190,7 +190,7 @@ class GazeWarning(QWidget):
         layout.addWidget(self.countdown, 0, Qt.AlignmentFlag.AlignVCenter)
         self._wanted = False
         self.fade = QPropertyAnimation(self, b"windowOpacity", self)
-        self.fade.setDuration(200)
+        self.fade.setDuration(300)
         self.fade.setEasingCurve(QEasingCurve.Type.InOutQuad)
         self.fade.finished.connect(self._fade_finished)
 
@@ -1213,6 +1213,10 @@ class ExamController(QObject):
             )
             if result:
                 self.agent.security_event(result, lock=result != "ENVIRONMENT_ATTEMPT")
+                if self.agent.engine.state.access != 'OPEN':
+                    self.warning_display.parts.clear()
+                    for warning in self.gaze_warnings:
+                        warning.hide()
             if locked:
                 for surface in self.surfaces[: len(screens)]:
                     surface.raise_()
@@ -1221,13 +1225,23 @@ class ExamController(QObject):
                     self.surfaces[0].password.setFocus()
                 raise_calibration_overlays(self.surfaces)
             elif not locked and not desktop:
-                self.guard.u.SetWindowPos(self.guard.target.hwnd, -1, 0, 0, 0, 0, 0x13)
                 if previous:
                     self.guard.u.SetForegroundWindow(self.guard.target.hwnd)
-            if warn_about_gaze:
+                # A fading banner is still visible after its logical warning
+                # clears. Keep it above the exam until the animation finishes.
+                self.guard.stack_exam_below([
+                    int(warning.winId())
+                    for warning in self.gaze_warnings[: len(screens)]
+                    if warning.isVisible()
+                ])
+            elif not locked and desktop:
                 for warning in self.gaze_warnings[: len(screens)]:
-                    warning.raise_()
+                    if warning.isVisible():
+                        warning.raise_()
         except (OSError, ValueError):
             self.agent.capabilities["guard_active"] = False
             self.agent.capabilities["guard_fault"] = "GUARD_UNAVAILABLE"
             self.agent.security_event("GUARD_UNAVAILABLE")
+            self.warning_display.parts.clear()
+            for warning in self.gaze_warnings:
+                warning.hide()

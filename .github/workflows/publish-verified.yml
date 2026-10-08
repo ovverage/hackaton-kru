@@ -88,6 +88,8 @@ jobs:
               assert runtime['browser_navigation_recovery'] is True
               assert runtime['ui_languages'] == ['ru', 'kk', 'en']
               assert runtime['attention_warning_hold_seconds'] == 1.0
+              assert runtime['attention_warning_fade_ms'] == 300
+              assert runtime['attention_warning_native_stacking'] is True
               assert runtime['teacher_face_model_files'] == teacher_models and runtime['teacher_face_runtime']
               assert runtime['mode'] == ('offline' if name == 'offline-selftest.json' else 'online')
           PY

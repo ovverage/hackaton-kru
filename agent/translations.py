@@ -1,6 +1,10 @@
 """Russian source strings mapped to English and Kazakh presentation text."""
 
 MESSAGES = {'(по изображению камеры).': ('(camera-image directions).', '(камера кескіні бойынша).'),
+ 'Не удалось показать предупреждение поверх теста': ('Could not show the warning over the exam',
+                                                     'Ескертуді тест терезесінің үстінде көрсету мүмкін болмады'),
+ 'Не удалось сохранить порядок окон теста': ('Could not preserve the exam window order',
+                                              'Тест терезелерінің ретін сақтау мүмкін болмады'),
  '. Можно проверить поворот головы до начала сеанса.': ('. You can check head turns before the session.',
                                                         '. Сеанс басталғанға дейін бастың бұрылуын '
                                                         'тексеруге болады.'),

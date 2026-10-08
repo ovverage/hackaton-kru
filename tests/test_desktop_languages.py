@@ -83,7 +83,9 @@ def test_dynamic_diagnostics_preserve_angles_codes_and_names(app):
 
 def test_packaged_presentation_check(app):
     from agent.selftest import check_presentation
-    assert check_presentation() == {'ui_languages': ['ru', 'kk', 'en'], 'attention_warning_hold_seconds': 1.0}
+    assert check_presentation() == {'ui_languages': ['ru', 'kk', 'en'],
+        'attention_warning_hold_seconds': 1.0, 'attention_warning_fade_ms': 300,
+        'attention_warning_native_stacking': False}
 
 
 def test_language_change_preserves_preview_and_item_roles_and_menu_title(app):
