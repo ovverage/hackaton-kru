@@ -399,9 +399,10 @@ def test_offline_password_is_stored_off_gui_thread_and_cleared(gui, monkeypatch)
     window.local_password_repeat.setText("fixture-password")
     window.setup_local_password()
     assert window.local_password.text() == ""
-    for _ in range(100):
+    for _ in range(400):
         QTest.qWait(5)
-        if window.password_worker.isFinished():
+        # A finished worker can precede delivery of its queued GUI signal.
+        if window.password_worker.isFinished() and 'сохранён' in window.password_feedback.text():
             break
     assert calls[0][0] == "fixture-password"
     assert calls[0][1] != window.thread()
