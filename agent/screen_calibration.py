@@ -6,9 +6,8 @@ import math
 
 from PySide6.QtCore import QElapsedTimer, QPointF, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QPainter, QPen
-from PySide6.QtWidgets import (
-    QApplication, QComboBox, QDialog, QLabel, QPushButton, QVBoxLayout, QWidget,
-)
+from PySide6.QtWidgets import (QApplication, QVBoxLayout)
+from .localized_widgets import (QComboBox, QDialog, QLabel, QPushButton, QWidget)
 
 from .screen_capture import TARGET_SETTLE_SECONDS, TARGET_VISIBLE_SECONDS
 from .theme import CALIBRATION_QSS, COLORS, app_font

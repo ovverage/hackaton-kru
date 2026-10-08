@@ -1,3 +1,4 @@
+import { t, messageText, formatDateTime } from "./i18n.ts";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Download, Copy, LoaderCircle } from "lucide-react";
 import { api } from "./types";
@@ -87,42 +88,44 @@ export default function StudentPackages() {
   return (
     <div className="modal-body student-packages" ref={bodyRef}>
       <p>
-        Один файл для всей аудитории. Студент скачивает EXE, открывает его —
-        компьютер появляется в вашем кабинете. Адрес и код вводить не нужно.
+        {t(
+          "Один файл для всей аудитории. Студент скачивает EXE, открывает его — компьютер появляется в вашем кабинете. Адрес и код вводить не нужно.",
+        )}
       </p>
       {error && (
         <div className="notice" role="alert">
-          {error}
+          {messageText(error)}
         </div>
       )}
       {!state && !error && (
         <p role="status">
-          <LoaderCircle size={16} /> Загружаем настройки…
+          <LoaderCircle size={16} /> {t("Загружаем настройки…")}
         </p>
       )}
       {state && (
         <>
           {!state.ready && (
             <div className="notice" role="status">
-              Сборка EXE ещё не загружена на сервер. После её подготовки здесь
-              можно будет скачать приложение для аудитории.
+              {t(
+                "Сборка EXE ещё не загружена на сервер. После её подготовки здесь можно будет скачать приложение для аудитории.",
+              )}
             </div>
           )}
           {!created && (
             <form onSubmit={create}>
               <label>
-                Аудитория
+                {t("Аудитория")}
                 <input
                   required
                   maxLength={80}
                   value={room}
                   onChange={(e) => setRoom(e.target.value)}
-                  placeholder="Например, 301"
+                  placeholder={t("Например, 301")}
                 />
               </label>
               <div className="package-fields">
                 <label>
-                  Количество компьютеров
+                  {t("Количество компьютеров")}
                   <input
                     type="number"
                     min={1}
@@ -133,19 +136,19 @@ export default function StudentPackages() {
                   />
                 </label>
                 <label>
-                  Срок первого подключения
+                  {t("Срок первого подключения")}
                   <select
                     value={hours}
                     onChange={(e) => setHours(Number(e.target.value))}
                   >
-                    <option value={24}>24 часа</option>
-                    <option value={72}>3 дня</option>
-                    <option value={168}>7 дней</option>
+                    <option value={24}>{t("24 часа")}</option>
+                    <option value={72}>{t("3 дня")}</option>
+                    <option value={168}>{t("7 дней")}</option>
                   </select>
                 </label>
               </div>
               <label>
-                Адрес сервера для компьютеров
+                {t("Адрес сервера для компьютеров")}
                 <input
                   type="url"
                   required
@@ -155,9 +158,9 @@ export default function StudentPackages() {
                 />
               </label>
               <p className="fine">
-                Укажите доступный студентам HTTPS-адрес этого сайта. После
-                размещения на сервере он подставится автоматически. Localhost
-                подходит только для проверки на одном ПК.
+                {t(
+                  "Укажите доступный студентам HTTPS-адрес этого сайта. После размещения на сервере он подставится автоматически. Localhost подходит только для проверки на одном ПК.",
+                )}
               </p>
               <button
                 className="btn primary full"
@@ -165,26 +168,29 @@ export default function StudentPackages() {
                 type="submit"
               >
                 {busy ? <LoaderCircle size={17} /> : <Download size={17} />}{" "}
-                Подготовить EXE
+                {t("Подготовить EXE")}
               </button>
             </form>
           )}
           {created && (
-            <section className="package-download" aria-label="Готовый EXE">
-              <h3>Приложение для аудитории {created.room} готово</h3>
+            <section className="package-download" aria-label={t("Готовый EXE")}>
+              <h3>
+                {t("Приложение для аудитории")} {created.room} {t("готово")}
+              </h3>
               <p>
-                Передайте этот файл всем студентам или отправьте ссылку на
-                скачивание. Сохраните её перед закрытием окна.
+                {t(
+                  "Передайте этот файл всем студентам или отправьте ссылку на скачивание. Сохраните её перед закрытием окна.",
+                )}
               </p>
               <a
                 className="btn primary full"
                 href={created.download_path}
                 download="Qorgau-Classroom.exe"
               >
-                <Download size={17} /> Скачать EXE для студентов
+                <Download size={17} /> {t("Скачать EXE для студентов")}
               </a>
               <label>
-                Ссылка для студентов
+                {t("Ссылка для студентов")}
                 <input
                   readOnly
                   value={created.download_url}
@@ -198,48 +204,53 @@ export default function StudentPackages() {
                     await navigator.clipboard.writeText(created.download_url);
                     setCopied(true);
                   } catch {
-                    setError("Выделите и скопируйте ссылку вручную");
+                    setError(t("Выделите и скопируйте ссылку вручную"));
                   }
                 }}
               >
                 <Copy size={16} />{" "}
-                {copied ? "Ссылка скопирована" : "Скопировать ссылку"}
+                {copied ? t("Ссылка скопирована") : t("Скопировать ссылку")}
               </button>
             </section>
           )}
           {created && (
             <button className="btn full" onClick={() => setCreated(null)}>
-              Подготовить ещё один EXE
+              {t("Подготовить ещё один EXE")}
             </button>
           )}
           <p className="fine">
-            Лимит и срок действуют только на новые подключения.
-            Зарегистрированные компьютеры продолжат работать и получать сеансы
-            после окончания срока.
+            {t(
+              "Лимит и срок действуют только на новые подключения. Зарегистрированные компьютеры продолжат работать и получать сеансы после окончания срока.",
+            )}
           </p>
           {state.packages.length > 0 && (
             <section className="package-list">
-              <h3>Пакеты подключения</h3>
+              <h3>{t("Пакеты подключения")}</h3>
               <button
                 className="btn"
                 disabled={busy}
                 onClick={() => refresh().catch((e) => setError(e.message))}
               >
-                Обновить подключения
+                {t("Обновить подключения")}
               </button>
               {state.packages.map((p) => {
                 const active = !p.revoked && p.expires_at * 1000 > Date.now();
                 return (
                   <div className="package-row" key={p.id}>
                     <div>
-                      <strong>Аудитория {p.room}</strong>
+                      <strong>
+                        {t("Аудитория")} {p.room}
+                      </strong>
                       <p>
-                        {p.used_devices} из {p.max_devices} ПК ·{" "}
+                        {p.used_devices} {t("из")} {p.max_devices} {t("ПК ·")}{" "}
                         {p.revoked
-                          ? "Отключён"
+                          ? t("Отключён")
                           : active
-                            ? `до ${new Date(p.expires_at * 1000).toLocaleString("ru-RU")}`
-                            : "Срок истёк"}
+                            ? t(
+                                "до {0}",
+                                formatDateTime(new Date(p.expires_at * 1000)),
+                              )
+                            : t("Срок истёк")}
                       </p>
                     </div>
                     {active && (
@@ -248,7 +259,7 @@ export default function StudentPackages() {
                         disabled={busy}
                         onClick={() => revoke(p.id)}
                       >
-                        Отключить пакет
+                        {t("Отключить пакет")}
                       </button>
                     )}
                   </div>

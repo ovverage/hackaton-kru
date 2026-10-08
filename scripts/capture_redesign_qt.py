@@ -6,6 +6,7 @@ imagery is the supplied design's SVG illustration, never a student's recording.
 from __future__ import annotations
 
 import os
+import argparse
 from pathlib import Path
 import re
 import sys
@@ -22,7 +23,9 @@ os.environ.setdefault('QTWEBENGINE_CHROMIUM_FLAGS', '--no-sandbox --disable-gpu'
 from PySide6.QtCore import QByteArray, Qt  # noqa: E402
 from PySide6.QtGui import QImage, QPainter  # noqa: E402
 from PySide6.QtSvg import QSvgRenderer  # noqa: E402
-from PySide6.QtWidgets import QApplication, QMenu  # noqa: E402
+from PySide6.QtWidgets import QApplication  # noqa: E402
+from agent.localized_widgets import QMenu  # noqa: E402
+from agent.i18n import set_language  # noqa: E402
 from agent.client import Agent, atomic_json  # noqa: E402
 from agent.desktop import StudentWindow  # noqa: E402
 from agent.camera_setup import CameraSetup  # noqa: E402
@@ -31,9 +34,14 @@ from agent.screen_calibration import ScreenCalibrationDialog  # noqa: E402
 from agent.theme import APP_QSS, app_font, logo_icon  # noqa: E402
 
 app = QApplication.instance() or QApplication([])
+parser = argparse.ArgumentParser()
+parser.add_argument('--language', choices=('ru', 'kk', 'en'), default='ru')
+parser.add_argument('--output', type=Path)
+options = parser.parse_args()
+set_language(options.language, persist=False)
 app.setStyle('Fusion')
 app.setFont(app_font())
-OUT = ROOT / 'design/redesign-2026-10-v2/implemented/exe'
+OUT = options.output or ROOT / 'design/redesign-2026-10-v2/implemented/exe'
 OUT.mkdir(parents=True, exist_ok=True)
 windows = []
 agents = []
@@ -56,6 +64,7 @@ def agent_at(folder, *, offline=False):
     agent = Agent(folder)
     if offline:
         agent.mode = 'offline'
+        agent.local_access.initialize_demo()
     agent.last_synced_at = time.monotonic()
     agents.append(agent)
     return agent
@@ -91,7 +100,7 @@ with tempfile.TemporaryDirectory(prefix='qorgau-ui-') as temp:
     local.camera_choice.addItem('Logitech C270 HD', 0)
     capture(local, 'exe-02-prep-local', 780, 1200)
 
-    html = (ROOT / 'design/redesign-2026-10-v2/html/exe-07-pause.html').read_text()
+    html = (ROOT / 'design/redesign-2026-10-v2/html/exe-07-pause.html').read_text(encoding='utf-8')
     svg = re.search(r'<svg class="scene".*?</svg>', html, re.S).group(0)
     svg = svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ', 1)
     image = QImage(640, 360, QImage.Format.Format_RGB32)
@@ -100,7 +109,7 @@ with tempfile.TemporaryDirectory(prefix='qorgau-ui-') as temp:
     painter.end()
     image_path = base / 'illustrated-camera.png'
     image.save(str(image_path))
-    camera_html = (ROOT / 'design/redesign-2026-10-v2/html/exe-03-camera.html').read_text()
+    camera_html = (ROOT / 'design/redesign-2026-10-v2/html/exe-03-camera.html').read_text(encoding='utf-8')
     camera_svg = re.search(r'<svg class="scene".*?</svg>', camera_html, re.S).group(0)
     camera_svg = re.sub(r'<ellipse[^>]*stroke-dasharray[^>]*></ellipse>', '', camera_svg)
     camera_svg = camera_svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ', 1)
@@ -154,7 +163,7 @@ with tempfile.TemporaryDirectory(prefix='qorgau-ui-') as temp:
     warning = GazeWarning()
     warning.update_countdown({'gaze_seconds': 2.1, 'gaze_diagnostics': {'direction': 'DOWN', 'gaze_observed_direction': 'DOWN'}})
     capture(warning, 'exe-06-gaze', 660, 124)
-    warning.message.setText('Поворот головы вправо (по изображению камеры)\nПовернитесь к монитору')
+    warning.message.setText('Верните взгляд на монитор')
     warning.update_countdown({'gaze_diagnostics': {'head_direction': 'RIGHT'}})
     capture(warning, 'exe-06-head-warning', 660, 174)
 

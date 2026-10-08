@@ -1,3 +1,4 @@
+import { t, messageText, apiError, formatDate } from "./i18n.ts";
 import { useEffect, useState, type FormEvent } from "react";
 import { Camera, LoaderCircle, Trash2 } from "lucide-react";
 import { api } from "./types";
@@ -53,8 +54,12 @@ export default function TeacherFaces() {
       await refresh();
       setMessage(
         device.enabled
-          ? "Разрешение отозвано. Сохранённые в памяти образцы перестанут использоваться не позднее чем через минуту."
-          : "Доступ компьютеру разрешён. Образцы появятся при следующем подключении к серверу.",
+          ? t(
+              "Разрешение отозвано. Сохранённые в памяти образцы перестанут использоваться не позднее чем через минуту.",
+            )
+          : t(
+              "Доступ компьютеру разрешён. Образцы появятся при следующем подключении к серверу.",
+            ),
       );
     } catch (err) {
       setError((err as Error).message);
@@ -66,14 +71,13 @@ export default function TeacherFaces() {
     const response = await fetch("/api/teacher-faces" + path, {
       ...options,
       headers: { "X-Requested-With": "Qorgau" },
+    }).catch(() => {
+      throw new Error(
+        t("Нет связи с сервером. Проверьте интернет и повторите."),
+      );
     });
     const result = await response.json();
-    if (!response.ok)
-      throw new Error(
-        typeof result.detail === "string"
-          ? result.detail
-          : "Не удалось сохранить изменения",
-      );
+    if (!response.ok) throw new Error(apiError(result.detail, response.status));
     await refresh();
   }
   async function submit(event: FormEvent) {
@@ -82,7 +86,7 @@ export default function TeacherFaces() {
     setError("");
     setMessage("");
     if (photo.size > 3 * 1024 * 1024) {
-      setError("Выберите фото до 3 МБ.");
+      setError(t("Выберите фото до 3 МБ."));
       return;
     }
     setBusy(true);
@@ -95,7 +99,9 @@ export default function TeacherFaces() {
       setPhoto(null);
       setFileKey((value) => value + 1);
       setMessage(
-        "Преподаватель добавлен. Проверка по лицу доступна на подключённых компьютерах.",
+        t(
+          "Преподаватель добавлен. Проверка по лицу доступна на подключённых компьютерах.",
+        ),
       );
     } catch (err) {
       setError((err as Error).message);
@@ -109,7 +115,7 @@ export default function TeacherFaces() {
     setMessage("");
     try {
       await mutate("/" + encodeURIComponent(face.id), { method: "DELETE" });
-      setMessage(`Образец «${face.name}» удалён.`);
+      setMessage(t("Образец «{0}» удалён.", face.name));
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -121,35 +127,34 @@ export default function TeacherFaces() {
       <div className="teacher-face-intro note ink">
         <Camera size={26} />
         <div>
-          <h2>Продолжение теста по лицу преподавателя</h2>
+          <h2>{t("Продолжение теста по лицу преподавателя")}</h2>
           <p>
-            Добавьте фотографию преподавателя. На компьютере с тестом на паузе
-            он смотрит в камеру, поворачивает голову по подсказке и возвращается
-            в центр. Для проверки нужна связь с сервером; вход по паролю
-            остаётся доступен.
+            {t(
+              "Добавьте фотографию преподавателя. На компьютере с тестом на паузе он смотрит в камеру, поворачивает голову по подсказке и возвращается в центр. Для проверки нужна связь с сервером; вход по паролю остаётся доступен.",
+            )}
           </p>
           <p className="fine">
-            На компьютерах с разрешённым доступом распознанный преподаватель не
-            учитывается как второе лицо. Проверка движения — дополнительный шаг,
-            она не гарантирует защиту от подмены изображения.
+            {t(
+              "На компьютерах с разрешённым доступом распознанный преподаватель не учитывается как второе лицо. Проверка движения — дополнительный шаг, она не гарантирует защиту от подмены изображения.",
+            )}
           </p>
         </div>
       </div>
       {error && (
         <div className="teacher-face-feedback note error" role="alert">
-          {error}
+          {messageText(error)}
         </div>
       )}
       {message && (
         <div className="teacher-face-feedback note ink" role="status">
-          {message}
+          {messageText(message)}
         </div>
       )}
       <div className="teacher-face-columns">
         <form className="teacher-face-card card" onSubmit={submit}>
-          <h3>Добавить преподавателя</h3>
+          <h3>{t("Добавить преподавателя")}</h3>
           <label className="field">
-            Имя
+            {t("Имя")}
             <input
               className="input"
               value={name}
@@ -157,24 +162,32 @@ export default function TeacherFaces() {
               maxLength={80}
               required
               disabled={busy}
-              placeholder="Имя и фамилия"
+              placeholder={t("Имя и фамилия")}
             />
           </label>
           <label className="field">
-            Фотография
-            <input
-              className="input"
-              key={fileKey}
-              type="file"
-              accept="image/jpeg,image/png"
-              onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
-              required
-              disabled={busy}
-            />
+            {t("Фотография")}
+            <span className="localized-file-picker">
+              <span className="btn">{t("Выбрать фотографию")}</span>
+              <span className="file-name">
+                {photo?.name || t("Файл не выбран")}
+              </span>
+              <input
+                className="localized-file-input"
+                aria-label={t("Выбрать фотографию")}
+                key={fileKey}
+                type="file"
+                accept="image/jpeg,image/png"
+                onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
+                required
+                disabled={busy}
+              />
+            </span>
           </label>
           <p className="fine">
-            JPEG или PNG до 3 МБ. Одно лицо анфас, без других людей в кадре.
-            Хранится образец для сопоставления; исходное фото не сохраняется.
+            {t(
+              "JPEG или PNG до 3 МБ. Одно лицо анфас, без других людей в кадре. Хранится образец для сопоставления; исходное фото не сохраняется.",
+            )}
           </p>
           <button
             className="btn primary"
@@ -187,17 +200,18 @@ export default function TeacherFaces() {
             ) : (
               <Camera size={18} />
             )}{" "}
-            Добавить
+            {t("Добавить")}
           </button>
         </form>
         <div className="teacher-face-card card">
           <h3>
-            Преподаватели <span className="fine">{faces.length} / 20</span>
+            {t("Преподаватели")}{" "}
+            <span className="fine">{faces.length} / 20</span>
           </h3>
           {loading ? (
-            <p role="status">Загружаем список…</p>
+            <p role="status">{t("Загружаем список…")}</p>
           ) : faces.length === 0 ? (
-            <p className="fine">Пока нет добавленных преподавателей.</p>
+            <p className="fine">{t("Пока нет добавленных преподавателей.")}</p>
           ) : (
             <ul className="teacher-face-list">
               {faces.map((face) => (
@@ -208,17 +222,15 @@ export default function TeacherFaces() {
                   <div>
                     <strong>{face.name}</strong>
                     <small>
-                      Добавлен{" "}
-                      {new Date(face.created_at * 1000).toLocaleDateString(
-                        "ru",
-                      )}
+                      {t("Добавлен")}{" "}
+                      {formatDate(new Date(face.created_at * 1000))}
                     </small>
                   </div>
                   <button
                     className="icon-btn"
                     disabled={busy}
                     onClick={() => void remove(face)}
-                    aria-label={`Удалить ${face.name}`}
+                    aria-label={t("Удалить {0}", face.name)}
                   >
                     <Trash2 size={17} />
                   </button>
@@ -229,30 +241,30 @@ export default function TeacherFaces() {
         </div>
       </div>
       <section className="teacher-face-card card">
-        <h3>Доступ компьютеров к образцам лиц</h3>
+        <h3>{t("Доступ компьютеров к образцам лиц")}</h3>
         <p className="fine">
-          Исключение преподавателей из подсчёта лиц требует передачи компьютеру
-          образцов для локального сопоставления. Сверьте имя и ID с приложением
-          Qorgau и разрешите доступ только нужному компьютеру. Автоматическое
-          подключение само по себе не даёт этого разрешения.
+          {t(
+            "Исключение преподавателей из подсчёта лиц требует передачи компьютеру образцов для локального сопоставления. Сверьте имя и ID с приложением Qorgau и разрешите доступ только нужному компьютеру. Автоматическое подключение само по себе не даёт этого разрешения.",
+          )}
         </p>
         <p className="fine">
-          Проверка лица для продолжения теста выполняется на сервере отдельно.
-          Локальный экзамен и локальный пароль работают без этого разрешения.
+          {t(
+            "Проверка лица для продолжения теста выполняется на сервере отдельно. Локальный экзамен и локальный пароль работают без этого разрешения.",
+          )}
         </p>
         {loading ? (
-          <p role="status">Загружаем компьютеры…</p>
+          <p role="status">{t("Загружаем компьютеры…")}</p>
         ) : devices.length === 0 ? (
-          <p className="fine">Подключённых компьютеров пока нет.</p>
+          <p className="fine">{t("Подключённых компьютеров пока нет.")}</p>
         ) : (
           <div className="table-box teacher-access-table">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Компьютер</th>
-                  <th>Доступ к образцам</th>
+                  <th>{t("Компьютер")}</th>
+                  <th>{t("Доступ к образцам")}</th>
                   <th>
-                    <span className="sr-only">Действие</span>
+                    <span className="sr-only">{t("Действие")}</span>
                   </th>
                 </tr>
               </thead>
@@ -264,15 +276,15 @@ export default function TeacherFaces() {
                       <small>ID: {device.id}</small>
                       {device.enabled && !device.public_enrollment && (
                         <small>
-                          Подключён по коду или установщику преподавателя
+                          {t("Подключён по коду или установщику преподавателя")}
                         </small>
                       )}
                     </td>
                     <td>
                       <Pill tone={device.enabled ? "ok" : "warn"}>
                         {device.enabled
-                          ? "Доступ разрешён"
-                          : "Ожидает разрешения"}
+                          ? t("Доступ разрешён")
+                          : t("Ожидает разрешения")}
                       </Pill>
                     </td>
                     <td>
@@ -282,8 +294,8 @@ export default function TeacherFaces() {
                         onClick={() => void setDeviceAccess(device)}
                       >
                         {device.enabled
-                          ? "Отозвать разрешение"
-                          : "Разрешить этому компьютеру"}
+                          ? t("Отозвать разрешение")
+                          : t("Разрешить этому компьютеру")}
                       </button>
                     </td>
                   </tr>

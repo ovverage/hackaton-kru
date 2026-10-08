@@ -1,3 +1,5 @@
+import LanguageSelector, { useLanguage } from "./LanguageSelector";
+import { t, getLanguage, messageText, formatDate, formatTime } from "./i18n.ts";
 import Classroom from "./Classroom";
 import TeacherFaces from "./TeacherFaces";
 import {
@@ -20,6 +22,7 @@ import {
 import { useDialogFocus } from "./useDialogFocus";
 import {
   endExam,
+  commandFailure,
   sendDeviceCommand,
   sendGroupCommand,
   type CommandType,
@@ -137,7 +140,11 @@ function Modal({
             {subtitle && <p>{subtitle}</p>}
           </div>
           {headerExtra}
-          <button className="icon-btn" onClick={onClose} aria-label="Закрыть">
+          <button
+            className="icon-btn"
+            onClick={onClose}
+            aria-label={t("Закрыть")}
+          >
             <X size={20} />
           </button>
         </header>
@@ -179,17 +186,18 @@ function Auth({
         <Logo onDark />
         <div className="auth-message">
           <h1>
-            Вся аудитория
+            {t("Вся аудитория")}
             <br />
-            на одном экране
+            {t("на одном экране")}
           </h1>
           <p>
-            Qorgau замечает телефон, второе лицо и долгий взгляд в сторону. Вы
-            получаете короткую запись и решаете, было ли нарушение.
+            {t(
+              "Qorgau замечает телефон, второе лицо и долгий взгляд в сторону. Вы получаете короткую запись и решаете, было ли нарушение.",
+            )}
           </p>
           <div className="auth-example" aria-hidden="true">
             <div className="auth-example-head">
-              <Bubble state="pause" /> Тест на паузе <span>09:52</span>
+              <Bubble state="pause" /> {t("Тест на паузе")} <span>09:52</span>
             </div>
             <div className="auth-example-body">
               <div className="cam">
@@ -197,44 +205,49 @@ function Auth({
                 <RegMarks light />
               </div>
               <div>
-                <strong>Телефон в кадре</strong>
-                <p>Айгерим Нурланова</p>
+                <strong>{t("Телефон в кадре")}</strong>
+                <p>{t("Айгерим Нурланова")}</p>
                 <small>K301-PC14</small>
-                <Pill tone="warn">Ждёт вашего решения</Pill>
+                <Pill tone="warn">{t("Ждёт вашего решения")}</Pill>
               </div>
             </div>
             <div className="auth-example-foot">
-              Посмотреть запись <ChevronRight size={16} />
+              {t("Посмотреть запись")} <ChevronRight size={16} />
             </div>
           </div>
           <div className="auth-facts">
             <span>
               <Video size={18} />
-              Видео только вокруг события
+              {t("Видео только вокруг события")}
             </span>
             <span>
               <MicOff size={18} />
-              Звук не записывается
+              {t("Звук не записывается")}
             </span>
             <span>
               <ShieldCheck size={18} />
-              Решение за преподавателем
+              {t("Решение за преподавателем")}
             </span>
           </div>
         </div>
-        <footer>Команда PEEP. Кейс КРУ и Qostanai Hub, 2026</footer>
+        <footer>{t("Команда PEEP. Кейс КРУ и Qostanai Hub, 2026")}</footer>
       </section>
       <main className="auth-form">
+        <div className="auth-language">
+          <LanguageSelector />
+        </div>
         <div className="auth-card">
-          <h2>{setup ? "Создать кабинет" : "Вход в кабинет"}</h2>
+          <h2>{setup ? t("Создать кабинет") : t("Вход в кабинет")}</h2>
           <p>
             {setup
-              ? "Создайте учётную запись преподавателя для этой установки Qorgau."
-              : "Войдите, чтобы увидеть аудиторию и продолжить работу."}
+              ? t(
+                  "Создайте учётную запись преподавателя для этой установки Qorgau.",
+                )
+              : t("Войдите, чтобы увидеть аудиторию и продолжить работу.")}
           </p>
           <form onSubmit={submit}>
             <label className="field">
-              Имя преподавателя
+              {t("Имя преподавателя")}
               <input
                 className="input"
                 autoFocus
@@ -244,27 +257,31 @@ function Auth({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoComplete="username"
-                placeholder="Например, Айгуль Сапарова"
+                placeholder="admin"
               />
             </label>
             <label className="field">
-              {setup ? "Придумайте пароль" : "Пароль"}
+              {setup ? t("Придумайте пароль") : t("Пароль")}
               <span className="password-field">
                 <input
                   className="input"
                   required
                   type={visible ? "text" : "password"}
-                  minLength={setup ? 8 : 1}
+                  minLength={setup ? 5 : 1}
                   maxLength={128}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete={setup ? "new-password" : "current-password"}
-                  placeholder={setup ? "Не меньше 8 символов" : "Введите пароль"}
+                  placeholder={
+                    setup ? t("Не меньше 5 символов") : t("Введите пароль")
+                  }
                 />
                 <button
                   type="button"
                   className="icon-btn"
-                  aria-label={visible ? "Скрыть пароль" : "Показать пароль"}
+                  aria-label={
+                    visible ? t("Скрыть пароль") : t("Показать пароль")
+                  }
                   onClick={() => setVisible(!visible)}
                 >
                   {visible ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -273,27 +290,34 @@ function Auth({
             </label>
             {error && (
               <div className="error" role="alert">
-                {error}
+                {messageText(error)}
               </div>
             )}
             <button className="btn primary block" disabled={busy}>
               {busy && <LoaderCircle className="spin" size={18} />}
-              {setup ? "Создать кабинет" : "Войти"}
+              {setup ? t("Создать кабинет") : t("Войти")}
             </button>
           </form>
+          {!setup && (
+            <p className="auth-demo">
+              {t("Демонстрационный вход: логин admin, пароль admin")}
+            </p>
+          )}
           <div className="auth-protection">
             <LockKeyhole size={20} />
             <div>
-              <strong>Вход защищён</strong>
+              <strong>{t("Вход защищён")}</strong>
               <p>
-                После 5 неверных попыток — пауза на минуту. Вход действует 12
-                часов.
+                {t(
+                  "После 5 неверных попыток — пауза на минуту. Вход действует 12 часов.",
+                )}
               </p>
             </div>
           </div>
           <p className="fine">
-            Видео и решения хранятся на сервере этой установки Qorgau. Камеры
-            работают только на компьютерах с открытым Qorgau.
+            {t(
+              "Видео и решения хранятся на сервере этой установки Qorgau. Камеры работают только на компьютерах с открытым Qorgau.",
+            )}
           </p>
         </div>
       </main>
@@ -301,6 +325,7 @@ function Auth({
   );
 }
 export default function App() {
+  useLanguage();
   const [auth, setAuth] = useState<{
       setup_required: boolean;
       user: { name: string } | null;
@@ -456,16 +481,16 @@ export default function App() {
   if (fatal)
     return (
       <div className="loading error">
-        Сервер недоступен. {fatal}
+        {t("Сервер недоступен.")} {messageText(fatal)}
         <button className="btn" onClick={() => location.reload()}>
-          Повторить
+          {t("Повторить")}
         </button>
       </div>
     );
   if (!auth)
     return (
       <div className="loading">
-        <LoaderCircle className="spin" /> Загружаем кабинет…
+        <LoaderCircle className="spin" /> {t("Загружаем кабинет…")}
       </div>
     );
   if (!user)
@@ -477,17 +502,17 @@ export default function App() {
     );
   const nav = sessionActive
     ? [
-        { id: "room", name: "Аудитория", icon: LayoutGrid },
-        { id: "blocked", name: "На паузе", icon: Pause },
-        { id: "teachers", name: "Преподаватели", icon: UsersRound },
+        { id: "room", name: t("Аудитория"), icon: LayoutGrid },
+        { id: "blocked", name: t("На паузе"), icon: Pause },
+        { id: "teachers", name: t("Преподаватели"), icon: UsersRound },
       ]
     : [
-        { id: "room", name: "Аудитория", icon: LayoutGrid },
-        { id: "review", name: "События", icon: ClipboardCheck },
-        { id: "history", name: "Сеансы и отчёты", icon: History },
-        { id: "devices", name: "Компьютеры", icon: Monitor },
-        { id: "rules", name: "Правила контроля", icon: SlidersHorizontal },
-        { id: "teachers", name: "Преподаватели", icon: UsersRound },
+        { id: "room", name: t("Аудитория"), icon: LayoutGrid },
+        { id: "review", name: t("События"), icon: ClipboardCheck },
+        { id: "history", name: t("Сеансы и отчёты"), icon: History },
+        { id: "devices", name: t("Компьютеры"), icon: Monitor },
+        { id: "rules", name: t("Правила контроля"), icon: SlidersHorizontal },
+        { id: "teachers", name: t("Преподаватели"), icon: UsersRound },
       ];
   return (
     <div className="q shell app">
@@ -501,7 +526,7 @@ export default function App() {
         >
           <Logo onDark />
         </button>
-        <nav className="nav" aria-label="Разделы">
+        <nav className="nav" aria-label={t("Разделы")}>
           {nav.map((n) => (
             <button
               key={n.id}
@@ -527,20 +552,22 @@ export default function App() {
           ))}
         </nav>
         <div className="side-note sidebar-tip">
-          <strong>Решение за вами</strong>
+          <strong>{t("Решение за вами")}</strong>
           <p>
-            Система отмечает события. Спорные моменты проверяет преподаватель.
+            {t(
+              "Система отмечает события. Спорные моменты проверяет преподаватель.",
+            )}
           </p>
         </div>
         <div className="me profile">
           <div className="avatar">{user.name.slice(0, 1)}</div>
           <div>
             <strong>{user.name}</strong>
-            <span>Преподаватель</span>
+            <span>{t("Преподаватель")}</span>
           </div>
           <button
             className="icon-btn"
-            aria-label="Выйти"
+            aria-label={t("Выйти")}
             onClick={async () => {
               await api("/auth/logout", {});
               setAuth({ ...auth, user: null });
@@ -554,10 +581,11 @@ export default function App() {
       <div className="content workspace">
         <header className="topbar">
           <Clock since={sessionActive ? exam?.created_at : undefined} />
+          <LanguageSelector />
           <div className="link-status connection">
             <Bubble state={connected ? "ink" : "warn"} size="xs" />
             <span>
-              {connected ? "Сервер на связи" : "Восстанавливаем связь"}
+              {connected ? t("Сервер на связи") : t("Восстанавливаем связь")}
             </span>
           </div>
         </header>
@@ -566,35 +594,56 @@ export default function App() {
             <div>
               <h1 className="t-h1">
                 {page === "blocked"
-                  ? "На паузе"
+                  ? t("На паузе")
                   : page === "room"
                     ? sessionActive
-                      ? exam?.title || "Аудитория"
-                      : "Аудитория"
+                      ? exam?.title || t("Аудитория")
+                      : t("Аудитория")
                     : page === "review"
-                      ? "События"
+                      ? t("События")
                       : page === "history"
-                        ? "Сеансы и отчёты"
+                        ? t("Сеансы и отчёты")
                         : page === "devices"
-                          ? "Компьютеры"
+                          ? t("Компьютеры")
                           : page === "teachers"
-                            ? "Преподаватели"
-                            : "Правила контроля"}
+                            ? t("Преподаватели")
+                            : t("Правила контроля")}
               </h1>
               <p>
                 {["room", "blocked"].includes(page)
                   ? exam
-                    ? `Группа ${exam.group}, аудитория ${exam.room}. ${sessionActive ? "Тест идёт с " + shortClock(exam.created_at) + (exam.environment.kind === "BROWSER" ? " в Qorgau Browser" : " в программе на компьютере") : "Завершённый сеанс"}`
-                    : "Подготовьте компьютеры, выберите тест и начните сеанс."
+                    ? t(
+                        "Группа {0}, аудитория {1}. {2}",
+                        exam.group,
+                        exam.room,
+                        sessionActive
+                          ? t("Тест идёт с ") +
+                              shortClock(exam.created_at) +
+                              (exam.environment.kind === "BROWSER"
+                                ? t(" в Qorgau Browser")
+                                : t(" в программе на компьютере"))
+                          : t("Завершённый сеанс"),
+                      )
+                    : t(
+                        "Подготовьте компьютеры, выберите тест и начните сеанс.",
+                      )
                   : page === "review"
-                    ? "Посмотрите запись и примите решение по каждому событию."
+                    ? t(
+                        "Посмотрите запись и примите решение по каждому событию.",
+                      )
                     : page === "history"
-                      ? "События, решения и отчёты по проведённым тестам."
+                      ? t("События, решения и отчёты по проведённым тестам.")
                       : page === "devices"
-                        ? "Только те, где Qorgau открыт прямо сейчас. Подготовьте их перед тестом."
+                        ? t(
+                            "Только те, где Qorgau открыт прямо сейчас. Подготовьте их перед тестом.",
+                          )
                         : page === "teachers"
-                          ? "Лица преподавателей для продолжения теста на компьютере ученика."
-                          : "Что замечает Qorgau, когда ставит тест на паузу и что решаете вы."}
+                          ? t(
+                              "Лица преподавателей для продолжения теста на компьютере ученика.",
+                            )
+                          : t(
+                              "Что замечает Qorgau, когда ставит тест на паузу и что решаете вы.",
+                            )}
               </p>
             </div>
             {!sessionActive &&
@@ -603,12 +652,12 @@ export default function App() {
                   className="btn primary"
                   onClick={() => setNewExam(true)}
                 >
-                  <Plus size={18} /> Новый сеанс
+                  <Plus size={18} /> {t("Новый сеанс")}
                 </button>
               )}
             {page === "room" && !sessionActive && (
               <a className="btn" href="/api/student/download">
-                <Download size={18} /> Скачать Qorgau для учеников
+                <Download size={18} /> {t("Скачать Qorgau для учеников")}
               </a>
             )}
           </div>
@@ -651,13 +700,13 @@ export default function App() {
                           "",
                           receive,
                         ),
-                      "Компьютеры подтвердили начало теста",
+                      t("Компьютеры подтвердили начало теста"),
                     )
                   }
                   onEnd={() =>
                     run(
                       () => endExam(exam, receive),
-                      "Компьютеры подтвердили завершение сеанса",
+                      t("Компьютеры подтвердили завершение сеанса"),
                     )
                   }
                 />
@@ -695,75 +744,93 @@ export default function App() {
               <div className="legend rules-legend">
                 <Pill tone="pause">
                   <Bubble state="pause" size="xs" />
-                  Тест на паузе
+                  {t("Тест на паузе")}
                 </Pill>
                 <Pill tone="warn">
                   <Bubble state="warn" size="xs" />
-                  Ждёт решения, тест идёт
+                  {t("Ждёт решения, тест идёт")}
                 </Pill>
               </div>
               <div className="panel rules-sheet">
                 <section className="rule-group">
                   <h2>
                     <Bubble state="pause" />
-                    Ставят тест на паузу
+                    {t("Ставят тест на паузу")}
                   </h2>
                   <Rule
                     number={1}
-                    title="Три отметки за взгляд в одну сторону"
-                    text="Взгляд вниз, влево или вправо 5 секунд и дольше даёт одну отметку. Стороны считаются отдельно; третья отметка ставит тест на паузу."
+                    title={t("Три отметки за взгляд в одну сторону")}
+                    text={t(
+                      "Взгляд вниз, влево или вправо 5 секунд и дольше даёт одну отметку. Стороны считаются отдельно; третья отметка ставит тест на паузу.",
+                    )}
                   />
                   <Rule
                     number={2}
-                    title="Телефон в кадре"
-                    text="Два уверенных обнаружения подряд сразу ставят тест на паузу, без отметок. Телефон в кадре ещё не доказывает, что ученик фотографировал."
+                    title={t("Телефон в кадре")}
+                    text={t(
+                      "Два уверенных обнаружения подряд сразу ставят тест на паузу, без отметок. Телефон в кадре ещё не доказывает, что ученик фотографировал.",
+                    )}
                   />
                   <Rule
                     number={3}
-                    title="Лица не видно"
-                    text="После 10 секунд тест ставится на паузу по технической причине: ученик мог отойти или заслонить камеру."
+                    title={t("Лица не видно")}
+                    text={t(
+                      "После 10 секунд тест ставится на паузу по технической причине: ученик мог отойти или заслонить камеру.",
+                    )}
                   />
                   <Rule
                     number={4}
-                    title="Сбой окружения"
-                    text="Окно теста закрыто, нет связи с сервером, изменился экран, открыт удалённый рабочий стол или камера замерла."
+                    title={t("Сбой окружения")}
+                    text={t(
+                      "Окно теста закрыто, нет связи с сервером, изменился экран, открыт удалённый рабочий стол или камера замерла.",
+                    )}
                   />
                 </section>
                 <section className="rule-group">
                   <h2>
                     <Bubble state="warn" />
-                    Уходят вам на проверку, тест продолжается
+                    {t("Уходят вам на проверку, тест продолжается")}
                   </h2>
                   <Rule
                     number={5}
-                    title="Второе лицо в кадре"
-                    text="Рядом с учеником секунду и дольше видно ещё одно лицо."
+                    title={t("Второе лицо в кадре")}
+                    text={t(
+                      "Рядом с учеником секунду и дольше видно ещё одно лицо.",
+                    )}
                   />
                   <Rule
                     number={6}
-                    title="Частые короткие отвлечения"
-                    text="Три коротких взгляда в сторону за минуту, в сумме от 6 секунд. Отметок за взгляд не добавляют."
+                    title={t("Частые короткие отвлечения")}
+                    text={t(
+                      "Три коротких взгляда в сторону за минуту, в сумме от 6 секунд. Отметок за взгляд не добавляют.",
+                    )}
                   />
                   <Rule
                     number={7}
-                    title="Подъём телефона"
-                    text="Телефон подняли и держат, возможна съёмка экрана. Куда смотрит его камера и был ли снимок, Qorgau не определяет."
+                    title={t("Подъём телефона")}
+                    text={t(
+                      "Телефон подняли и держат, возможна съёмка экрана. Куда смотрит его камера и был ли снимок, Qorgau не определяет.",
+                    )}
                   />
                 </section>
                 <section className="rule-group">
                   <h2>
                     <Bubble state="ink" />
-                    После паузы
+                    {t("После паузы")}
                   </h2>
                   <Rule
                     number={8}
-                    title="Продолжает только преподаватель"
-                    text="Взгляд на экран и решение «Нарушения нет» паузу не снимают. Вы продолжаете тест в кабинете или своим паролем на компьютере ученика. История остаётся в отчёте."
+                    title={t("Продолжает только преподаватель")}
+                    text={t(
+                      "Взгляд на экран и решение «Нарушения нет» паузу не снимают. Вы продолжаете тест в кабинете или своим паролем на компьютере ученика. История остаётся в отчёте.",
+                    )}
                   />
                   <Rule
                     number={9}
-                    title="Внешний тест, отдельный контроль"
-                    text="Перед стартом выберите сайт или приложение. Для сайта используется Qorgau Browser, для приложения — выбранное окно программы."
+                    title={t("Внешний тест, отдельный контроль")}
+                    text={t(
+                      "Перед стартом выберите сайт или приложение. Для сайта используется Qorgau Browser, для приложения — выбранное окно программы.",
+                    )}
                   />
                 </section>
               </div>
@@ -771,10 +838,10 @@ export default function App() {
           )}
           <footer className="page-footer">
             <span>
-              <ShieldCheck size={14} /> Qorgau · Локальный контроль, осознанные
-              решения
+              <ShieldCheck size={14} />{" "}
+              {t("Qorgau · Локальный контроль, осознанные решения")}
             </span>
-            <span>Контроль рабочего стола · компьютеры онлайн</span>
+            <span>{t("Контроль рабочего стола · компьютеры онлайн")}</span>
           </footer>
         </main>
       </div>
@@ -807,8 +874,8 @@ export default function App() {
             selectedDevice.name +
             (exam
               ? (selectedDevice.state.lifecycle === "RUNNING"
-                  ? " · пишет с "
-                  : " · начало сеанса ") + shortClock(exam.created_at)
+                  ? t(" · пишет с ")
+                  : t(" · начало сеанса ")) + shortClock(exam.created_at)
               : "")
           }
           className="device-modal"
@@ -823,21 +890,25 @@ export default function App() {
                 }
               >
                 {selectedDevice.state.access === "LOCKED"
-                  ? "Тест на паузе"
+                  ? t("Тест на паузе")
                   : selectedDevice.state.lifecycle === "RUNNING"
-                    ? "Пишет тест"
+                    ? t("Пишет тест")
                     : selectedDevice.state.lifecycle === "COMPLETED"
-                      ? "Сеанс завершён"
-                      : "Ждёт старта"}
+                      ? t("Сеанс завершён")
+                      : t("Ждёт старта")}
               </Badge>
-              <span>Круг {selectedDevice.state.epoch}</span>
+              <span>
+                {t("Круг")} {selectedDevice.state.epoch}
+              </span>
               {exam?.rule_version && (
-                <span className="fine">Правила сеанса {exam.rule_version}</span>
+                <span className="fine">
+                  {t("Правила сеанса")} {exam.rule_version}
+                </span>
               )}
               {selectedDevice.state.reason && (
                 <span>
                   {eventNames[selectedDevice.state.reason] ||
-                    "Решение преподавателя"}
+                    t("Решение преподавателя")}
                 </span>
               )}
             </div>
@@ -849,7 +920,7 @@ export default function App() {
                     disabled={busy}
                     onClick={() => run(() => command(selectedDevice, "START"))}
                   >
-                    <Play size={16} /> Начать контроль
+                    <Play size={16} /> {t("Начать контроль")}
                   </button>
                 )}
               {selectedDevice.exam_id === exam?.id &&
@@ -878,14 +949,14 @@ export default function App() {
                         <LockKeyhole size={16} />
                       )}{" "}
                       {selectedDevice.state.access === "LOCKED"
-                        ? "Продолжить тест"
-                        : "Поставить на паузу"}
+                        ? t("Продолжить тест")
+                        : t("Поставить на паузу")}
                     </button>
                     <button
                       className="btn"
                       onClick={() => ask(selectedDevice, "END_AND_RELEASE")}
                     >
-                      Завершить контроль на этом компьютере
+                      {t("Завершить контроль на этом компьютере")}
                     </button>
                   </>
                 )}
@@ -901,7 +972,7 @@ export default function App() {
             />
             <div className="device-columns">
               <section>
-                <h3>Контроль на компьютере</h3>
+                <h3>{t("Контроль на компьютере")}</h3>
                 <div className="device-control">
                   {controlSignals(selectedDevice).map((signal, i) => {
                     const Icon = [Camera, Eye, ShieldCheck][i];
@@ -930,21 +1001,22 @@ export default function App() {
                 {typeof selectedDevice.capabilities.model_version ===
                   "string" && (
                   <p className="fine device-model-version">
-                    Модели: {selectedDevice.capabilities.model_version}
+                    {t("Модели:")} {selectedDevice.capabilities.model_version}
                   </p>
                 )}
               </section>
               <section>
-                <h3>Отметки за взгляд в этом круге</h3>
+                <h3>{t("Отметки за взгляд в этом круге")}</h3>
                 <Counters d={selectedDevice} />
                 <p className="fine">
-                  5 секунд в сторону — одна отметка. Третья в одну сторону
-                  ставит тест на паузу.
+                  {t(
+                    "5 секунд в сторону — одна отметка. Третья в одну сторону ставит тест на паузу.",
+                  )}
                 </p>
               </section>
             </div>
             <h3 className="subheading">
-              Записи этого компьютера{" "}
+              {t("Записи этого компьютера")}{" "}
               <span className="count">
                 {events.filter((e) => e.device_id === selectedDevice.id).length}
               </span>
@@ -965,7 +1037,7 @@ export default function App() {
                           {media.mime.startsWith("image/") ? (
                             <img
                               src={media.url}
-                              alt={`Кадр: ${eventNames[e.type] || e.type}`}
+                              alt={t("Кадр: {0}", eventNames[e.type] || e.type)}
                             />
                           ) : (
                             <video
@@ -990,8 +1062,8 @@ export default function App() {
                       <div className="empty">
                         <Video size={24} />
                         {e.media_expired_at
-                          ? "Срок хранения записи истёк"
-                          : "Видео передаётся с компьютера…"}
+                          ? t("Срок хранения записи истёк")
+                          : t("Видео передаётся с компьютера…")}
                       </div>
                     )}
                     <footer>
@@ -1010,14 +1082,14 @@ export default function App() {
                         className="btn small"
                         onClick={() => setEventId(e.id)}
                       >
-                        Разобрать
+                        {t("Разобрать")}
                       </button>
                     </footer>
                   </article>
                 ))}
               {!events.some((e) => e.device_id === selectedDevice.id) && (
                 <div className="empty">
-                  На этом компьютере пока нет событий.
+                  {t("На этом компьютере пока нет событий.")}
                 </div>
               )}
             </div>
@@ -1030,21 +1102,23 @@ export default function App() {
               .slice(0, 3)
               .map((c) => (
                 <p className="fine" key={c.id}>
-                  Команда{" "}
+                  {t("Команда")}{" "}
                   {{
-                    START: "Начать контроль",
-                    LOCK: "Поставить на паузу",
-                    UNLOCK: "Продолжить тест",
-                    END_AND_RELEASE: "Завершить контроль на этом компьютере",
-                    REVIEW: "Пересмотреть событие",
-                  }[c.type] || "Управление сеансом"}
+                    START: t("Начать контроль"),
+                    LOCK: t("Поставить на паузу"),
+                    UNLOCK: t("Продолжить тест"),
+                    END_AND_RELEASE: t("Завершить контроль на этом компьютере"),
+                    REVIEW: t("Пересмотреть событие"),
+                  }[c.type] || t("Управление сеансом")}
                   :{" "}
                   {c.status === "PENDING"
-                    ? "ожидает подтверждения агента"
+                    ? t("ожидает подтверждения агента")
                     : c.status === "EXPIRED"
-                      ? "истёк срок действия"
-                      : "не выполнена"}{" "}
-                  {c.error}
+                      ? t("истёк срок действия")
+                      : t("не выполнена")}{" "}
+                  {c.error
+                    ? commandFailure(c.error, c.status === "EXPIRED")
+                    : null}
                 </p>
               ))}
           </div>
@@ -1065,12 +1139,12 @@ export default function App() {
         <Modal
           title={
             action.type === "REVOKE"
-              ? "Отозвать доступ компьютера?"
+              ? t("Отозвать доступ компьютера?")
               : action.type === "UNLOCK"
-                ? "Продолжить тест?"
+                ? t("Продолжить тест?")
                 : action.type === "LOCK"
-                  ? "Поставить тест на паузу?"
-                  : "Завершить контроль?"
+                  ? t("Поставить тест на паузу?")
+                  : t("Завершить контроль?")
           }
           subtitle={action.device.student + " · " + action.device.name}
           onClose={() => setAction(null)}
@@ -1089,29 +1163,39 @@ export default function App() {
                   setAction(null);
                 },
                 action.type === "UNLOCK"
-                  ? "Тест продолжается. Начался новый круг отметок."
-                  : "Решение выполнено",
+                  ? t("Тест продолжается. Начался новый круг отметок.")
+                  : t("Решение выполнено"),
               );
             }}
           >
             <p>
               {action.type === "REVOKE"
-                ? "Сохранённый токен компьютера перестанет работать. История сеансов сохранится; для нового подключения понадобится новая регистрация."
+                ? t(
+                    "Сохранённый токен компьютера перестанет работать. История сеансов сохранится; для нового подключения понадобится новая регистрация.",
+                  )
                 : action.type === "UNLOCK"
-                  ? "Начнётся новый круг трёх счётчиков. Все события и решения сохранятся в истории."
+                  ? t(
+                      "Начнётся новый круг трёх счётчиков. Все события и решения сохранятся в истории.",
+                    )
                   : action.type === "END_AND_RELEASE"
-                    ? "Контроль этого ученика завершится, блокировка будет снята. Внешний тест автоматически не отправляется."
-                    : "Тест будет поставлен на паузу по решению преподавателя. В режиме наблюдения операционная система остаётся доступной."}
+                    ? t(
+                        "Контроль этого ученика завершится, блокировка будет снята. Внешний тест автоматически не отправляется.",
+                      )
+                    : t(
+                        "Тест будет поставлен на паузу по решению преподавателя. В режиме наблюдения операционная система остаётся доступной.",
+                      )}
             </p>
             <label>
-              Причина решения
+              {t("Причина решения")}
               <textarea
                 autoFocus
                 required
                 value={reason}
                 maxLength={500}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Например: проверено видео, разрешено продолжить"
+                placeholder={t(
+                  "Например: проверено видео, разрешено продолжить",
+                )}
               />
             </label>
             <div className="button-row end">
@@ -1120,10 +1204,10 @@ export default function App() {
                 className="btn"
                 onClick={() => setAction(null)}
               >
-                Отмена
+                {t("Отмена")}
               </button>
               <button className="btn primary" disabled={busy || !reason.trim()}>
-                Подтвердить решение
+                {t("Подтвердить решение")}
               </button>
             </div>
           </form>
@@ -1131,11 +1215,11 @@ export default function App() {
       )}
       {toast && (
         <div className="toast" role="status">
-          <span>{toast}</span>
+          <span>{messageText(toast)}</span>
           <button
             className="icon-btn"
             onClick={() => setToast("")}
-            aria-label="Скрыть уведомление"
+            aria-label={t("Скрыть уведомление")}
           >
             <X size={16} />
           </button>
@@ -1145,17 +1229,17 @@ export default function App() {
   );
 }
 const shortClock = (at: number) =>
-  new Date(at * 1000).toLocaleTimeString("ru-RU", {
+  formatTime(new Date(at * 1000), {
     hour: "2-digit",
     minute: "2-digit",
   });
 const eventAge = (at: number) => {
   const minutes = Math.max(0, Math.floor((Date.now() / 1000 - at) / 60));
   return minutes < 1
-    ? "меньше минуты"
+    ? t("меньше минуты")
     : minutes < 60
-      ? `${minutes} мин`
-      : `${Math.floor(minutes / 60)} ч`;
+      ? t("{0} мин", minutes)
+      : t("{0} ч", Math.floor(minutes / 60));
 };
 const eventTotals = (events: Incident[]) => ({
   confirmed: events.filter((e) => e.decision === "CONFIRMED").length,
@@ -1163,7 +1247,7 @@ const eventTotals = (events: Incident[]) => ({
   pending: events.filter((e) => e.decision === "PENDING").length,
 });
 const dateLabel = (at: number) =>
-  new Date(at * 1000).toLocaleDateString("ru-RU", {
+  formatDate(new Date(at * 1000), {
     day: "numeric",
     month: "long",
   });
@@ -1175,7 +1259,7 @@ function Tick({ yes, label }: { yes: boolean; label: string }) {
     <span
       className={`tick ${yes ? "" : "no"}`}
       role="img"
-      aria-label={`${label}: ${yes ? "готово" : "нужно действие"}`}
+      aria-label={`${t(label)}: ${yes ? t("готово") : t("нужно действие")}`}
     >
       {yes && <Check size={13} aria-hidden="true" />}
     </span>
@@ -1213,7 +1297,11 @@ function EventThumb({
           <Play size={18} />
         </span>
       )}
-      {duration > 0 && <span className="tc">{duration.toFixed(0)} с</span>}
+      {duration > 0 && (
+        <span className="tc">
+          {duration.toFixed(0)} {t("с")}
+        </span>
+      )}
     </div>
   );
 }
@@ -1244,11 +1332,11 @@ function BeforeRoom({
     <>
       <section className="card before-readiness">
         <div className="before-ready">
-          <p>Компьютеры аудитории</p>
+          <p>{t("Компьютеры аудитории")}</p>
           <h2>
-            <strong>{ready.length}</strong> из {devices.length}
+            <strong>{ready.length}</strong> {t("из")} {devices.length}
             <br />
-            <span>готовы к тесту</span>
+            <span>{t("готовы к тесту")}</span>
           </h2>
           <div className="sbar">
             <span
@@ -1262,22 +1350,23 @@ function BeforeRoom({
           <div className="legend">
             <span>
               <Bubble state="on" size="xs" />
-              {ready.length} готовы
+              {ready.length} {t("готовы")}
             </span>
             <span>
               <Bubble state="warn" size="xs" />
-              {notReady.length} нужно подготовить
+              {notReady.length} {t("нужно подготовить")}
             </span>
           </div>
           {devices.length === 0 && (
             <p className="fine">
-              Запустите Qorgau на компьютере ученика — он появится здесь
-              автоматически.
+              {t(
+                "Запустите Qorgau на компьютере ученика — он появится здесь автоматически.",
+              )}
             </p>
           )}
         </div>
         <div className="before-todo">
-          <h3>Что сделать перед тестом</h3>
+          <h3>{t("Что сделать перед тестом")}</h3>
           {notReady.length ? (
             notReady.slice(0, 4).map((d) => (
               <div className="preparation-row" key={d.id}>
@@ -1290,31 +1379,39 @@ function BeforeRoom({
               <CheckCheck size={20} />
               <span>
                 {devices.length
-                  ? "Все подключённые компьютеры готовы. Можно создать сеанс."
-                  : "Скачайте Qorgau и откройте его на компьютерах учеников."}
+                  ? t(
+                      "Все подключённые компьютеры готовы. Можно создать сеанс.",
+                    )
+                  : t(
+                      "Скачайте Qorgau и откройте его на компьютерах учеников.",
+                    )}
               </span>
             </div>
           )}
           <button className="btn quiet" onClick={onDevices}>
-            Все компьютеры <ChevronRight size={16} />
+            {t("Все компьютеры")} <ChevronRight size={16} />
           </button>
         </div>
       </section>
       <section className="before-guide">
-        <h2>Как провести тест</h2>
+        <h2>{t("Как провести тест")}</h2>
         <div className="before-steps">
           {[
             [
-              "Подготовьте компьютеры",
-              "Откройте Qorgau и проверьте камеру на каждом компьютере.",
+              t("Подготовьте компьютеры"),
+              t("Откройте Qorgau и проверьте камеру на каждом компьютере."),
             ],
             [
-              "Создайте сеанс",
-              "Выберите сайт или программу, компьютеры и нажмите «Начать тест».",
+              t("Создайте сеанс"),
+              t(
+                "Выберите сайт или программу, компьютеры и нажмите «Начать тест».",
+              ),
             ],
             [
-              "Принимайте решения",
-              "Если появилась пауза, посмотрите запись и решите, продолжать ли тест.",
+              t("Принимайте решения"),
+              t(
+                "Если появилась пауза, посмотрите запись и решите, продолжать ли тест.",
+              ),
             ],
           ].map(([title, text], i) => (
             <article className="card" key={title}>
@@ -1332,7 +1429,7 @@ function BeforeRoom({
               <p>{text}</p>
               {i === 1 && (
                 <button className="btn quiet sm" onClick={onNew}>
-                  Новый сеанс <ChevronRight size={14} />
+                  {t("Новый сеанс")} <ChevronRight size={14} />
                 </button>
               )}
             </article>
@@ -1341,9 +1438,9 @@ function BeforeRoom({
       </section>
       <section className="card recent-sessions">
         <div className="card-head">
-          <h2>Недавние сеансы</h2>
+          <h2>{t("Недавние сеансы")}</h2>
           <button className="btn quiet sm" onClick={onHistory}>
-            Все сеансы и отчёты <ChevronRight size={16} />
+            {t("Все сеансы и отчёты")} <ChevronRight size={16} />
           </button>
         </div>
         {recent.length ? (
@@ -1357,14 +1454,16 @@ function BeforeRoom({
                     {dateLabel(e.created_at)} · {shortClock(e.created_at)}
                   </span>
                   <h3>{e.title}</h3>
-                  <p>{Object.keys(e.participants).length} компьютеров</p>
+                  <p>
+                    {Object.keys(e.participants).length} {t("компьютеров")}
+                  </p>
                 </div>
                 <Pill tone={pending.length ? "warn" : "ok"}>
                   {pending.length
-                    ? `${pending.length} событий ждут решения`
+                    ? t("{0} событий ждут решения", pending.length)
                     : own.length
-                      ? `${own.length} событий, всё решено`
-                      : "Без событий"}
+                      ? t("{0} событий, всё решено", own.length)
+                      : t("Без событий")}
                 </Pill>
                 <div className="actions">
                   {pending.length > 0 && (
@@ -1372,19 +1471,22 @@ function BeforeRoom({
                       className="btn primary sm"
                       onClick={() => onReview(pending[0].id)}
                     >
-                      Разобрать
+                      {t("Разобрать")}
                     </button>
                   )}
-                  <a className="btn sm" href={`/api/exams/${e.id}/report.csv`}>
+                  <a
+                    className="btn sm"
+                    href={`/api/exams/${e.id}/report.csv?lang=${getLanguage()}`}
+                  >
                     <Download size={15} />
-                    Отчёт
+                    {t("Отчёт")}
                   </a>
                 </div>
               </div>
             );
           })
         ) : (
-          <div className="empty">Здесь появятся завершённые сеансы.</div>
+          <div className="empty">{t("Здесь появятся завершённые сеансы.")}</div>
         )}
       </section>
     </>
@@ -1419,14 +1521,14 @@ function EventsPage({
       <div className="events-actions">
         <select
           className="select"
-          aria-label="Сеанс событий"
+          aria-label={t("Сеанс событий")}
           value={session}
           onChange={(e) => {
             setSession(e.target.value);
             setShowAll(false);
           }}
         >
-          <option value="ALL">Все сеансы</option>
+          <option value="ALL">{t("Все сеансы")}</option>
           {exams.map((e) => (
             <option key={e.id} value={e.id}>
               {e.title}
@@ -1438,7 +1540,7 @@ function EventsPage({
           disabled={!waiting.length}
           onClick={() => onSelect(waiting[0].id)}
         >
-          Разобрать по очереди <ChevronRight size={16} />
+          {t("Разобрать по очереди")} <ChevronRight size={16} />
         </button>
       </div>
       <div className="filters-row">
@@ -1448,36 +1550,41 @@ function EventsPage({
             setFilter(value);
             setShowAll(false);
           }}
-          ariaLabel="Решение по событию"
+          ariaLabel={t("Решение по событию")}
           items={[
-            { value: "ALL", label: "Все", count: selected.length },
+            { value: "ALL", label: t("Все"), count: selected.length },
             {
               value: "PENDING",
-              label: "Ждут решения",
+              label: t("Ждут решения"),
               count: totals.pending,
               tone: "warn",
             },
-            { value: "CONFIRMED", label: "Нарушение", count: totals.confirmed },
+            {
+              value: "CONFIRMED",
+              label: t("Нарушение"),
+              count: totals.confirmed,
+            },
             {
               value: "REJECTED",
-              label: "Нарушения нет",
+              label: t("Нарушения нет"),
               count: totals.rejected,
             },
           ]}
         />
         <p className="fine">
-          «Нарушения нет» убирает отметку, но не снимает паузу.
+          {t("«Нарушения нет» убирает отметку, но не снимает паузу.")}
         </p>
       </div>
       {(filter === "ALL" || filter === "PENDING") && (
         <section className="card event-group waiting">
           <div className="card-head">
             <h2>
-              Ждут решения <span className="count">{waiting.length}</span>
+              {t("Ждут решения")}{" "}
+              <span className="count">{waiting.length}</span>
             </h2>
             {waiting.length > 0 && (
               <span className="fine">
-                Самое старое ждёт{" "}
+                {t("Самое старое ждёт")}{" "}
                 {eventAge(Math.min(...waiting.map((e) => e.created_at)))}
               </span>
             )}
@@ -1489,7 +1596,7 @@ function EventsPage({
         <section className="card event-group">
           <div className="card-head">
             <h2>
-              Решено <span className="count">{resolved.length}</span>
+              {t("Решено")} <span className="count">{resolved.length}</span>
             </h2>
           </div>
           <EventTable
@@ -1499,14 +1606,14 @@ function EventsPage({
           {resolved.length > 4 && (
             <div className="card-foot">
               <span className="fine">
-                Показаны последние {showAll ? resolved.length : 4} из{" "}
-                {resolved.length}
+                {t("Показаны последние")} {showAll ? resolved.length : 4}{" "}
+                {t("из")} {resolved.length}
               </span>
               <button
                 className="btn quiet sm"
                 onClick={() => setShowAll(!showAll)}
               >
-                {showAll ? "Свернуть" : "Показать все"}
+                {showAll ? t("Свернуть") : t("Показать все")}
               </button>
             </div>
           )}
@@ -1547,18 +1654,18 @@ function HistoryPage({
         <Tabs
           value={filter}
           onChange={setFilter}
-          ariaLabel="Фильтр сеансов"
+          ariaLabel={t("Фильтр сеансов")}
           items={[
-            { value: "ALL", label: "Все", count: exams.length },
+            { value: "ALL", label: t("Все"), count: exams.length },
             {
               value: "PENDING",
-              label: "С нерешёнными",
+              label: t("С нерешёнными"),
               count: exams.filter(unresolved).length,
               tone: "warn",
             },
             {
               value: "CONFIRMED",
-              label: "С нарушениями",
+              label: t("С нарушениями"),
               count: exams.filter(confirmed).length,
             },
           ]}
@@ -1566,15 +1673,15 @@ function HistoryPage({
         <div className="legend">
           <span>
             <Bubble state="pause" size="xs" />
-            Нарушение
+            {t("Нарушение")}
           </span>
           <span>
             <Bubble state="ink" size="xs" />
-            Нарушения нет
+            {t("Нарушения нет")}
           </span>
           <span>
             <Bubble state="warn" size="xs" />
-            Ждёт решения
+            {t("Ждёт решения")}
           </span>
         </div>
       </div>
@@ -1596,50 +1703,50 @@ function HistoryPage({
                     {e.title}{" "}
                     <Pill tone="ok">
                       {e.status === "COMPLETED"
-                        ? "Завершён"
+                        ? t("Завершён")
                         : e.status === "RUNNING"
-                          ? "Тест идёт"
-                          : "Ждёт старта"}
+                          ? t("Тест идёт")
+                          : t("Ждёт старта")}
                     </Pill>
                   </h2>
                   <p>
-                    {dateLabel(e.created_at)} · начало в{" "}
+                    {dateLabel(e.created_at)} {t("· начало в")}{" "}
                     {shortClock(e.created_at)} · {e.group} · {e.room}
                   </p>
                 </div>
                 <div className="actions">
                   <button className="btn sm" onClick={() => onOpen(e.id)}>
-                    Открыть сеанс
+                    {t("Открыть сеанс")}
                   </button>
                   <a className="btn sm" href={`/api/exams/${e.id}/report.csv`}>
                     <Download size={16} />
-                    Отчёт CSV
+                    {t("Отчёт CSV")}
                   </a>
                 </div>
               </div>
               <div className="history-metrics">
                 <div>
                   <strong>{Object.keys(e.participants).length}</strong>
-                  <span>Учеников</span>
+                  <span>{t("Учеников")}</span>
                 </div>
                 <div>
                   <strong>
                     <QuietNumber value={ev.length} />
                   </strong>
-                  <span>Событий</span>
+                  <span>{t("Событий")}</span>
                   <MiniBar {...totals} />
                 </div>
                 <div>
                   <strong className={totals.confirmed ? "danger-text" : ""}>
                     <QuietNumber value={totals.confirmed} />
                   </strong>
-                  <span>Нарушений</span>
+                  <span>{t("Нарушений")}</span>
                 </div>
                 <div className={totals.pending ? "pending-metric" : ""}>
                   <strong>
                     <QuietNumber value={totals.pending} />
                   </strong>
-                  <span>Ждут решения</span>
+                  <span>{t("Ждут решения")}</span>
                   {totals.pending > 0 && (
                     <button
                       className="btn primary sm"
@@ -1647,7 +1754,7 @@ function HistoryPage({
                         onReview(pendingEvents(ev, Infinity)[0].id)
                       }
                     >
-                      Разобрать
+                      {t("Разобрать")}
                     </button>
                   )}
                 </div>
@@ -1658,14 +1765,14 @@ function HistoryPage({
                     <table className="table dense">
                       <thead>
                         <tr>
-                          <th>Ученик</th>
+                          <th>{t("Ученик")}</th>
                           {[
-                            "Вниз",
-                            "Влево",
-                            "Вправо",
-                            "Телефон",
-                            "Ждут решения",
-                            "Паузы",
+                            t("Вниз"),
+                            t("Влево"),
+                            t("Вправо"),
+                            t("Телефон"),
+                            t("Ждут решения"),
+                            t("Паузы"),
                           ].map((t) => (
                             <th className="c" key={t}>
                               {t}
@@ -1723,8 +1830,9 @@ function HistoryPage({
                     </table>
                   </div>
                   <p className="table-note">
-                    Учтены все события сеанса, кроме решений «Нарушения нет».
-                    Отметки текущего круга показаны в аудитории.
+                    {t(
+                      "Учтены все события сеанса, кроме решений «Нарушения нет». Отметки текущего круга показаны в аудитории.",
+                    )}
                   </p>
                 </>
               )}
@@ -1739,14 +1847,16 @@ function HistoryPage({
                     )
                   }
                 >
-                  {isOpen ? "Скрыть учеников" : "Показать учеников"}
+                  {isOpen ? t("Скрыть учеников") : t("Показать учеников")}
                   <ChevronDown size={16} />
                 </button>
               </div>
             </article>
           );
         })}
-      {!exams.length && <Empty text="Здесь появятся ваши сеансы и отчёты" />}
+      {!exams.length && (
+        <Empty text={t("Здесь появятся ваши сеансы и отчёты")} />
+      )}
     </div>
   );
 }
@@ -1766,17 +1876,17 @@ function Computers({
       <section className="card computers-card">
         <div className="readiness-head">
           <h2>
-            <strong>{ready.length}</strong> из {devices.length}{" "}
-            <span>готовы к тесту</span>
+            <strong>{ready.length}</strong> {t("из")} {devices.length}{" "}
+            <span>{t("готовы к тесту")}</span>
           </h2>
           <div className="legend">
             <span>
-              <Tick yes label="Готов" />
-              Всё готово
+              <Tick yes label={t("Готов")} />
+              {t("Всё готово")}
             </span>
             <span>
-              <Tick yes={false} label="Нужно действие" />
-              Нужно действие ученика
+              <Tick yes={false} label={t("Нужно действие")} />
+              {t("Нужно действие ученика")}
             </span>
           </div>
         </div>
@@ -1785,19 +1895,19 @@ function Computers({
             <table className="table dense readiness-table">
               <thead>
                 <tr>
-                  <th>Компьютер</th>
+                  <th>{t("Компьютер")}</th>
                   {[
-                    "Связь",
-                    "Камера",
-                    "Взгляд",
-                    "Защита окна",
+                    t("Связь"),
+                    t("Камера"),
+                    t("Взгляд"),
+                    t("Защита окна"),
                     "Qorgau Browser",
                   ].map((t) => (
                     <th className="c" key={t}>
                       {t}
                     </th>
                   ))}
-                  <th>Что сделать</th>
+                  <th>{t("Что сделать")}</th>
                   <th />
                 </tr>
               </thead>
@@ -1824,8 +1934,9 @@ function Computers({
           <div className="empty">
             <Monitor size={30} />
             <p>
-              Нет подключённых компьютеров. Запустите Qorgau на компьютере
-              ученика.
+              {t(
+                "Нет подключённых компьютеров. Запустите Qorgau на компьютере ученика.",
+              )}
             </p>
           </div>
         )}
@@ -1833,28 +1944,31 @@ function Computers({
       <div className="readiness-download note ink">
         <Download size={24} />
         <div>
-          <strong>Qorgau для компьютеров учеников</strong>
+          <strong>{t("Qorgau для компьютеров учеников")}</strong>
           <p>
-            Установите приложение или откройте EXE. Компьютер появится здесь
-            автоматически.
+            {t(
+              "Установите приложение или откройте EXE. Компьютер появится здесь автоматически.",
+            )}
           </p>
           <div className="actions">
             <a className="btn primary sm" href="/api/student/download">
-              Скачать Qorgau
+              {t("Скачать Qorgau")}
             </a>
             <a className="btn sm" href="/api/student/download-offline">
               Qorgau Offline
             </a>
           </div>
           <p className="fine">
-            В автономном режиме настройка и управление выполняются на компьютере
-            ученика.
+            {t(
+              "В автономном режиме настройка и управление выполняются на компьютере ученика.",
+            )}
           </p>
         </div>
       </div>
       <p className="fine">
-        Если приложение закрыто или связь потеряна, компьютер исчезнет из списка
-        в течение 6 секунд. История остаётся в отчётах.
+        {t(
+          "Если приложение закрыто или связь потеряна, компьютер исчезнет из списка в течение 6 секунд. История остаётся в отчётах.",
+        )}
       </p>
     </>
   );
@@ -1874,7 +1988,7 @@ function DeviceReadinessGroup({
     <>
       <tr className={`grp ${ready ? "" : "warn"}`}>
         <td colSpan={8}>
-          {ready ? "Готовы" : "Не готовы"} · {devices.length}
+          {ready ? t("Готовы") : t("Не готовы")} · {devices.length}
         </td>
       </tr>
       {devices.map((d) => (
@@ -1886,25 +2000,25 @@ function DeviceReadinessGroup({
             )}
           </td>
           <td className="c">
-            <Tick yes={d.online} label="Связь" />
+            <Tick yes={d.online} label={t("Связь")} />
           </td>
           <td className="c">
             <Tick
               yes={Boolean(
                 d.capabilities.camera && !d.capabilities.camera_fault,
               )}
-              label="Камера"
+              label={t("Камера")}
             />
           </td>
           <td className="c">
-            <Tick yes={gazeEnabled(d)} label="Взгляд" />
+            <Tick yes={gazeEnabled(d)} label={t("Взгляд")} />
           </td>
           <td className="c">
             <Tick
               yes={Boolean(
                 d.capabilities.window_guard && !d.capabilities.guard_fault,
               )}
-              label="Защита окна"
+              label={t("Защита окна")}
             />
           </td>
           <td className="c">
@@ -1914,14 +2028,14 @@ function DeviceReadinessGroup({
             />
           </td>
           <td className={ready ? "muted" : "warn-text"}>
-            {preparationIssue(d, "BROWSER") || "Готов"}
+            {preparationIssue(d, "BROWSER") || t("Готов")}
           </td>
           <td>
             <button
               className="icon-btn revoke-access"
               disabled={busy || d.state.lifecycle === "RUNNING"}
               onClick={() => onRevoke(d)}
-              aria-label={`Отозвать доступ ${d.name}`}
+              aria-label={t("Отозвать доступ {0}", d.name)}
             >
               <Trash2 size={17} />
             </button>
@@ -1958,22 +2072,22 @@ function DeviceTimeline({
   return (
     <section className="device-timeline">
       <div className="card-head">
-        <h3>Ход теста</h3>
+        <h3>{t("Ход теста")}</h3>
         <span className="fine">
           {shortClock(exam.created_at)} —{" "}
-          {exam.status === "COMPLETED" ? "последнее событие" : "сейчас"}
+          {exam.status === "COMPLETED" ? t("последнее событие") : t("сейчас")}
         </span>
       </div>
       {pause && (
         <div className="note pause">
           <Pause size={18} />
           <span>
-            Тест на паузе с {shortClock(pause.created_at)}:{" "}
+            {t("Тест на паузе с")} {shortClock(pause.created_at)}:{" "}
             {eventNames[pause.type] || pause.type}
           </span>
         </div>
       )}
-      <div className="test-progress" aria-label="События от начала сеанса">
+      <div className="test-progress" aria-label={t("События от начала сеанса")}>
         <span className="progress-running" />
         {pause && (
           <span
@@ -2017,8 +2131,9 @@ function Counters({ d }: { d: Device }) {
   ) {
     return (
       <div className="notice">
-        Контроль взгляда пока недоступен. Включите камеру в актуальной версии
-        Qorgau на этом компьютере.
+        {t(
+          "Контроль взгляда пока недоступен. Включите камеру в актуальной версии Qorgau на этом компьютере.",
+        )}
       </div>
     );
   }
@@ -2026,7 +2141,7 @@ function Counters({ d }: { d: Device }) {
     <div className="counters">
       {directions.map(([id, label]) => (
         <div key={id}>
-          <span>{label}</span>
+          <span>{t(label)}</span>
           <strong className={d.state.counts[id] >= 3 ? "danger-text" : ""}>
             {d.state.counts[id]}
             <small>/3</small>
@@ -2068,20 +2183,20 @@ function Rule({
     [string, string, "pause" | "warn" | "ok" | ""][]
   > = {
     1: [
-      ["5 секунд в одну сторону", "+1 отметка", ""],
-      ["3 отметки в одну сторону", "Тест на паузе", "pause"],
+      [t("5 секунд в одну сторону"), t("+1 отметка"), ""],
+      [t("3 отметки в одну сторону"), t("Тест на паузе"), "pause"],
     ],
-    2: [["2 уверенных обнаружения подряд", "Тест на паузе", "pause"]],
+    2: [[t("2 уверенных обнаружения подряд"), t("Тест на паузе"), "pause"]],
     3: [
-      ["Лица нет 3 секунды", "Ждёт решения", "warn"],
-      ["Лица нет 10 секунд", "Техническая пауза", "pause"],
+      [t("Лица нет 3 секунды"), t("Ждёт решения"), "warn"],
+      [t("Лица нет 10 секунд"), t("Техническая пауза"), "pause"],
     ],
-    4: [["Контроль недоступен", "Тест на паузе", "pause"]],
-    5: [["Второе лицо от 1 секунды", "Ждёт решения", "warn"]],
-    6: [["3 взгляда за минуту, всего от 6 с", "Ждёт решения", "warn"]],
-    7: [["Подъём и удержание телефона", "Ждёт решения", "warn"]],
-    8: [["«Продолжить тест»", "Новый круг отметок", "ok"]],
-    9: [["Конец контроля", "История сохранена", "ok"]],
+    4: [[t("Контроль недоступен"), t("Тест на паузе"), "pause"]],
+    5: [[t("Второе лицо от 1 секунды"), t("Ждёт решения"), "warn"]],
+    6: [[t("3 взгляда за минуту, всего от 6 с"), t("Ждёт решения"), "warn"]],
+    7: [[t("Подъём и удержание телефона"), t("Ждёт решения"), "warn"]],
+    8: [[t("«Продолжить тест»"), t("Новый круг отметок"), "ok"]],
+    9: [[t("Конец контроля"), t("История сохранена"), "ok"]],
   };
   return (
     <article className="rule">
@@ -2116,18 +2231,20 @@ function EventTable({
   return events.length === 0 ? (
     <div className="empty">
       <CheckCheck size={28} />
-      <p>Событий пока нет</p>
+      <p>{t("Событий пока нет")}</p>
     </div>
   ) : (
     <div className="table-box">
       <table className="table">
         <thead>
           <tr>
-            <th>Ученик</th>
-            <th>Событие</th>
-            <th>Запись</th>
+            <th>{t("Ученик")}</th>
+            <th>{t("Событие")}</th>
+            <th>{t("Запись")}</th>
             <th>
-              {events[0].decision === "PENDING" ? "Статус" : "Ваше решение"}
+              {events[0].decision === "PENDING"
+                ? t("Статус")
+                : t("Ваше решение")}
             </th>
             <th />
           </tr>
@@ -2157,12 +2274,25 @@ function EventTable({
                             m.clip_end !== undefined &&
                             m.clip_start !== undefined,
                         )
-                          ? `${e.media.reduce((sum, m) => sum + Math.max(0, (m.clip_end ?? 0) - (m.clip_start ?? 0)), 0).toFixed(0)} с`
-                          : `${e.media.length} фрагм.`}
+                          ? t(
+                              "{0} с",
+                              e.media
+                                .reduce(
+                                  (sum, m) =>
+                                    sum +
+                                    Math.max(
+                                      0,
+                                      (m.clip_end ?? 0) - (m.clip_start ?? 0),
+                                    ),
+                                  0,
+                                )
+                                .toFixed(0),
+                            )
+                          : t("{0} фрагм.", e.media.length)}
                       </span>
                     </div>
                   ) : (
-                    <span className="muted">Без записи</span>
+                    <span className="muted">{t("Без записи")}</span>
                   )}
                 </td>
                 <td>
@@ -2176,12 +2306,13 @@ function EventTable({
                     }
                   >
                     {e.decision === "PENDING"
-                      ? `Ждёт · ${eventAge(e.created_at)}`
+                      ? t("Ждёт · {0}", eventAge(e.created_at))
                       : decisionNames[e.decision]}
                   </Pill>
                   {review && (
                     <small>
-                      {review.author}, в {shortClock(review.at)}
+                      {review.author}
+                      {t(", в")} {shortClock(review.at)}
                     </small>
                   )}
                 </td>
@@ -2190,7 +2321,7 @@ function EventTable({
                     className={`btn sm ${e.decision === "PENDING" && i === 0 ? "primary" : "quiet"}`}
                     onClick={() => onSelect(e.id)}
                   >
-                    {e.decision === "PENDING" ? "Разобрать" : "Открыть"}
+                    {e.decision === "PENDING" ? t("Разобрать") : t("Открыть")}
                     <ChevronRight size={15} />
                   </button>
                 </td>
@@ -2232,7 +2363,7 @@ function NewExam({
     }
   }, [devices, environment]);
   const [studentNames, setStudentNames] = useState<Record<string, string>>({});
-  const [title, setTitle] = useState("Контроль аудитории");
+  const [title, setTitle] = useState(t("Контроль аудитории"));
   const [showAll, setShowAll] = useState(false);
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -2244,8 +2375,8 @@ function NewExam({
     try {
       await onCreate({
         title,
-        group: "Аудитория",
-        room: "Подключённые компьютеры",
+        group: t("Аудитория"),
+        room: t("Подключённые компьютеры"),
         device_ids: chosen.map((d) => d.id),
         student_names: Object.fromEntries(
           chosen.map((d) => [d.id, studentNames[d.id]?.trim() || ""]),
@@ -2271,8 +2402,8 @@ function NewExam({
     unprepared = available.filter((d) => !ready(d));
   return (
     <Modal
-      title="Новый сеанс"
-      subtitle="Где пройдёт тест и на каких компьютерах"
+      title={t("Новый сеанс")}
+      subtitle={t("Где пройдёт тест и на каких компьютерах")}
       onClose={onClose}
       className="new-exam-modal"
       wide
@@ -2281,7 +2412,7 @@ function NewExam({
         <div className="new-exam-grid">
           <div className="new-exam-settings">
             <label className="field">
-              Название
+              {t("Название")}
               <input
                 className="input"
                 autoFocus
@@ -2293,19 +2424,19 @@ function NewExam({
               />
             </label>
             <fieldset className="environment-choice">
-              <legend>Где проходит тест</legend>
+              <legend>{t("Где проходит тест")}</legend>
               <div className="environment-options">
                 {(
                   [
                     [
                       "BROWSER",
-                      "Сайт в Qorgau Browser",
-                      "Одно окно без вкладок. Переходы в пределах сайта.",
+                      t("Сайт в Qorgau Browser"),
+                      t("Одно окно без вкладок. Переходы в пределах сайта."),
                     ],
                     [
                       "WINDOW",
-                      "Программа на компьютере",
-                      "Окно, которое ученик выбрал в Qorgau заранее.",
+                      t("Программа на компьютере"),
+                      t("Окно, которое ученик выбрал в Qorgau заранее."),
                     ],
                   ] as const
                 ).map(([kind, label, description]) => (
@@ -2335,7 +2466,7 @@ function NewExam({
                       )}
                     </span>
                     <span>
-                      <strong>{label}</strong>
+                      <strong>{t(label)}</strong>
                       <small>{description}</small>
                     </span>
                   </label>
@@ -2344,7 +2475,7 @@ function NewExam({
             </fieldset>
             {environment === "BROWSER" && (
               <label className="field">
-                Адрес теста
+                {t("Адрес теста")}
                 <input
                   className="input"
                   type="url"
@@ -2356,60 +2487,63 @@ function NewExam({
                   autoComplete="url"
                 />
                 <span className="field-help">
-                  Прямая ссылка на тест. Другие сайты и новые окна открыть не
-                  получится.
+                  {t(
+                    "Прямая ссылка на тест. Другие сайты и новые окна открыть не получится.",
+                  )}
                 </span>
               </label>
             )}
             <section className="card rules-preview">
               <div className="card-head">
-                <h3>Правила контроля</h3>
+                <h3>{t("Правила контроля")}</h3>
                 <button
                   className="btn quiet sm"
                   type="button"
                   onClick={onRules}
                 >
-                  Посмотреть все
+                  {t("Посмотреть все")}
                 </button>
               </div>
               <div>
-                <span>Три отметки за взгляд в одну сторону</span>
-                <Pill tone="pause">пауза</Pill>
+                <span>{t("Три отметки за взгляд в одну сторону")}</span>
+                <Pill tone="pause">{t("пауза")}</Pill>
               </div>
               <div>
-                <span>Телефон в кадре два раза подряд</span>
-                <Pill tone="pause">пауза</Pill>
+                <span>{t("Телефон в кадре два раза подряд")}</span>
+                <Pill tone="pause">{t("пауза")}</Pill>
               </div>
               <div>
-                <span>Второе лицо, подъём телефона и другое</span>
-                <Pill tone="warn">проверка</Pill>
+                <span>{t("Второе лицо, подъём телефона и другое")}</span>
+                <Pill tone="warn">{t("проверка")}</Pill>
               </div>
             </section>
             <div className="note ink">
               <Pause size={20} />
               <span>
-                Если тест встанет на паузу, продолжить его можете только вы.
-                Ученик зовёт вас кнопкой на экране или клавишами{" "}
+                {t(
+                  "Если тест встанет на паузу, продолжить его можете только вы. Ученик зовёт вас кнопкой на экране или клавишами",
+                )}{" "}
                 <strong>Ctrl+Alt+Q</strong>.
               </span>
             </div>
             {chosen.some((d) => !gazeEnabled(d)) && (
               <div className="note warn">
-                У части компьютеров контроль взгляда выключен. Подготовьте его
-                перед началом теста.
+                {t(
+                  "У части компьютеров контроль взгляда выключен. Подготовьте его перед началом теста.",
+                )}
               </div>
             )}
           </div>
           <section className="new-exam-devices">
             <div className="new-exam-device-head">
               <div>
-                <h3>Компьютеры</h3>
+                <h3>{t("Компьютеры")}</h3>
                 <p className="fine">
-                  Выбрано{" "}
+                  {t("Выбрано")}{" "}
                   <strong>
-                    {chosen.length} из {available.length}
+                    {chosen.length} {t("из")} {available.length}
                   </strong>
-                  . Имена можно не вводить.
+                  {t(". Имена можно не вводить.")}
                 </p>
               </div>
               <button
@@ -2417,13 +2551,14 @@ function NewExam({
                 type="button"
                 onClick={() => setSelected(prepared.map((d) => d.id))}
               >
-                Выбрать все готовые
+                {t("Выбрать все готовые")}
               </button>
             </div>
             {!available.length && (
               <div className="note">
-                Нет свободных компьютеров онлайн. Запустите Qorgau или завершите
-                предыдущий сеанс.
+                {t(
+                  "Нет свободных компьютеров онлайн. Запустите Qorgau или завершите предыдущий сеанс.",
+                )}
               </div>
             )}
             {prepared.length > 0 && (
@@ -2431,9 +2566,9 @@ function NewExam({
                 <header>
                   <span>
                     <Bubble state="on" size="xs" />
-                    Готовы, {prepared.length}
+                    {t("Готовы,")} {prepared.length}
                   </span>
-                  <span>Ученик</span>
+                  <span>{t("Ученик")}</span>
                 </header>
                 {(showAll ? prepared : prepared.slice(0, 6)).map((d) => (
                   <div className="workstation-assignment" key={d.id}>
@@ -2453,8 +2588,8 @@ function NewExam({
                     </label>
                     <input
                       className="input"
-                      aria-label={`Ученик на ${d.name}`}
-                      placeholder="Имя, если нужно"
+                      aria-label={t("Ученик на {0}", d.name)}
+                      placeholder={t("Имя, если нужно")}
                       maxLength={80}
                       value={studentNames[d.id] || ""}
                       onChange={(e) =>
@@ -2473,8 +2608,8 @@ function NewExam({
                     onClick={() => setShowAll(!showAll)}
                   >
                     {showAll
-                      ? "Скрыть"
-                      : "Ещё " + (prepared.length - 6) + " компьютеров"}
+                      ? t("Скрыть")
+                      : t("Ещё ") + (prepared.length - 6) + t(" компьютеров")}
                     <ChevronDown size={16} />
                   </button>
                 )}
@@ -2485,7 +2620,8 @@ function NewExam({
                 <header>
                   <span>
                     <Bubble state="warn" size="xs" />
-                    Не готовы, {unprepared.length}. Сначала исправьте
+                    {t("Не готовы,")} {unprepared.length}
+                    {t(". Сначала исправьте")}
                   </span>
                 </header>
                 {unprepared.map((d) => (
@@ -2505,20 +2641,20 @@ function NewExam({
         </div>
         {error && (
           <div className="error new-exam-error" role="alert">
-            {error}
+            {messageText(error)}
           </div>
         )}
         <footer className="modal-foot">
           <p className="fine">
-            Тест не начнётся сразу: сначала сеанс появится в аудитории.
+            {t("Тест не начнётся сразу: сначала сеанс появится в аудитории.")}
           </p>
           <div className="actions">
             <button className="btn" type="button" onClick={onClose}>
-              Отмена
+              {t("Отмена")}
             </button>
             <button className="btn primary" disabled={busy || !chosen.length}>
-              {busy && <LoaderCircle className="spin" size={17} />}Создать сеанс
-              на {chosen.length} компьютерах
+              {busy && <LoaderCircle className="spin" size={17} />}
+              {t("Создать сеанс на")} {chosen.length} {t("компьютерах")}
             </button>
           </div>
         </footer>
@@ -2543,10 +2679,12 @@ function EvidenceTimeline({
     `${Math.max(0, Math.min(100, ((value - clipStart) / span) * 100))}%`;
   const absoluteStart = event.created_at - (event.at - clipStart);
   return (
-    <div className="evidence-timeline" aria-label="Временная шкала записи">
+    <div className="evidence-timeline" aria-label={t("Временная шкала записи")}>
       <div className="timeline-labels">
         <span>{clock(absoluteStart)}</span>
-        <strong>Событие {clock(absoluteStart + event.at - clipStart)}</strong>
+        <strong>
+          {t("Событие")} {clock(absoluteStart + event.at - clipStart)}
+        </strong>
         <span>{clock(absoluteStart + span)}</span>
       </div>
       <div className="timeline-track">
@@ -2566,16 +2704,16 @@ function EvidenceTimeline({
       <div className="timeline-legend">
         <span>
           <Bubble state="ink" size="xs" />
-          начало эпизода
+          {t("начало эпизода")}
         </span>
         <span>
           <Bubble state="pause" size="xs" />
-          срабатывание
+          {t("срабатывание")}
         </span>
         {media.complete === false && (
           <span>
             <Bubble state="off" size="xs" />
-            нет записи
+            {t("нет записи")}
           </span>
         )}
       </div>
@@ -2618,7 +2756,7 @@ function EventReview({
         reason,
       });
       await onUpdate();
-      notify("Решение сохранено");
+      notify(t("Решение сохранено"));
       setReason("");
     } catch (err) {
       notify((err as Error).message);
@@ -2629,7 +2767,13 @@ function EventReview({
   return (
     <Modal
       title={eventNames[e.type] || e.type}
-      subtitle={`${e.student || e.device_name}, ${e.device_name}, ${dateLabel(e.created_at)} в ${clock(e.created_at)}`}
+      subtitle={t(
+        "{0}, {1}, {2} в {3}",
+        e.student || e.device_name,
+        e.device_name,
+        dateLabel(e.created_at),
+        clock(e.created_at),
+      )}
       onClose={onClose}
       wide
       className="event-review-modal"
@@ -2638,20 +2782,20 @@ function EventReview({
           <button
             className="icon-btn"
             disabled={!previous || busy}
-            aria-label="Предыдущее событие"
+            aria-label={t("Предыдущее событие")}
             onClick={() => previous && onSelect(previous.id)}
           >
             <ChevronLeft size={18} />
           </button>
           <span>
             {queueIndex >= 0
-              ? `Событие ${queueIndex + 1} из ${queue.length}`
-              : "Событие разобрано"}
+              ? t("Событие {0} из {1}", queueIndex + 1, queue.length)
+              : t("Событие разобрано")}
           </span>
           <button
             className="icon-btn"
             disabled={!next || busy}
-            aria-label="Следующее событие"
+            aria-label={t("Следующее событие")}
             onClick={() => next && onSelect(next.id)}
           >
             <ChevronRight size={18} />
@@ -2673,7 +2817,9 @@ function EventReview({
             >
               {decisionNames[e.decision]}
             </Pill>
-            <span className="fine">Версия решения {e.revision}</span>
+            <span className="fine">
+              {t("Версия решения")} {e.revision}
+            </span>
           </div>
           {e.media.length ? (
             <>
@@ -2684,12 +2830,15 @@ function EventReview({
                     <img
                       className="evidence-image"
                       src={e.media[index].url}
-                      alt={`Кадр события: ${eventNames[e.type] || e.type}`}
+                      alt={t("Кадр события: {0}", eventNames[e.type] || e.type)}
                     />
                   ) : (
                     <video
                       className="evidence-video"
-                      aria-label={`Запись события: ${eventNames[e.type] || e.type}`}
+                      aria-label={t(
+                        "Запись события: {0}",
+                        eventNames[e.type] || e.type,
+                      )}
                       key={e.media[index]?.id}
                       controls
                       preload="metadata"
@@ -2704,20 +2853,20 @@ function EventReview({
                 ) : (
                   <div className="video-empty">
                     <Video size={38} />
-                    <p>Предпросмотр записи недоступен</p>
+                    <p>{t("Предпросмотр записи недоступен")}</p>
                   </div>
                 )}
               </div>
               {e.media.length > 1 && (
                 <select
                   className="select"
-                  aria-label="Фрагмент видео"
+                  aria-label={t("Фрагмент видео")}
                   value={index}
                   onChange={(x) => setIndex(Number(x.target.value))}
                 >
                   {e.media.map((m, i) => (
                     <option key={m.id} value={i}>
-                      Фрагмент {i + 1}
+                      {t("Фрагмент")} {i + 1}
                     </option>
                   ))}
                 </select>
@@ -2725,10 +2874,14 @@ function EventReview({
               <EvidenceTimeline event={e} mediaIndex={index} />
               {e.media[index]?.complete === false && (
                 <div className="note warn" role="status">
-                  Запись неполная: отсутствует часть нужного интервала. Разрывы:{" "}
+                  {t(
+                    "Запись неполная: отсутствует часть нужного интервала. Разрывы:",
+                  )}{" "}
                   {e.media[index]?.gaps
-                    ?.map(([a, b]) => `${a.toFixed(1)}–${b.toFixed(1)} с`)
-                    .join(", ") || "начало или конец фрагмента"}
+                    ?.map(([a, b]) =>
+                      t("{0}–{1} с", a.toFixed(1), b.toFixed(1)),
+                    )
+                    .join(", ") || t("начало или конец фрагмента")}
                   .
                 </div>
               )}
@@ -2736,11 +2889,15 @@ function EventReview({
           ) : (
             <div className="video-empty">
               <Video size={34} />
-              <h3>Запись не прикреплена</h3>
+              <h3>{t("Запись не прикреплена")}</h3>
               <p>
                 {e.media_expired_at
-                  ? "Срок хранения записи истёк. Событие и решения сохранены."
-                  : "Компьютер ещё не передал фрагмент. Решение доступно, но визуального подтверждения пока нет."}
+                  ? t(
+                      "Срок хранения записи истёк. Событие и решения сохранены.",
+                    )
+                  : t(
+                      "Компьютер ещё не передал фрагмент. Решение доступно, но визуального подтверждения пока нет.",
+                    )}
               </p>
             </div>
           )}
@@ -2748,17 +2905,18 @@ function EventReview({
             <div className="note ink evidence-context">
               <Smartphone size={18} />
               <span>
-                Система отметила подъём и удержание телефона. Направление
-                объектива и факт снимка не установлены — проверьте запись.
+                {t(
+                  "Система отметила подъём и удержание телефона. Направление объектива и факт снимка не установлены — проверьте запись.",
+                )}
               </span>
             </div>
           )}
           <section className="review-log">
-            <h3>История события</h3>
+            <h3>{t("История события")}</h3>
             <div>
               <Bubble state="ink" size="xs" />
               <span>
-                <strong>Qorgau отметил событие</strong>
+                <strong>{t("Qorgau отметил событие")}</strong>
                 <small>{clock(e.created_at)}</small>
               </span>
             </div>
@@ -2788,22 +2946,24 @@ function EventReview({
         <aside className="event-review-aside">
           <dl className="event-details">
             <div>
-              <dt>Начало эпизода</dt>
+              <dt>{t("Начало эпизода")}</dt>
               <dd>{clock(e.created_at - (e.at - e.start))}</dd>
             </div>
             <div>
-              <dt>Срабатывание</dt>
+              <dt>{t("Срабатывание")}</dt>
               <dd>{clock(e.created_at)}</dd>
             </div>
             {e.duration !== undefined && (
               <div>
-                <dt>Длительность</dt>
-                <dd>{e.duration.toFixed(1)} с</dd>
+                <dt>{t("Длительность")}</dt>
+                <dd>
+                  {e.duration.toFixed(1)} {t("с")}
+                </dd>
               </div>
             )}
             {expiresAt && (
               <div>
-                <dt>Хранится до</dt>
+                <dt>{t("Хранится до")}</dt>
                 <dd>
                   {dateLabel(expiresAt)}, {shortClock(expiresAt)}
                 </dd>
@@ -2811,21 +2971,25 @@ function EventReview({
             )}
           </dl>
           <p className="fine">
-            Видео удаляется через 2 часа после загрузки. Журнал событий и
-            решения сохраняются.
+            {t(
+              "Видео удаляется через 2 часа после загрузки. Журнал событий и решения сохраняются.",
+            )}
           </p>
           <p className="fine">
-            Событие — повод посмотреть запись. Решение о нарушении принимаете
-            вы.
+            {t(
+              "Событие — повод посмотреть запись. Решение о нарушении принимаете вы.",
+            )}
           </p>
           <label className="field">
-            Комментарий к решению
+            {t("Комментарий к решению")}
             <textarea
               className="input"
               value={reason}
               maxLength={500}
               onChange={(x) => setReason(x.target.value)}
-              placeholder="Что видно на записи и почему вы приняли это решение"
+              placeholder={t(
+                "Что видно на записи и почему вы приняли это решение",
+              )}
             />
           </label>
           <div className="decision-actions">
@@ -2835,7 +2999,7 @@ function EventReview({
               onClick={() => decide("REJECTED")}
             >
               <Check size={18} />
-              Нарушения нет
+              {t("Нарушения нет")}
             </button>
             <button
               className="btn dark block"
@@ -2843,12 +3007,13 @@ function EventReview({
               onClick={() => decide("CONFIRMED")}
             >
               <ShieldCheck size={18} />
-              Это нарушение
+              {t("Это нарушение")}
             </button>
           </div>
           <p className="fine">
-            Решение «Нарушения нет» убирает отметку. Пауза снимается отдельно
-            кнопкой «Продолжить тест».
+            {t(
+              "Решение «Нарушения нет» убирает отметку. Пауза снимается отдельно кнопкой «Продолжить тест».",
+            )}
           </p>
           {next && (
             <button
@@ -2857,7 +3022,7 @@ function EventReview({
               onClick={() => onSelect(next.id)}
             >
               <span>
-                <small>Дальше в очереди</small>
+                <small>{t("Дальше в очереди")}</small>
                 <strong>{eventNames[next.type] || next.type}</strong>
                 <span>{next.student || next.device_name}</span>
               </span>

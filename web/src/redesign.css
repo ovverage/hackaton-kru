@@ -1791,3 +1791,87 @@ textarea.input {
     padding: 36px 22px;
   }
 }
+.language-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted, #6b7280);
+  white-space: nowrap;
+}
+.language-selector select {
+  border: 1px solid var(--line, #dce1ea);
+  background: var(--card, #fff);
+  color: var(--ink, #152843);
+  border-radius: 8px;
+  padding: 8px 26px 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  min-height: 36px;
+}
+.language-selector select:focus-visible {
+  outline: 2px solid #375e9b;
+  outline-offset: 2px;
+}
+.auth-language {
+  position: absolute;
+  top: 24px;
+  right: 28px;
+  z-index: 2;
+}
+.auth-form {
+  position: relative;
+}
+.auth-demo {
+  border: 1px solid var(--line, #dce1ea);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 16px 0;
+}
+.topbar > .language-selector {
+  margin-left: auto;
+}
+@media (max-width: 650px) {
+  .auth-language {
+    top: 12px;
+    right: 14px;
+  }
+  .auth-form {
+    padding-top: 70px !important;
+  }
+  .topbar {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .language-selector select {
+    max-width: 130px;
+  }
+}
+.localized-file-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.localized-file-picker .file-name {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  min-width: 0;
+  color: var(--muted, #6b7280);
+}
+.localized-file-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.localized-file-picker:focus-within {
+  outline: 2px solid #375e9b;
+  outline-offset: 3px;
+  border-radius: 6px;
+}

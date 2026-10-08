@@ -2,299 +2,313 @@
   {
     "scene": "login",
     "width": 1440,
+    "language": "ru",
     "viewport": 1440,
     "document": 1440,
-    "title": "Вся аудиторияна одном экране",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Вся аудиторияна одном экране",
     "errors": [],
     "screenshot": "web-01-login-1440.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "setup",
     "width": 1440,
+    "language": "ru",
     "viewport": 1440,
     "document": 1440,
-    "title": "Вся аудиторияна одном экране",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Вся аудиторияна одном экране",
     "errors": [],
     "screenshot": "web-01-setup-1440.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "before",
     "width": 1440,
+    "language": "ru",
     "viewport": 1440,
     "document": 1440,
-    "title": "Аудитория",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Аудитория",
     "errors": [],
     "screenshot": "web-02-room-before-1440.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "room",
     "width": 1440,
+    "language": "ru",
     "viewport": 1440,
     "document": 1440,
-    "title": "Алгоритмы и структуры данных",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Алгоритмы и структуры данных",
     "errors": [],
     "screenshot": "web-03-room-live-1440.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "new",
     "width": 1440,
+    "language": "ru",
     "viewport": 1440,
     "document": 1440,
-    "title": "Аудитория",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Аудитория",
     "errors": [],
     "screenshot": "web-05-new-session-1440.png",
-    "extra_screenshots": [
-      "web-05-new-session-1440-bottom.png"
-    ]
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "device",
     "width": 1440,
+    "language": "ru",
     "viewport": 1440,
     "document": 1440,
-    "title": "Алгоритмы и структуры данных",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Алгоритмы и структуры данных",
     "errors": [],
     "screenshot": "web-06-device-1440.png",
-    "extra_screenshots": [
-      "web-06-device-1440-bottom.png"
-    ]
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "event",
     "width": 1440,
+    "language": "ru",
     "viewport": 1440,
     "document": 1440,
-    "title": "События",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "События",
     "errors": [],
     "screenshot": "web-07-event-1440.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "events",
     "width": 1440,
+    "language": "ru",
     "viewport": 1440,
     "document": 1440,
-    "title": "События",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "События",
     "errors": [],
     "screenshot": "web-08-events-1440.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "history",
     "width": 1440,
+    "language": "ru",
     "viewport": 1440,
     "document": 1440,
-    "title": "Сеансы и отчёты",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Сеансы и отчёты",
     "errors": [],
     "screenshot": "web-09-history-1440.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "computers",
     "width": 1440,
+    "language": "ru",
     "viewport": 1440,
     "document": 1440,
-    "title": "Компьютеры",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Компьютеры",
     "errors": [],
     "screenshot": "web-10-computers-1440.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "rules",
     "width": 1440,
+    "language": "ru",
     "viewport": 1440,
     "document": 1440,
-    "title": "Правила контроля",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Правила контроля",
     "errors": [],
     "screenshot": "web-11-rules-1440.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "teachers",
     "width": 1440,
+    "language": "ru",
     "viewport": 1440,
     "document": 1440,
-    "title": "Преподаватели",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Преподаватели",
     "errors": [],
     "screenshot": "web-12-teachers-1440.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "login",
     "width": 390,
+    "language": "ru",
     "viewport": 390,
     "document": 390,
-    "title": "Вся аудиторияна одном экране",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Вся аудиторияна одном экране",
     "errors": [],
     "screenshot": "web-01-login-390.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "setup",
     "width": 390,
+    "language": "ru",
     "viewport": 390,
     "document": 390,
-    "title": "Вся аудиторияна одном экране",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Вся аудиторияна одном экране",
     "errors": [],
     "screenshot": "web-01-setup-390.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "before",
     "width": 390,
+    "language": "ru",
     "viewport": 390,
     "document": 390,
-    "title": "Аудитория",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Аудитория",
     "errors": [],
     "screenshot": "web-02-room-before-390.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "room",
     "width": 390,
+    "language": "ru",
     "viewport": 390,
     "document": 390,
-    "title": "Алгоритмы и структуры данных",
-    "overflowElements": [],
-    "tableScrollers": 1,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Алгоритмы и структуры данных",
     "errors": [],
     "screenshot": "web-03-room-live-390.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "new",
     "width": 390,
+    "language": "ru",
     "viewport": 390,
     "document": 390,
-    "title": "Аудитория",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Аудитория",
     "errors": [],
     "screenshot": "web-05-new-session-390.png",
-    "extra_screenshots": [
-      "web-05-new-session-390-bottom.png"
-    ]
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "device",
     "width": 390,
+    "language": "ru",
     "viewport": 390,
     "document": 390,
-    "title": "Алгоритмы и структуры данных",
-    "overflowElements": [],
-    "tableScrollers": 1,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Алгоритмы и структуры данных",
     "errors": [],
     "screenshot": "web-06-device-390.png",
-    "extra_screenshots": [
-      "web-06-device-390-bottom.png"
-    ]
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "event",
     "width": 390,
+    "language": "ru",
     "viewport": 390,
     "document": 390,
-    "title": "События",
-    "overflowElements": [],
-    "tableScrollers": 2,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "События",
     "errors": [],
     "screenshot": "web-07-event-390.png",
-    "extra_screenshots": [
-      "web-07-event-390-bottom.png"
-    ]
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "events",
     "width": 390,
+    "language": "ru",
     "viewport": 390,
     "document": 390,
-    "title": "События",
-    "overflowElements": [],
-    "tableScrollers": 2,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "События",
     "errors": [],
     "screenshot": "web-08-events-390.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "history",
     "width": 390,
+    "language": "ru",
     "viewport": 390,
     "document": 390,
-    "title": "Сеансы и отчёты",
-    "overflowElements": [],
-    "tableScrollers": 1,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Сеансы и отчёты",
     "errors": [],
     "screenshot": "web-09-history-390.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "computers",
     "width": 390,
+    "language": "ru",
     "viewport": 390,
     "document": 390,
-    "title": "Компьютеры",
-    "overflowElements": [],
-    "tableScrollers": 1,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Компьютеры",
     "errors": [],
     "screenshot": "web-10-computers-390.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "rules",
     "width": 390,
+    "language": "ru",
     "viewport": 390,
     "document": 390,
-    "title": "Правила контроля",
-    "overflowElements": [],
-    "tableScrollers": 0,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Правила контроля",
     "errors": [],
     "screenshot": "web-11-rules-390.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   },
   {
     "scene": "teachers",
     "width": 390,
+    "language": "ru",
     "viewport": 390,
     "document": 390,
-    "title": "Преподаватели",
-    "overflowElements": [],
-    "tableScrollers": 1,
+    "title": "Qorgau — кабинет преподавателя",
+    "heading": "Преподаватели",
     "errors": [],
     "screenshot": "web-12-teachers-390.png",
-    "extra_screenshots": []
+    "version": "0.5.2",
+    "fixture_data": true
   }
 ]

@@ -201,7 +201,7 @@ def check_screen_calibration():
             gaze_tracking_status='tracked', direction=uncertain['screen_direction'],
             gaze_observed_direction=uncertain['screen_observed_direction'],
             gaze_observation_uncertain=True))
-    assert gaze_warning_active(snapshot) and 'Предварительная оценка' in gaze_warning_text(snapshot)
+    assert gaze_warning_active(snapshot) and gaze_warning_text(snapshot) == 'Верните взгляд на монитор'
     assert TARGET_VISIBLE_SECONDS == 3 and TARGET_SETTLE_SECONDS + CAPTURE_SECONDS == 3
     from .calibration_diagnostics import compact_calibration_report, format_calibration_failure
     failure = {'ready': False, 'error': 'SCREEN_ANGULAR_SPAN_TOO_SMALL',
@@ -418,14 +418,14 @@ def run(output):
         ui = public_gaze_status_text(policy, active=True, gaze_seconds=2.)
         assert '25.0°' in ui and '2.0 / 5' in ui
         from .exam_ui import gaze_warning_active, gaze_warning_text
-        for direction, word in (('LEFT', 'влево'), ('RIGHT', 'вправо'), ('UP', 'вверх'), ('DOWN', 'вниз')):
+        for direction in ('LEFT', 'RIGHT', 'UP', 'DOWN'):
             warning_snapshot = dict(state=dict(lifecycle='RUNNING', access='OPEN'), camera=True,
                 gaze_diagnostics=dict(source='public_gaze_model', reference_ready=True,
                     gaze_tracking_status='tracked', direction='UNKNOWN',
                     gaze_observed_direction=direction, gaze_observation_uncertain=True))
             assert gaze_warning_active(warning_snapshot)
             banner_text = gaze_warning_text(warning_snapshot)
-            assert word in banner_text and 'Предварительная оценка' in banner_text
+            assert banner_text == 'Верните взгляд на монитор'
         public_gaze_check = {'onnx_inference': True, 'explicit_reference_required': True,
                              'separate_head_pose': True, 'uncertain_gaze_feedback': True,
                              'display_threshold_degrees': 9, 'independent_head_matrix': True,
@@ -473,8 +473,39 @@ def run(output):
         json.loads((resource_root() / 'teacher-face-manifest.json').read_text(encoding='utf-8'))['files']}
     report['mode'] = read_object(resource_root() / 'build-profile.json').get('mode', 'online')
     report['teacher_face_runtime'] = True
+    report.update(check_presentation())
     if public_gaze_check:
         report['public_gaze'] = public_gaze_check
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     Path(output).write_text(json.dumps(report, indent=2), encoding="utf-8")
     return report
+
+
+def check_presentation():
+    """Verify packaged language text and UI-only warning timing without devices."""
+    from PySide6.QtWidgets import QApplication
+    from .i18n import language, set_language, tr
+    from .localized_widgets import QLabel
+    from .exam_ui import WarningDisplayHold
+    app = QApplication.instance() or QApplication([])
+    previous = language()
+    label = QLabel('Верните взгляд на монитор')
+    expected = {'ru': 'Верните взгляд на монитор', 'en': 'Return your gaze to the monitor',
+                'kk': 'Көзіңізді мониторға қайтарыңыз'}
+    try:
+        for code, message in expected.items():
+            set_language(code, persist=False)
+            assert label.text() == message
+            assert tr('Ctrl+Alt+Q · 12.5° · 2026-10-08') == 'Ctrl+Alt+Q · 12.5° · 2026-10-08'
+        snap = dict(state=dict(lifecycle='RUNNING', access='OPEN'), camera=True,
+                    gaze_diagnostics=dict(source='legacy', reference_ready=True, attention_away=True))
+        hold = WarningDisplayHold()
+        assert hold.update(snap, 10)
+        snap['gaze_diagnostics']['attention_away'] = False
+        assert hold.update(snap, 10.99)
+        assert not hold.update(snap, 11.01)
+    finally:
+        set_language(previous, persist=False)
+        label.deleteLater()
+        app.processEvents()
+    return {'ui_languages': ['ru', 'kk', 'en'], 'attention_warning_hold_seconds': 1.0}

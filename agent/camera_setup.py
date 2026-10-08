@@ -5,21 +5,12 @@ import threading
 import time
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QColor, QImage, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QFileDialog,
-    QSpinBox,
-    QProgressBar,
-    QSizePolicy,
-)
+from PySide6.QtWidgets import (QVBoxLayout, QHBoxLayout, QSpinBox, QProgressBar, QSizePolicy)
+from .localized_widgets import (QDialog, QLabel, QLineEdit, QPushButton, QFileDialog)
 from .client import atomic_json
 from .behavior import POSITIONS
 from .theme import COLORS, StepBubble, camera_marks
+from .i18n import tr
 
 REFERENCE_SETTLE_SECONDS = 2
 REFERENCE_TIMEOUT_SECONDS = 45
@@ -66,7 +57,7 @@ class CameraPreview(QLabel):
         painter.setBrush(QColor(COLORS['blue_light']))
         painter.drawEllipse(40, 38, 8, 8)
         painter.setPen(QColor(COLORS['surface']))
-        painter.drawText(56, 48, "Камера включена")
+        painter.drawText(56, 48, tr("Камера включена"))
         pen = QPen(QColor(255, 255, 255, 190), 2, Qt.PenStyle.DashLine)
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)

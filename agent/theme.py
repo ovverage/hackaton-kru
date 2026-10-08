@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from PySide6.QtCore import QByteArray, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QFontDatabase, QIcon, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QWidget
+from PySide6.QtWidgets import (QHBoxLayout)
+from .localized_widgets import (QLabel, QWidget)
 from PySide6.QtSvg import QSvgRenderer
 
 from .resources import resource_root
@@ -188,6 +189,7 @@ def brand_widget(*, paused=False):
 
 
 _ICON_PATHS = {
+    'eye': '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
     'clock': '<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>',
     'check': '<path d="m5 12 4 4L19 6"/>',
     'pause': '<path d="M8 5v14M16 5v14"/>',

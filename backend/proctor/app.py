@@ -53,7 +53,7 @@ def digest(value):
 
 class Credentials(BaseModel):
     name: str = Field(min_length=2, max_length=80)
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=5, max_length=128)
 
 
 class LoginCredentials(BaseModel):
@@ -522,6 +522,9 @@ def create_app(data_dir=None, *, allow_demo=False):
     @app.get("/api/snapshot")
     def get_snapshot(request: Request):
         return snapshot(user(request)["id"])
+
+    from .history import register_history_routes
+    register_history_routes(app, db, base, user, PH)
 
     @app.websocket("/ws/teacher")
     async def updates(ws: WebSocket):
@@ -1170,9 +1173,9 @@ def create_app(data_dir=None, *, allow_demo=False):
             ).fetchone()
             if not row:
                 raise HTTPException(404, "Событие не найдено")
-        return await store_video(event_id, d["id"], request)
+        return await store_video(event_id, d["id"], row["exam_id"], request)
 
-    async def store_video(event_id, device_id, request):
+    async def store_video(event_id, device_id, exam_id, request):
         mime = request.headers.get("content-type", "").split(";")[0]
         if mime not in ("video/mp4", "video/webm"):
             raise HTTPException(415, "Поддерживаются MP4 и WebM")
@@ -1223,11 +1226,13 @@ def create_app(data_dir=None, *, allow_demo=False):
             except (ValueError, TypeError):
                 raise HTTPException(422, "Некорректные границы фрагмента")
             with db.connect(True) as c:
-                ev = decode(
-                    c.execute(
-                        "SELECT body FROM events WHERE id=?", (event_id,)
-                    ).fetchone()
-                )
+                row = c.execute(
+                    "SELECT body FROM events WHERE id=? AND device_id=? AND exam_id=?",
+                    (event_id, device_id, exam_id),
+                ).fetchone()
+                if not row:
+                    raise HTTPException(404, "Событие не найдено")
+                ev = decode(row)
                 duplicate = next(
                     (m for m in ev["media"] if m["sha256"] == sha.hexdigest()
                      and m["clip_start"] == clip_start and m["clip_end"] == clip_end), None
@@ -1278,7 +1283,7 @@ def create_app(data_dir=None, *, allow_demo=False):
                 raise HTTPException(
                     403, "Запись реального агента нельзя заменить вручную"
                 )
-        return await store_video(event_id, ev["device_id"], request)
+        return await store_video(event_id, ev["device_id"], r["exam_id"], request)
 
     @app.get("/api/media/{media_id}")
     def get_media(media_id: str, request: Request):
@@ -1294,7 +1299,7 @@ def create_app(data_dir=None, *, allow_demo=False):
         return FileResponse(row["path"], media_type=row["mime"])
 
     @app.get("/api/exams/{exam_id}/report.csv")
-    def report(exam_id: str, request: Request):
+    def report(exam_id: str, request: Request, lang: Literal['ru', 'kk', 'en'] = 'ru'):
         u = user(request)
         with db.connect() as c:
             e = owned(c, "exams", exam_id, u["id"])
@@ -1306,8 +1311,8 @@ def create_app(data_dir=None, *, allow_demo=False):
             ]
         out = io.StringIO()
         w = csv.writer(out)
-        w.writerow(
-            [
+        headings = {
+            'ru': [
                 "Ученик",
                 "Рабочее место",
                 "Вниз",
@@ -1319,8 +1324,13 @@ def create_app(data_dir=None, *, allow_demo=False):
                 "На проверке",
                 "Блокировки",
                 "Стенд",
-            ]
-        )
+            ],
+            'kk': ['Білім алушы', 'Жұмыс орны', 'Төмен', 'Солға', 'Оңға', 'Телефон',
+                   'Расталды', 'Қабылданбады', 'Тексерілуде', 'Бұғаттаулар', 'Демо'],
+            'en': ['Student', 'Workstation', 'Down', 'Left', 'Right', 'Phone',
+                   'Confirmed', 'Rejected', 'Pending review', 'Locks', 'Demo'],
+        }
+        w.writerow(headings[lang])
         for d in e["participants"].values():
             mine = [x for x in events if x["device_id"] == d["id"]]
             valid = [x for x in mine if x["decision"] != "REJECTED"]
@@ -1340,7 +1350,7 @@ def create_app(data_dir=None, *, allow_demo=False):
                         for k in ("CONFIRMED", "REJECTED", "PENDING")
                     ],
                     d["state"]["locks"],
-                    "Да" if d["simulated"] else "Нет",
+                    {'ru': ('Нет', 'Да'), 'kk': ('Жоқ', 'Иә'), 'en': ('No', 'Yes')}[lang][bool(d['simulated'])],
                 ]
             )
         return Response(

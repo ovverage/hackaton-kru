@@ -112,8 +112,14 @@ class SessionControl:
             raise ValueError('Для онлайн-сеанса используется пароль преподавателя на сервере.')
         if self.engine.state.lifecycle == 'RUNNING' or self.start_pending:
             raise ValueError('Пароль задаётся до начала экзамена.')
-        if self.local_access.ready:
+        if self.local_access.ready and not self.local_access.demo_default:
             raise ValueError('Резервный пароль уже установлен на этом компьютере.')
+        self.local_access.set_password(password)
+
+    def change_local_password(self, current, password):
+        if self.mode != 'offline' or self.engine.state.lifecycle == 'RUNNING' or self.start_pending:
+            raise ValueError('Локальный пароль можно изменить до начала экзамена.')
+        self.local_access.verify(current)
         self.local_access.set_password(password)
 
     def local_authorize(self, password, action):

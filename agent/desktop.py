@@ -10,29 +10,15 @@ from pathlib import Path
 
 from PySide6.QtCore import QLockFile, Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import (
-    QApplication,
-    QFrame,
-    QHBoxLayout,
-    QLabel,
-    QLayout,
-    QMenu,
-    QLineEdit,
-    QMessageBox,
-    QPushButton,
-    QComboBox,
-    QScrollArea,
-    QStackedWidget,
-    QSystemTrayIcon,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import (QApplication, QFrame, QHBoxLayout, QLayout, QScrollArea, QStackedWidget, QVBoxLayout)
+from .localized_widgets import (QLabel, QMenu, QLineEdit, QMessageBox, QPushButton, QComboBox, QSystemTrayIcon, QWidget)
 
 from .client import Agent
 from .provision import EnrollmentUnavailable, auto_enroll
 from .student_state import present
 from .theme import APP_QSS as STYLE, COLORS, StepBubble, StepsPanel, ProgressPoint, brand_widget, ui_icon, load_fonts, logo_icon
 from shared.bootstrap import default_bootstrap
+from .i18n import initialize, language_selector, tr
 
 
 def label(text="", name="body", wrap=True):
@@ -226,13 +212,17 @@ class OfflineStartWorker(QThread):
 class PasswordSetupWorker(QThread):
     done = Signal(str)
 
-    def __init__(self, agent, password, parent):
+    def __init__(self, agent, password, parent, current=""):
         super().__init__(parent)
         self.agent, self.password = agent, password
+        self.current = current
 
     def run(self):
         try:
-            self.agent.setup_password(self.password)
+            if self.current:
+                self.agent.change_local_password(self.current, self.password)
+            else:
+                self.agent.setup_password(self.password)
             self.done.emit("")
         except ValueError as error:
             self.done.emit(str(error))
@@ -240,6 +230,7 @@ class PasswordSetupWorker(QThread):
             self.done.emit("Не удалось сохранить пароль на этом компьютере. Проверьте доступ к папке настроек и повторите.")
         finally:
             self.password = ""
+            self.current = ""
 
 
 class PrepareStartWorker(QThread):
@@ -336,6 +327,7 @@ class StudentWindow(QWidget):
         header = QHBoxLayout()
         header.addWidget(brand_widget())
         header.addStretch()
+        header.addWidget(language_selector())
         header.addWidget(label("Подключаемся", "badge"))
         layout.addLayout(header)
         layout.addSpacing(12)
@@ -379,6 +371,7 @@ class StudentWindow(QWidget):
         row = QHBoxLayout()
         row.addWidget(brand_widget())
         row.addStretch()
+        row.addWidget(language_selector())
         self.device_name = label("Компьютер аудитории", "badge")
         self.device_name.setToolTip("Так этот компьютер называется у преподавателя")
         row.addWidget(self.device_name)
@@ -501,6 +494,13 @@ class StudentWindow(QWidget):
         passwords.setContentsMargins(0, 0, 0, 0)
         self.password_heading = label("Пароль преподавателя для этого компьютера", "field")
         passwords.addWidget(self.password_heading)
+        self.password_demo_hint = label("Демо-пароль преподавателя: admin. Его можно изменить ниже.", "small")
+        passwords.addWidget(self.password_demo_hint)
+        self.local_password_current = QLineEdit()
+        self.local_password_current.setEchoMode(QLineEdit.EchoMode.Password)
+        self.local_password_current.setMaxLength(128)
+        self.local_password_current.setPlaceholderText("Текущий локальный пароль")
+        passwords.addWidget(self.local_password_current)
         self.local_password = QLineEdit()
         self.local_password.setEchoMode(QLineEdit.EchoMode.Password)
         self.local_password.setMaxLength(128)
@@ -516,6 +516,7 @@ class StudentWindow(QWidget):
         passwords.addWidget(self.save_password)
         self.password_feedback = label("", "small")
         passwords.addWidget(self.password_feedback)
+        wait_content.addWidget(label("Смена языка ввода во время теста: Win+Пробел или Alt+Shift.", "small"))
         wait_content.addWidget(self.password_setup)
         self.local_start = QPushButton("Начать экзамен")
         self.local_start.setObjectName("primary")
@@ -678,7 +679,7 @@ class StudentWindow(QWidget):
                 "Нет связи с сервером" if not snap.get("connected") else model["title"]
             )
             self.tray.setToolTip(f"Qorgau · {snap.get('device_name', '')}\n{status}")
-            self.tray_status.setText(f"{snap.get('device_name', self.device_name.text())} — {status}")
+            self.tray_status.setText(tr(f"{snap.get('device_name', self.device_name.text())} — {status}"))
             self.tray_exit.setEnabled(
                 state["lifecycle"] != "RUNNING" and not snap.get("camera_preparing")
             )
@@ -735,7 +736,10 @@ class StudentWindow(QWidget):
             else "Настройка по точкам начнётся после команды «Начать»."
         )
         password_ready = bool(snap.get("local_password_ready"))
-        self.password_setup.setVisible(offline and not password_ready and not active and not pending_id)
+        self.password_setup.setVisible(offline and not active and not pending_id)
+        demo = bool(getattr(getattr(self.agent, 'local_access', None), 'demo_default', False))
+        self.password_demo_hint.setVisible(demo)
+        self.local_password_current.setVisible(password_ready and not demo)
         saving_password = self.password_worker is not None and self.password_worker.isRunning()
         self.save_password.setEnabled(not saving_password)
         self.local_password.setEnabled(not saving_password)
@@ -828,7 +832,7 @@ class StudentWindow(QWidget):
             self.start_preparation_failed(token, "Не удалось начать настройку камеры. Повторите начало экзамена.")
 
     def pending_camera_finished(self, token, dialog, result):
-        from PySide6.QtWidgets import QDialog
+        from .localized_widgets import (QDialog)
         if self.calibration is dialog:
             self.calibration = None
         dialog.deleteLater()
@@ -935,13 +939,15 @@ class StudentWindow(QWidget):
         if self.password_worker is not None and self.password_worker.isRunning():
             return
         password, repeat = self.local_password.text(), self.local_password_repeat.text()
+        current = self.local_password_current.text()
+        self.local_password_current.clear()
         self.local_password.clear()
         self.local_password_repeat.clear()
         if password != repeat:
             self.password_feedback.setText("Пароли не совпали. Введите их ещё раз.")
             return
         self.password_feedback.setText("Сохраняем локальный пароль преподавателя…")
-        self.password_worker = PasswordSetupWorker(self.agent, password, self)
+        self.password_worker = PasswordSetupWorker(self.agent, password, self, current=current)
         self.password_worker.done.connect(self.password_setup_done)
         self.password_worker.finished.connect(self.refresh)
         self.password_worker.start()
@@ -1112,9 +1118,10 @@ def launch(
     from .install_guard import hold_installation_mutex
     hold_installation_mutex()
     app = QApplication.instance() or QApplication(sys.argv[:1])
+    initialize()
     app.setApplicationName("Qorgau Agent")
     app.setQuitOnLastWindowClosed(False)
-    app.setApplicationDisplayName("Qorgau — агент аудитории")
+    app.setApplicationDisplayName(tr("Qorgau — агент аудитории"))
     app.setFont(QFont(load_fonts(), 10))
     app.setStyle("Fusion")
     folder.mkdir(parents=True, exist_ok=True)

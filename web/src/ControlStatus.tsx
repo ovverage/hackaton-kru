@@ -1,3 +1,4 @@
+import { t } from "./i18n.ts";
 import { Camera, Eye, ShieldCheck } from "lucide-react";
 import { controlSignals } from "./sessionStatus";
 import type { Device } from "./types";
@@ -7,7 +8,7 @@ export default function ControlStatus({ device }: { device: Device }) {
   return (
     <div
       className="control-signals"
-      aria-label={`Состояние контроля: ${device.name}`}
+      aria-label={t("Состояние контроля: {0}", device.name)}
     >
       {controlSignals(device).map((signal, index) => {
         const Icon = icons[index];

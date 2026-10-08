@@ -6,27 +6,10 @@ import os
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QThread, QTimer, Qt, Signal, QSize, QRectF
+from PySide6.QtCore import QObject, QThread, QTimer, Qt, Signal, QSize, QRectF, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QColor, QPainter, QPen, QFont, QPixmap
-from PySide6.QtWidgets import (
-    QApplication,
-    QCheckBox,
-    QComboBox,
-    QDialog,
-    QFileDialog,
-    QHBoxLayout,
-    QBoxLayout,
-    QFrame,
-    QStyledItemDelegate,
-    QStyle,
-    QLabel,
-    QLineEdit,
-    QListWidget,
-    QPushButton,
-    QScrollArea,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import (QApplication, QHBoxLayout, QBoxLayout, QFrame, QStyledItemDelegate, QStyle, QScrollArea, QVBoxLayout)
+from .localized_widgets import (QCheckBox, QComboBox, QDialog, QFileDialog, QLabel, QLineEdit, QListWidget, QPushButton, QWidget)
 from .student_state import REASONS
 from .theme import APP_QSS, COLORS, CountdownRing, CameraEvidence, brand_widget, ui_icon, app_font
 
@@ -78,18 +61,8 @@ def gaze_warning_active(snap):
 
 
 def gaze_warning_text(snap):
-    """Name the displayed camera-image direction without implying a penalty."""
-    gaze = snap.get("gaze_diagnostics") or {}
-    instruction = "Смотрите на экран"
-    if gaze.get("source") != "public_gaze_model":
-        return instruction
-    direction = {
-        "LEFT": "влево", "RIGHT": "вправо", "UP": "вверх", "DOWN": "вниз",
-    }.get(gaze.get("gaze_observed_direction"))
-    if direction is None:
-        return instruction
-    prefix = "Предварительная оценка: взгляд" if gaze.get("gaze_observation_uncertain", True) else "Взгляд"
-    return f"{prefix} {direction} (по изображению камеры)\n{instruction}"
+    """A neutral reminder; the strict rule engine alone decides penalties."""
+    return "Верните взгляд на монитор"
 
 
 def head_warning_active(snap):
@@ -106,12 +79,7 @@ def head_warning_active(snap):
 
 
 def head_warning_text(snap):
-    gaze = snap.get("gaze_diagnostics") or {}
-    direction = {"LEFT": "влево", "RIGHT": "вправо", "UP": "вверх", "DOWN": "вниз"}.get(
-        gaze.get("head_direction"), "в сторону"
-    )
-    prefix = "Сильный поворот головы" if gaze.get("head_extreme") else "Поворот головы"
-    return f"{prefix} {direction} (по изображению камеры)\nПовернитесь к монитору"
+    return gaze_warning_text(snap)
 
 
 class WarningDisplayHold:
@@ -127,12 +95,10 @@ class WarningDisplayHold:
                 or snap.get("recognition_paused")):
             self.parts.clear()
             return ""
-        if gaze_warning_active(snap):
-            self.parts['gaze'] = (gaze_warning_text(snap), now + 1.0)
-        if head_warning_active(snap):
-            self.parts['head'] = (head_warning_text(snap), now + 1.0)
-        return "\n".join(self.parts[kind][0] for kind in ('gaze', 'head')
-                         if kind in self.parts and now < self.parts[kind][1])
+        if gaze_warning_active(snap) or head_warning_active(snap):
+            self.parts['attention'] = (gaze_warning_text(snap), now + 1.0)
+        item = self.parts.get('attention')
+        return item[0] if item and now < item[1] else ""
 
 
 def calibrated_exam_screen(camera, screens):
@@ -210,7 +176,7 @@ class GazeWarning(QWidget):
         layout.addWidget(self.direction, 0, Qt.AlignmentFlag.AlignTop)
         copy = QVBoxLayout()
         copy.setSpacing(6)
-        self.message = QLabel("Смотрите на экран")
+        self.message = QLabel("Верните взгляд на монитор")
         self.message.setWordWrap(True)
         self.message.setStyleSheet("font-size:24px;font-weight:600;")
         self.message.setTextFormat(Qt.TextFormat.PlainText)
@@ -222,12 +188,44 @@ class GazeWarning(QWidget):
         layout.addLayout(copy, 1)
         self.countdown = CountdownRing()
         layout.addWidget(self.countdown, 0, Qt.AlignmentFlag.AlignVCenter)
+        self._wanted = False
+        self.fade = QPropertyAnimation(self, b"windowOpacity", self)
+        self.fade.setDuration(200)
+        self.fade.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self.fade.finished.connect(self._fade_finished)
+
+    def _fade_finished(self):
+        if not self._wanted:
+            super().hide()
+
+    def set_warning_visible(self, visible, *, immediate=False):
+        """Do not restart an animation on every detector/controller tick."""
+        if immediate and not visible:
+            self.hide()
+            return
+        if visible == self._wanted:
+            return
+        self._wanted = visible
+        self.fade.stop()
+        if visible and not self.isVisible():
+            self.setWindowOpacity(0.)
+            self.show()
+            self.raise_()
+        self.fade.setStartValue(self.windowOpacity())
+        self.fade.setEndValue(1. if visible else 0.)
+        self.fade.start()
+
+    def hide(self):
+        self._wanted = False
+        if hasattr(self, 'fade'):
+            self.fade.stop()
+        self.setWindowOpacity(0.)
+        super().hide()
 
     def update_countdown(self, snap):
         gaze = snap.get("gaze_diagnostics") or {}
         direction = snap.get("attention_direction") or gaze.get("attention_direction") or gaze.get("direction")
-        observed = gaze.get("gaze_observed_direction") or gaze.get("head_direction") or direction
-        self.direction.setText({"DOWN": "↓", "LEFT": "←", "RIGHT": "→", "UP": "◉"}.get(observed, "◉"))
+        self.direction.setPixmap(ui_icon('eye', COLORS['navy900'], 32).pixmap(32, 32))
         seconds = max(0.0, float(snap.get("gaze_seconds") or 0))
         # Only a confirmed rule timer can promise a future mark. Public model
         # uncertainty and independent head feedback retain their honest copy.
@@ -236,10 +234,9 @@ class GazeWarning(QWidget):
         self.countdown.remaining = remaining
         self.countdown.update()
         if counting:
-            word = {"DOWN": "вниз", "LEFT": "влево", "RIGHT": "вправо"}[direction]
-            self.detail.setText(f"Взгляд {word} засчитается как отметка через {remaining:.1f} с".replace('.', ','))
+            self.detail.setText("Не отвлекайтесь и продолжайте тест")
         else:
-            self.detail.setText("Посмотрите на экран и продолжайте тест")
+            self.detail.setText("Не отвлекайтесь и продолжайте тест")
 
     def place(self, screen):
         geometry = screen.geometry()
@@ -1116,10 +1113,13 @@ class ExamController(QObject):
                 warning.message.setText(warning_text)
                 warning.update_countdown(snap)
                 warning.place(screen)
-                warning.show()
-                warning.raise_()
+                warning.set_warning_visible(True)
             else:
-                warning.hide()
+                immediate = (snap['state']['lifecycle'] != 'RUNNING'
+                             or snap['state']['access'] != 'OPEN'
+                             or not snap.get('camera') or snap.get('camera_fault')
+                             or snap.get('recognition_paused'))
+                warning.set_warning_visible(False, immediate=immediate)
         for extra in self.gaze_warnings[len(screens) :]:
             extra.hide()
         if snap["state"]["lifecycle"] != "RUNNING":

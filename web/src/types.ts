@@ -1,3 +1,4 @@
+import { t, localizedRecord, apiError, formatTime } from "./i18n.ts";
 export type Direction = "DOWN" | "LEFT" | "RIGHT";
 export type SessionState = {
   lifecycle: "READY" | "RUNNING" | "COMPLETED";
@@ -117,18 +118,20 @@ export async function api<T = any>(path: string, body?: unknown): Promise<T> {
       "X-Requested-With": "Qorgau",
     },
     body: body === undefined ? undefined : JSON.stringify(body),
+  }).catch(() => {
+    throw new Error(t("Нет связи с сервером. Проверьте интернет и повторите."));
   });
   if (!response.ok) {
-    let message = "Не удалось выполнить действие";
+    let message: unknown;
     try {
       const data = await response.json();
-      message = typeof data.detail === "string" ? data.detail : message;
+      message = data.detail;
     } catch {}
-    throw new Error(message);
+    throw new Error(apiError(message, response.status));
   }
   return response.json();
 }
-export const eventNames: Record<string, string> = {
+export const eventNames: Record<string, string> = localizedRecord({
   TEACHER_REQUEST: "Ученик позвал преподавателя",
   GAZE_DOWN: "Взгляд вниз",
   GAZE_LEFT: "Взгляд влево",
@@ -154,14 +157,14 @@ export const eventNames: Record<string, string> = {
 
   FACE_ABSENCE_TECHNICAL: "Лица не видно 10 секунд",
   PHONE_AIM_REVIEW: "Возможная съёмка телефоном",
-};
-export const decisionNames = {
+});
+export const decisionNames = localizedRecord({
   PENDING: "Ждёт решения",
   CONFIRMED: "Нарушение",
   REJECTED: "Нарушения нет",
-};
+});
 export const clock = (n: number) =>
-  new Date(n * 1000).toLocaleTimeString("ru-RU", {
+  formatTime(new Date(n * 1000), {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",

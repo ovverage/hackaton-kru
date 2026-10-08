@@ -28,12 +28,13 @@ def change(client, current=OLD_PASSWORD, new=NEW_PASSWORD):
     return client.post("/api/auth/password", json={"current_password": current, "new_password": new})
 
 
-def test_setup_still_requires_eight_characters_and_login_checks_short_password(tmp_path):
+def test_setup_accepts_requested_demo_password_and_rejects_shorter_password(tmp_path):
     with TestClient(create_app(tmp_path)) as client:
         client.headers["X-Requested-With"] = "Qorgau"
-        assert client.post("/api/auth/setup", json={"name": "admin", "password": "admin"}).status_code == 422
+        assert client.post("/api/auth/setup", json={"name": "admin", "password": "1234"}).status_code == 422
         assert client.get("/api/auth/status").json()["setup_required"] is True
         assert client.post("/api/auth/login", json={"name": "admin", "password": "admin"}).status_code == 401
+        assert client.post("/api/auth/setup", json={"name": "admin", "password": "admin"}).status_code == 200
 
 
 def test_change_requires_authenticated_session_and_csrf(env):

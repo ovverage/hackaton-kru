@@ -58,7 +58,7 @@ const devices: Device[] = names.map((student, index) => {
       selected_window: true,
       camera_fault: seat === 5,
       recording_tail: false,
-      agent_version: "0.5.0",
+      agent_version: "0.5.2",
       model_version: "YOLO11n / MediaPipe",
     },
     state: {

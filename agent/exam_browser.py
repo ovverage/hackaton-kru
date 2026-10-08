@@ -10,9 +10,11 @@ from PySide6.QtWebEngineCore import (
     QWebEngineSettings,
 )
 from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtWidgets import QGraphicsDropShadowEffect, QHBoxLayout, QLabel, QPushButton
+from PySide6.QtWidgets import (QGraphicsDropShadowEffect, QHBoxLayout)
+from .localized_widgets import (QLabel, QPushButton)
 
 from .theme import COLORS, TEACHER_BUTTON_QSS, app_font, ui_icon
+from .i18n import tr
 
 
 def origin(url):
@@ -70,7 +72,7 @@ class ExamBrowser(QWebEngineView):
         super().__init__()
         if not origin(url):
             raise ValueError("INVALID_URL")
-        self.setWindowTitle("Qorgau Browser — экзамен")
+        self.setWindowTitle(tr("Qorgau Browser — экзамен"))
         from .desktop import icon
         self.setWindowIcon(icon())
         self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint)
@@ -122,12 +124,25 @@ class ExamBrowser(QWebEngineView):
         self.teacher_button.ensurePolished()
         self.teacher_button.setFixedSize(button_layout.sizeHint())
         self.teacher_button.show()
+        self.layout_button = QPushButton("Язык ввода · Win+Пробел", self)
+        self.layout_button.setStyleSheet(TEACHER_BUTTON_QSS)
+        self.layout_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.layout_button.clicked.connect(self.switch_input_language)
+        self.layout_button.adjustSize()
+        self.layout_button.show()
+
+    def switch_input_language(self):
+        from .keyboard_layout import switch_layout
+        switch_layout(int(self.winId()))
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
         if hasattr(self, "teacher_button"):
             self.teacher_button.move(max(0, self.width() - self.teacher_button.width() - 12), 8)
             self.teacher_button.raise_()
+        if hasattr(self, 'layout_button'):
+            self.layout_button.move(12, 8)
+            self.layout_button.raise_()
 
     def closeEvent(self, event):
         if self.released:

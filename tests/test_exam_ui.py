@@ -104,6 +104,8 @@ def test_gaze_warning_is_also_visible_in_observe_mode(app, tmp_path, monkeypatch
     assert all(w.isVisible() for w in controller.gaze_warnings)
     clock[0] += 1.01
     controller.tick()
+    for warning in controller.gaze_warnings:
+        warning.fade.setCurrentTime(warning.fade.duration())
     assert not any(w.isVisible() for w in controller.gaze_warnings)
     controller.release()
     agent.http.close()
@@ -142,12 +144,14 @@ def test_desktop_overlay_only_during_lock_and_release_after_end(app, tmp_path, m
     controller.tick()
     assert controller.surfaces and not any(s.isVisible() for s in controller.surfaces)
     assert controller.gaze_warnings and all(w.isVisible() for w in controller.gaze_warnings)
-    assert all(w.message.text() == 'Смотрите на экран' for w in controller.gaze_warnings)
+    assert all(w.message.text() == 'Верните взгляд на монитор' for w in controller.gaze_warnings)
     agent.gaze_diagnostics.update(attention_away=False, attention_direction=None)
     controller.tick()
     assert all(w.isVisible() for w in controller.gaze_warnings)
     clock[0] += 1.01
     controller.tick()
+    for warning in controller.gaze_warnings:
+        warning.fade.setCurrentTime(warning.fade.duration())
     assert not any(w.isVisible() for w in controller.gaze_warnings)
     agent.engine.lock('PHONE_DETECTED')
     controller.tick()

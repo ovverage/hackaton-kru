@@ -85,6 +85,26 @@ def test_local_password_is_salted_and_not_plaintext(tmp_path):
         access.verify('wrong-password')
 
 
+def test_new_offline_profile_defaults_to_admin_and_preserves_custom_password(tmp_path):
+    agent = OfflineAgent(tmp_path)
+    try:
+        assert agent.local_access.demo_default and agent.local_access.verify('admin')
+        content = agent.local_access.path.read_text()
+        assert 'admin' not in content and '$argon2' in content
+        agent.setup_password('custom-password')
+        agent.local_access.initialize_demo()
+        assert not agent.local_access.demo_default
+        with pytest.raises(ValueError):
+            agent.local_access.verify('admin')
+        assert agent.local_access.verify('custom-password')
+        with pytest.raises(ValueError):
+            agent.change_local_password('wrong', 'admin')
+        agent.change_local_password('custom-password', 'admin')
+        assert agent.local_access.verify('admin')
+    finally:
+        agent.http.close()
+
+
 def test_offline_no_transport_and_end_deletes_only_local_evidence(tmp_path):
     requests = []
     agent = OfflineAgent(tmp_path, transport=httpx.MockTransport(lambda req: requests.append(req)))

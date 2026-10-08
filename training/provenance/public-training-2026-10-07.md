@@ -1,3 +1,7 @@
+> Historical experiment protocol, 7 October 2026. This records the frozen design and decisions at that time, not a currently running job or the latest application workflow. The completed results, retained/rejected models, current nine-point calibration and artifact manifests are indexed in [training/README.md](../README.md). Do not restart its expired absolute deadline or transfer legacy runtime assumptions to 0.5.2. Source/license texts remain authoritative for their respective components.
+
+---
+
 # Research training on the four acquired datasets
 
 This run uses the complete verified source datasets acquired on 2026-10-07,

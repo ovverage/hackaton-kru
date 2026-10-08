@@ -253,6 +253,9 @@ class WindowsGuard:
                 ("extra", C.c_size_t),
             ]
 
+        from .keyboard_layout import LayoutShortcut, switch_layout
+        layout_shortcut = LayoutShortcut()
+
         @self.callback_type
         def keyboard(code, message, data):
             if code >= 0:
@@ -266,6 +269,16 @@ class WindowsGuard:
                     return 1
                 if self.desktop and not self.locked:
                     return self.u.CallNextHookEx(None, code, message, data)
+                layout_action = layout_shortcut.handle(vk, message in (0x100, 0x104))
+                if layout_action:
+                    foreground = self.u.GetForegroundWindow()
+                    if self.allowed(foreground) and layout_action != 'blocked':
+                        if layout_action == 'switch':
+                            switch_layout(foreground)
+                    else:
+                        self.attempted = True
+                    return 1
+
                 if not self.allowed(self.u.GetForegroundWindow()) or blocked_key(
                     vk,
                     ctrl=down(0x11),

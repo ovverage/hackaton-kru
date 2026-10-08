@@ -1,3 +1,4 @@
+import { t, formatDate, formatTime } from "../i18n.ts";
 import {
   useEffect,
   useState,
@@ -60,7 +61,11 @@ export function StepBubble({
   return (
     <span
       className={`bub-num ${state}`}
-      aria-label={`Шаг ${number}${state === "done" ? ", выполнен" : ""}`}
+      aria-label={t(
+        "Шаг {0}{1}",
+        number,
+        state === "done" ? t(", выполнен") : "",
+      )}
     >
       {state === "done" ? <Check size={16} aria-hidden="true" /> : number}
     </span>
@@ -122,19 +127,23 @@ export function Clock({ since }: { since?: number }) {
   return (
     <span className="clock">
       <strong>
-        {now.toLocaleTimeString("ru-RU", {
+        {formatTime(now, {
           hour: "2-digit",
           minute: "2-digit",
         })}
       </strong>
       <span>
-        {now.toLocaleDateString("ru-RU", {
+        {formatDate(now, {
           weekday: "long",
           day: "numeric",
           month: "long",
         })}
       </span>
-      {since ? <span className="run">тест идёт {elapsed} мин</span> : null}
+      {since ? (
+        <span className="run">
+          {t("тест идёт")} {elapsed} {t("мин")}
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -148,7 +157,7 @@ export function Tabs({
   items,
   value,
   onChange,
-  ariaLabel = "Фильтр",
+  ariaLabel = t("Фильтр"),
 }: {
   items: TabItem[];
   value: string;
@@ -196,15 +205,15 @@ export function Summary({
     state: BubbleState;
     segment: string;
   }[] = [
-    { count: running, label: "пишут тест", state: "on", segment: "on" },
-    { count: paused, label: "на паузе", state: "pause", segment: "pause" },
-    { count: waiting, label: "ждут старта", state: "", segment: "wait" },
-    { count: offline, label: "нет связи", state: "off", segment: "off" },
+    { count: running, label: t("пишут тест"), state: "on", segment: "on" },
+    { count: paused, label: t("на паузе"), state: "pause", segment: "pause" },
+    { count: waiting, label: t("ждут старта"), state: "", segment: "wait" },
+    { count: offline, label: t("нет связи"), state: "off", segment: "off" },
   ];
   return (
     <section
       className="card summary"
-      aria-label={`Сводка по ${total} компьютерам`}
+      aria-label={t("Сводка по {0} компьютерам", total)}
     >
       {cells.map((cell) => (
         <div className="cell" key={cell.label}>
@@ -248,7 +257,7 @@ export function Summary({
       >
         <b>{pending}</b>
         <span>
-          событий ждут решения
+          {t("событий ждут решения")}
           <ChevronRight size={15} aria-hidden="true" />
         </span>
       </button>
@@ -285,9 +294,12 @@ export function DecisionCard({
       <header className="decide-head">
         <span>
           <Pause size={15} aria-hidden="true" />
-          Тест на паузе{pausedAt ? ` с ${pausedAt}` : ""}
+          {t("Тест на паузе")}
+          {pausedAt ? t(" с {0}", pausedAt) : ""}
         </span>
-        <span>место {seat}</span>
+        <span>
+          {t("место")} {seat}
+        </span>
       </header>
       <div className="decide-body">
         {thumbnail}
@@ -301,11 +313,11 @@ export function DecisionCard({
               <Pill tone="warn">
                 {pending}{" "}
                 {pending === 1
-                  ? "событие ждёт"
+                  ? t("событие ждёт")
                   : pending < 5
-                    ? "события ждут"
-                    : "событий ждут"}{" "}
-                решения
+                    ? t("события ждут")
+                    : t("событий ждут")}{" "}
+                {t("решения")}
               </Pill>
             </span>
           )}
@@ -314,11 +326,11 @@ export function DecisionCard({
       <footer className="decide-foot">
         <button className="btn sm" onClick={onEvent} disabled={!onEvent}>
           <Video size={15} aria-hidden="true" />
-          Посмотреть запись
+          {t("Посмотреть запись")}
         </button>
         <button className="btn sm primary" onClick={onUnlock} disabled={busy}>
           <Play size={15} aria-hidden="true" />
-          Продолжить тест
+          {t("Продолжить тест")}
         </button>
       </footer>
     </article>
@@ -337,7 +349,12 @@ export function MiniBar({
     <span
       className="minibar"
       role="img"
-      aria-label={`${confirmed} нарушений, ${rejected} без нарушения, ${pending} ждут решения`}
+      aria-label={t(
+        "{0} нарушений, {1} без нарушения, {2} ждут решения",
+        confirmed,
+        rejected,
+        pending,
+      )}
     >
       {confirmed > 0 && (
         <i className="confirmed" style={{ flexGrow: confirmed }} />

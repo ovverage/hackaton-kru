@@ -55,7 +55,7 @@ def running(app, tmp_path):
     ("LEFT", "влево"), ("RIGHT", "вправо"), ("UP", "вверх"), ("DOWN", "вниз"),
 ])
 @pytest.mark.parametrize("uncertain", [False, True])
-def test_actual_overlay_names_all_directions_and_marks_uncertainty(running, direction, russian, uncertain):
+def test_all_directions_use_one_neutral_reminder_without_changing_strikes(running, direction, russian, uncertain):
     agent, controller = running
     agent.gaze_diagnostics.update(gaze_observed_direction=direction, gaze_observation_uncertain=uncertain)
     before = agent.engine.state.public()
@@ -64,22 +64,19 @@ def test_actual_overlay_names_all_directions_and_marks_uncertainty(running, dire
     for warning in controller.gaze_warnings:
         assert warning.isVisible()
         message = warning.message.text()
-        assert russian in message
-        assert "по изображению камеры" in message
-        assert "Смотрите на экран" in message
-        assert ("Предварительная оценка" in message) is uncertain
+        assert message == "Верните взгляд на монитор"
         assert warning.height() >= warning.message.heightForWidth(warning.width() - 52) + 30
         assert warning.message.wordWrap()
     assert agent.engine.state.public() == before
     assert not agent.journal["events"]
 
 
-def test_visible_overlay_updates_its_text_when_direction_changes(running):
+def test_visible_overlay_keeps_text_stable_when_direction_changes(running):
     agent, controller = running
     for direction, word in [("RIGHT", "вправо"), ("DOWN", "вниз"), ("UP", "вверх"), ("LEFT", "влево")]:
         agent.gaze_diagnostics["gaze_observed_direction"] = direction
         controller.tick()
-        assert all(w.isVisible() and word in w.message.text() for w in controller.gaze_warnings)
+        assert all(w.isVisible() and w.message.text() == "Верните взгляд на монитор" for w in controller.gaze_warnings)
 
 
 @pytest.mark.parametrize("change", [
@@ -108,6 +105,8 @@ def test_overlay_hides_after_short_hold_for_stale_missing_or_centre_observation(
     assert all(w.isVisible() for w in controller.gaze_warnings)
     clock[0] += 1.01
     controller.tick()
+    for warning in controller.gaze_warnings:
+        warning.fade.setCurrentTime(warning.fade.duration())
     assert not any(w.isVisible() for w in controller.gaze_warnings)
 
 
@@ -147,11 +146,13 @@ def test_legacy_attention_keeps_original_banner_contract(running, monkeypatch):
         "attention_away": True, "attention_direction": "LEFT",
     }
     controller.tick()
-    assert all(w.isVisible() and w.message.text() == "Смотрите на экран"
+    assert all(w.isVisible() and w.message.text() == "Верните взгляд на монитор"
                for w in controller.gaze_warnings)
     agent.gaze_diagnostics.update(attention_away=False)
     controller.tick()
     assert all(w.isVisible() for w in controller.gaze_warnings)
     clock[0] += 1.01
     controller.tick()
+    for warning in controller.gaze_warnings:
+        warning.fade.setCurrentTime(warning.fade.duration())
     assert not any(w.isVisible() for w in controller.gaze_warnings)

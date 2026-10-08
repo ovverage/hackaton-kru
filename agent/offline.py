@@ -24,6 +24,7 @@ class OfflineAgent(Agent):
                 'token': secrets.token_urlsafe(32), 'device_id': 'local-' + uuid4().hex,
                 'account_id': 'offline', 'name': 'Локальный экзамен', 'targets': []})
         super().__init__(folder, server, transport)
+        self.local_access.initialize_demo()
         self.status = 'Локальный режим: выберите окно или вкладку.'
         self._face_http = None
         self._identity_mutex = threading.Lock()

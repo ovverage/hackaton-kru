@@ -1089,7 +1089,8 @@ def main():
     except ValueError as error:
         if args.headless:
             parser.error(str(error))
-        from PySide6.QtWidgets import QApplication, QMessageBox
+        from PySide6.QtWidgets import (QApplication)
+        from .localized_widgets import (QMessageBox)
 
         app = QApplication.instance() or QApplication(sys.argv[:1])  # noqa: F841 - retain Qt lifetime
         QMessageBox.critical(None, "Не удалось открыть Qorgau", str(error))

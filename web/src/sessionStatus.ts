@@ -1,3 +1,4 @@
+import { t } from "./i18n.ts";
 import { gazeEnabled, type Device, type Incident } from "./types.ts";
 
 export type TestEnvironment = "BROWSER" | "WINDOW";
@@ -12,23 +13,24 @@ export function preparationIssue(
   environment: TestEnvironment,
 ): string | null {
   const c = device.capabilities;
-  if (!device.online) return "Нет связи с компьютером";
-  if (!c.window_guard) return "Нужен Windows-агент с защитой окна";
+  if (!device.online) return t("Нет связи с компьютером");
+  if (!c.window_guard) return t("Нужен Windows-агент с защитой окна");
   // Current agents queue camera, calibration and target selection on the workstation.
   if (c.interactive_start) return null;
-  if (!c.camera || c.camera_fault) return "Подготовьте камеру в Qorgau";
-  if (!c.recording) return "Запись видео не готова";
+  if (!c.camera || c.camera_fault) return t("Подготовьте камеру в Qorgau");
+  if (!c.recording) return t("Запись видео не готова");
   if (environment === "BROWSER") {
     return device.targets.some(
       (target) => target.id === "qorgau-browser" && target.kind === "BROWSER",
     )
       ? null
-      : "Обновите агент: Qorgau Browser недоступен";
+      : t("Обновите агент: Qorgau Browser недоступен");
   }
   const target = device.targets.find((item) => item.id === "primary-window");
   if (!c.desktop_monitor || !c.selected_window || !target)
-    return "Выберите окно теста в Qorgau";
-  if (target.guardable === false) return "Для сайта используйте Qorgau Browser";
+    return t("Выберите окно теста в Qorgau");
+  if (target.guardable === false)
+    return t("Для сайта используйте Qorgau Browser");
   return null;
 }
 
@@ -44,38 +46,38 @@ export function controlSignals(device: Device): ControlSignal[] {
     label,
     detail: !current
       ? device.online
-        ? "Сеанс завершён"
-        : "Нет актуальных данных"
+        ? t("Сеанс завершён")
+        : t("Нет актуальных данных")
       : detail,
     tone: !current ? "idle" : ready ? "ready" : "attention",
   });
   return [
     signal(
-      "Камера",
+      t("Камера"),
       Boolean(c.camera && !c.camera_fault),
-      c.camera && !c.camera_fault ? "Камера готова" : "Камера недоступна",
+      c.camera && !c.camera_fault ? t("Камера готова") : t("Камера недоступна"),
     ),
     signal(
-      "Взгляд",
+      t("Взгляд"),
       gazeEnabled(device),
       gazeEnabled(device)
-        ? "Контроль взгляда включён"
-        : "Контроль взгляда недоступен",
+        ? t("Контроль взгляда включён")
+        : t("Контроль взгляда недоступен"),
     ),
     signal(
-      "Защита",
+      t("Защита"),
       Boolean(
         c.window_guard && !c.guard_fault && (running ? c.guard_active : true),
       ),
       !c.window_guard
-        ? "Защита ввода недоступна"
+        ? t("Защита ввода недоступна")
         : c.guard_fault
-          ? "Проверьте защиту окна"
+          ? t("Проверьте защиту окна")
           : running
             ? c.guard_active
-              ? "Защита ввода активна"
-              : "Защита ввода не подтверждена"
-            : "Защита включится при старте",
+              ? t("Защита ввода активна")
+              : t("Защита ввода не подтверждена")
+            : t("Защита включится при старте"),
     ),
   ];
 }

@@ -1,3 +1,4 @@
+import { t, localizedRecord } from "./i18n.ts";
 import { api, type Device, type Exam, type Snapshot } from "./types.ts";
 
 export type CommandType = "START" | "LOCK" | "UNLOCK" | "END_AND_RELEASE";
@@ -6,7 +7,7 @@ type Receive = (snapshot: Snapshot) => void;
 type Wait = () => Promise<void>;
 const pause: Wait = () => new Promise((resolve) => setTimeout(resolve, 1000));
 
-const failures: Record<string, string> = {
+const failures: Record<string, string> = localizedRecord({
   PHONE_STILL_PRESENT:
     "Телефон всё ещё в кадре. Уберите его и повторите продолжение.",
   FACE_STILL_ABSENT: "Лицо не видно. Вернитесь в кадр и повторите продолжение.",
@@ -39,7 +40,7 @@ const failures: Record<string, string> = {
   SESSION_NOT_RUNNING: "Контроль ещё не запущен. Сначала начните сеанс.",
   SESSION_COMPLETED: "Этот сеанс уже завершён. Создайте новый сеанс.",
   INVALID_URL: "Адрес теста недоступен. Проверьте выбранное окно в приложении.",
-};
+});
 
 export function commandFailure(
   error: string | undefined,
@@ -48,8 +49,8 @@ export function commandFailure(
   return (
     failures[error || ""] ||
     (expired
-      ? "Компьютер не ответил. Проверьте связь и повторите."
-      : error || "Команда не выполнена")
+      ? t("Компьютер не ответил. Проверьте связь и повторите.")
+      : error || t("Команда не выполнена"))
   );
 }
 
@@ -64,11 +65,11 @@ export async function sendDeviceCommand(
   receive(snapshot);
   const current = snapshot.devices.find((device) => device.id === target.id);
   if (!current || !target.exam_id || current.exam_id !== target.exam_id)
-    throw new Error("Сеанс компьютера изменился. Откройте его заново.");
+    throw new Error(t("Сеанс компьютера изменился. Откройте его заново."));
   if (type === "END_AND_RELEASE" && current.state.lifecycle === "COMPLETED")
     return;
   if (type === "UNLOCK" && current.state.lock_id !== target.state.lock_id)
-    throw new Error("Возникла новая блокировка. Проверьте её причину.");
+    throw new Error(t("Возникла новая блокировка. Проверьте её причину."));
   const sent = await api<Snapshot["commands"][number]>(
     `/devices/${target.id}/commands`,
     {
@@ -90,7 +91,7 @@ export async function sendDeviceCommand(
       throw new Error(commandFailure(ack.error, ack.status === "EXPIRED"));
   }
   throw new Error(
-    "Компьютер пока не подтвердил команду. Проверьте связь и состояние.",
+    t("Компьютер пока не подтвердил команду. Проверьте связь и состояние."),
   );
 }
 
@@ -109,13 +110,19 @@ export async function sendGroupCommand(
   const errors = results.flatMap((result, index) =>
     result.status === "rejected"
       ? [
-          `${targets[index].name}: ${result.reason instanceof Error ? result.reason.message : "Команда не выполнена"}`,
+          `${targets[index].name}: ${result.reason instanceof Error ? result.reason.message : t("Команда не выполнена")}`,
         ]
       : [],
   );
   if (errors.length)
     throw new Error(
-      `Не выполнили команду ${errors.length} из ${targets.length} компьютеров. ${errors.slice(0, 3).join(" ")}${errors.length > 3 ? ` Ещё ошибок: ${errors.length - 3}.` : ""}`,
+      t(
+        "Не выполнили команду {0} из {1} компьютеров. {2}{3}",
+        errors.length,
+        targets.length,
+        errors.slice(0, 3).join(" "),
+        errors.length > 3 ? t(" Ещё ошибок: {0}.", errors.length - 3) : "",
+      ),
     );
 }
 
@@ -130,7 +137,7 @@ export async function endExam(
   await sendGroupCommand(
     targets,
     "END_AND_RELEASE",
-    "Преподаватель завершил сеанс",
+    t("Преподаватель завершил сеанс"),
     receive,
     wait,
   );

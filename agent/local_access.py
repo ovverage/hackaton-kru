@@ -18,9 +18,18 @@ class LocalAccess:
         return bool(read_object(self.path).get('password_hash'))
 
     def set_password(self, password):
-        if not isinstance(password, str) or not 8 <= len(password) <= 128:
-            raise ValueError('Пароль должен содержать от 8 до 128 символов.')
+        if not isinstance(password, str) or not 5 <= len(password) <= 128:
+            raise ValueError('Пароль должен содержать от 5 до 128 символов.')
         atomic_json(self.path, {'password_hash': self.hasher.hash(password)})
+
+    @property
+    def demo_default(self):
+        return read_object(self.path).get('demo_default') is True
+
+    def initialize_demo(self):
+        """User-requested demo credential, only for a new local profile."""
+        if not self.path.exists():
+            atomic_json(self.path, {'password_hash': self.hasher.hash('admin'), 'demo_default': True})
 
     def verify(self, password):
         if time.monotonic() < self.retry_at:

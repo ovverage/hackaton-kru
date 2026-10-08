@@ -334,11 +334,11 @@ def test_head_warning_is_independent_of_eye_tracking_and_hold_never_changes_rule
                 "head_warning": True, "head_extreme": True, "head_direction": "RIGHT"}}
     before = deepcopy(snap)
     display = WarningDisplayHold()
-    assert "Сильный поворот головы вправо" in display.update(snap, 10)
+    assert display.update(snap, 10) == "Верните взгляд на монитор"
     assert snap == before
     snap["gaze_diagnostics"]["head_warning"] = False
     snap["gaze_diagnostics"]["head_extreme"] = False
-    assert "Повернитесь к монитору" in display.update(snap, 10.9)
+    assert display.update(snap, 10.9) == "Верните взгляд на монитор"
     assert display.update(snap, 11.01) == ""
     assert snap["gaze_seconds"] == 0
 
@@ -359,7 +359,7 @@ def test_face_unlock_worker_only_requests_authorized_agent_api(app):
     agent.teacher_face_unlock.assert_called_once()
 
 
-def test_eye_and_head_banner_hold_expire_independently():
+def test_eye_and_head_share_one_banner_until_both_are_clear():
     from agent.exam_ui import WarningDisplayHold
     snap = {"state": {"lifecycle": "RUNNING", "access": "OPEN"}, "camera": True,
             "gaze_diagnostics": {"source": "public_gaze_model", "reference_ready": True,
@@ -367,11 +367,12 @@ def test_eye_and_head_banner_hold_expire_independently():
                                  "head_reference_ready": True, "head_tracking_status": "tracked",
                                  "head_warning": True, "head_direction": "RIGHT"}}
     display = WarningDisplayHold()
-    assert "Поворот головы" in display.update(snap, 20)
+    assert display.update(snap, 20) == "Верните взгляд на монитор"
     snap['gaze_diagnostics']['head_warning'] = False
-    assert "Поворот головы" in display.update(snap, 20.8)
-    assert "Поворот головы" not in display.update(snap, 21.01)
-    assert "взгляд влево" in display.update(snap, 21.01)
+    assert display.update(snap, 20.8) == "Верните взгляд на монитор"
+    assert display.update(snap, 21.01) == "Верните взгляд на монитор"
+    snap['gaze_diagnostics']['gaze_observed_direction'] = 'SCREEN'
+    assert display.update(snap, 22.02) == ''
 
 
 def test_webengine_preflight_flags_preserve_security_and_existing_features(monkeypatch):

@@ -1,3 +1,4 @@
+import { t, getLocale } from "./i18n.ts";
 import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
@@ -60,13 +61,26 @@ function DistractionCounters({ device }: { device: Device }) {
   return (
     <span
       className="cnts"
-      aria-label={`Отвлечения: вниз ${device.state.counts.DOWN}, влево ${device.state.counts.LEFT}, вправо ${device.state.counts.RIGHT}`}
+      aria-label={t(
+        "Отвлечения: вниз {0}, влево {1}, вправо {2}",
+        device.state.counts.DOWN,
+        device.state.counts.LEFT,
+        device.state.counts.RIGHT,
+      )}
     >
       {(["DOWN", "LEFT", "RIGHT"] as const).map((direction) => (
         <span
           className="cnt"
           key={direction}
-          title={`${direction === "DOWN" ? "Вниз" : direction === "LEFT" ? "Влево" : "Вправо"}: ${device.state.counts[direction]} из 3`}
+          title={t(
+            "{0}: {1} из 3",
+            direction === "DOWN"
+              ? t("Вниз")
+              : direction === "LEFT"
+                ? t("Влево")
+                : t("Вправо"),
+            device.state.counts[direction],
+          )}
         >
           <span className="counter-arrow">
             {direction === "DOWN" ? "↓" : direction === "LEFT" ? "←" : "→"}
@@ -126,7 +140,7 @@ function EvidenceThumbnail({ event }: { event?: Incident }) {
         <>
           <Video size={22} aria-hidden="true" />
           <span className="thumb-empty">
-            {event?.media_expired_at ? "Запись удалена" : "Без записи"}
+            {event?.media_expired_at ? t("Запись удалена") : t("Без записи")}
           </span>
         </>
       )}
@@ -154,16 +168,16 @@ function EndSessionDialog({
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        aria-label="Завершить сеанс"
+        aria-label={t("Завершить сеанс")}
       >
         <header className="modal-head">
           <div>
-            <h2>Завершить сеанс?</h2>
-            <p>Контроль завершится на всех компьютерах.</p>
+            <h2>{t("Завершить сеанс?")}</h2>
+            <p>{t("Контроль завершится на всех компьютерах.")}</p>
           </div>
           <button
             className="icon-btn"
-            aria-label="Закрыть"
+            aria-label={t("Закрыть")}
             disabled={busy}
             onClick={onClose}
           >
@@ -171,11 +185,11 @@ function EndSessionDialog({
           </button>
         </header>
         <div className="modal-body">
-          <p>События, записи и решения останутся в отчёте.</p>
+          <p>{t("События, записи и решения останутся в отчёте.")}</p>
         </div>
         <footer className="modal-foot">
           <button className="btn" disabled={busy} onClick={onClose}>
-            Отмена
+            {t("Отмена")}
           </button>
           <button
             className="btn primary"
@@ -184,7 +198,7 @@ function EndSessionDialog({
               if (await onEnd()) onClose();
             }}
           >
-            Завершить сеанс
+            {t("Завершить сеанс")}
           </button>
         </footer>
       </section>
@@ -202,7 +216,7 @@ export default function Classroom(p: Props) {
   const environment: TestEnvironment =
     p.exam.environment.kind === "BROWSER" ? "BROWSER" : "WINDOW";
   const sorted = [...p.devices].sort((a, b) =>
-    a.name.localeCompare(b.name, "ru", { numeric: true }),
+    a.name.localeCompare(b.name, getLocale(), { numeric: true }),
   );
   const paused = sorted.filter((device) => device.state.access === "LOCKED");
   const roster = sorted.filter((device) =>
@@ -246,9 +260,9 @@ export default function Classroom(p: Props) {
 
   return (
     <>
-      <section className="session-controls" aria-label="Текущий сеанс">
+      <section className="session-controls" aria-label={t("Текущий сеанс")}>
         <label className="select session-select">
-          <span className="sr-only">Выбрать сеанс</span>
+          <span className="sr-only">{t("Выбрать сеанс")}</span>
           <select
             className="input"
             value={p.exam.id}
@@ -265,7 +279,8 @@ export default function Classroom(p: Props) {
         {ready > 0 && (
           <button className="btn primary" disabled={p.busy} onClick={p.onStart}>
             <Play size={15} />
-            Начать на {ready} {ready === 1 ? "компьютере" : "компьютерах"}
+            {t("Начать на")} {ready}{" "}
+            {ready === 1 ? t("компьютере") : t("компьютерах")}
           </button>
         )}
         {Object.values(p.exam.participants).some(
@@ -276,7 +291,7 @@ export default function Classroom(p: Props) {
             disabled={p.busy}
             onClick={() => setEnding(true)}
           >
-            Завершить сеанс
+            {t("Завершить сеанс")}
           </button>
         )}
       </section>
@@ -292,12 +307,13 @@ export default function Classroom(p: Props) {
         <section className="decision-section" aria-labelledby="decide-title">
           <div className="section-title">
             <h2 id="decide-title" className="t-h2">
-              Ждут вашего решения{" "}
+              {t("Ждут вашего решения")}{" "}
               <span className="danger-text">{paused.length}</span>
             </h2>
             <span className="t-small">
-              Продолжить тест можно только отсюда или на компьютере ученика:
-              паролем или по лицу преподавателя.
+              {t(
+                "Продолжить тест можно только отсюда или на компьютере ученика: паролем или по лицу преподавателя.",
+              )}
             </span>
           </div>
           <div className="decision-grid">
@@ -309,12 +325,12 @@ export default function Classroom(p: Props) {
                 (event) => event.type === device.state.reason,
               );
               const reason =
-                eventNames[device.state.reason || ""] || "Тест на паузе";
+                eventNames[device.state.reason || ""] || t("Тест на паузе");
               const description = device.state.reason?.startsWith("GAZE_")
-                ? "Третья отметка за взгляд в эту сторону в текущем круге"
+                ? t("Третья отметка за взгляд в эту сторону в текущем круге")
                 : device.state.reason === "PHONE_DETECTED"
-                  ? "Камера увидела телефон два раза подряд"
-                  : "Посмотрите событие и решите, можно ли продолжить тест";
+                  ? t("Камера увидела телефон два раза подряд")
+                  : t("Посмотрите событие и решите, можно ли продолжить тест");
               return (
                 <DecisionCard
                   key={device.id}
@@ -336,7 +352,11 @@ export default function Classroom(p: Props) {
                     pauseEvent ? (
                       <button
                         className="thumbnail-button"
-                        aria-label={`Запись: ${reason}, ${device.student || device.name}`}
+                        aria-label={t(
+                          "Запись: {0}, {1}",
+                          reason,
+                          device.student || device.name,
+                        )}
                         onClick={() => p.onEvent(pauseEvent.id)}
                       >
                         <EvidenceThumbnail event={pauseEvent} />
@@ -359,20 +379,22 @@ export default function Classroom(p: Props) {
       <div className="room-lower">
         <section className="card session-roster">
           <div className="roster-toolbar">
-            <h2 className="t-h2">{p.lockedOnly ? "На паузе" : "Пишут тест"}</h2>
+            <h2 className="t-h2">
+              {p.lockedOnly ? t("На паузе") : t("Пишут тест")}
+            </h2>
             <Tabs
-              ariaLabel="Фильтр компьютеров"
+              ariaLabel={t("Фильтр компьютеров")}
               items={[
-                { value: "all", label: "Все", count: roster.length },
+                { value: "all", label: t("Все"), count: roster.length },
                 {
                   value: "events",
-                  label: "С событиями",
+                  label: t("С событиями"),
                   count: withEvents.length,
                   tone: "warn",
                 },
                 {
                   value: "offline",
-                  label: "Нет связи",
+                  label: t("Нет связи"),
                   count: withoutConnection.length,
                 },
               ]}
@@ -385,8 +407,8 @@ export default function Classroom(p: Props) {
             <label className="roster-search">
               <Search size={15} aria-hidden="true" />
               <input
-                aria-label="Поиск компьютера или ученика"
-                placeholder="Поиск"
+                aria-label={t("Поиск компьютера или ученика")}
+                placeholder={t("Поиск")}
                 value={query}
                 onChange={(event) => {
                   setQuery(event.target.value);
@@ -399,13 +421,13 @@ export default function Classroom(p: Props) {
             <table className="table dense roster-table">
               <thead>
                 <tr>
-                  <th>Компьютер</th>
-                  <th>Отвлечения</th>
+                  <th>{t("Компьютер")}</th>
+                  <th>{t("Отвлечения")}</th>
                   <th>
-                    {p.lockedOnly ? "Причина паузы" : "Последнее событие"}
+                    {p.lockedOnly ? t("Причина паузы") : t("Последнее событие")}
                   </th>
                   <th>
-                    <span className="sr-only">Открыть</span>
+                    <span className="sr-only">{t("Открыть")}</span>
                   </th>
                 </tr>
               </thead>
@@ -419,7 +441,7 @@ export default function Classroom(p: Props) {
                     const issue =
                       device.state.lifecycle === "RUNNING" &&
                       device.capabilities.camera_fault
-                        ? "Камера не отвечает"
+                        ? t("Камера не отвечает")
                         : preparationIssue(device, environment);
                     const latest = ownEvents[0];
                     return (
@@ -448,14 +470,14 @@ export default function Classroom(p: Props) {
                               <small>
                                 {device.name},{" "}
                                 {device.state.access === "LOCKED"
-                                  ? "тест на паузе"
+                                  ? t("тест на паузе")
                                   : !device.online
-                                    ? "нет связи"
+                                    ? t("нет связи")
                                     : device.state.lifecycle === "RUNNING"
-                                      ? "пишет тест"
+                                      ? t("пишет тест")
                                       : device.state.lifecycle === "COMPLETED"
-                                        ? "тест завершён"
-                                        : "ждёт старта"}
+                                        ? t("тест завершён")
+                                        : t("ждёт старта")}
                               </small>
                               {issue && device.online && (
                                 <small className="todo">{issue}</small>
@@ -467,17 +489,17 @@ export default function Classroom(p: Props) {
                           {device.online ? (
                             <DistractionCounters device={device} />
                           ) : (
-                            <span className="muted">Нет данных</span>
+                            <span className="muted">{t("Нет данных")}</span>
                           )}
                         </td>
                         <td>
                           {device.state.access === "LOCKED" ? (
                             eventNames[device.state.reason || ""] ||
-                            "Тест на паузе"
+                            t("Тест на паузе")
                           ) : latest ? (
                             eventNames[latest.type] || latest.type
                           ) : (
-                            <span className="muted">Событий нет</span>
+                            <span className="muted">{t("Событий нет")}</span>
                           )}
                           {latest && (
                             <small
@@ -487,9 +509,9 @@ export default function Classroom(p: Props) {
                             >
                               {clock(latest.created_at).slice(0, 5)}
                               {latest.decision === "PENDING"
-                                ? ", ждёт решения"
+                                ? t(", ждёт решения")
                                 : latest.media.length
-                                  ? `, ${latest.media.length} видео`
+                                  ? t(", {0} видео", latest.media.length)
                                   : ""}
                             </small>
                           )}
@@ -497,7 +519,7 @@ export default function Classroom(p: Props) {
                         <td>
                           <button
                             className="icon-btn"
-                            aria-label={`Открыть ${device.name}`}
+                            aria-label={t("Открыть {0}", device.name)}
                             onClick={() => p.onDevice(device.id)}
                           >
                             <ChevronRight size={17} />
@@ -512,33 +534,33 @@ export default function Classroom(p: Props) {
           {!filtered.length && (
             <div className="empty">
               {query
-                ? "Компьютер не найден"
+                ? t("Компьютер не найден")
                 : p.lockedOnly
-                  ? "Компьютеров на паузе нет"
-                  : "Нет компьютеров в этом списке"}
+                  ? t("Компьютеров на паузе нет")
+                  : t("Нет компьютеров в этом списке")}
             </div>
           )}
           <footer className="roster-footer">
             <span>
-              Показано{" "}
-              {Math.min(8, Math.max(0, filtered.length - currentPage * 8))} из{" "}
-              {filtered.length}
+              {t("Показано")}{" "}
+              {Math.min(8, Math.max(0, filtered.length - currentPage * 8))}{" "}
+              {t("из")} {filtered.length}
             </span>
             <div className="pagination">
               <button
                 className="icon-btn"
-                aria-label="Предыдущая страница"
+                aria-label={t("Предыдущая страница")}
                 disabled={!currentPage}
                 onClick={() => setPage(currentPage - 1)}
               >
                 <ChevronLeft size={15} />
               </button>
               <span>
-                {currentPage + 1} из {pages}
+                {currentPage + 1} {t("из")} {pages}
               </span>
               <button
                 className="icon-btn"
-                aria-label="Следующая страница"
+                aria-label={t("Следующая страница")}
                 disabled={currentPage + 1 >= pages}
                 onClick={() => setPage(currentPage + 1)}
               >
@@ -553,11 +575,11 @@ export default function Classroom(p: Props) {
         >
           <header>
             <h2 id="session-review-title" className="t-h2">
-              Ждут решения{" "}
+              {t("Ждут решения")}{" "}
               <span className="review-count">{summary.pending}</span>
             </h2>
             <button className="btn sm" onClick={p.onReview}>
-              Все события
+              {t("Все события")}
             </button>
           </header>
           {reviewQueue.length ? (
@@ -586,7 +608,7 @@ export default function Classroom(p: Props) {
                       </small>
                       <small className={isPause ? "danger-text" : ""}>
                         {clock(event.created_at).slice(0, 5)}
-                        {isPause ? ", тест на паузе" : ""}
+                        {isPause ? t(", тест на паузе") : ""}
                       </small>
                     </span>
                   </button>
@@ -596,7 +618,7 @@ export default function Classroom(p: Props) {
           ) : (
             <div className="review-queue-empty">
               <ClipboardCheck size={21} />
-              <span>Все события проверены.</span>
+              <span>{t("Все события проверены.")}</span>
             </div>
           )}
         </aside>
