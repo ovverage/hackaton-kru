@@ -348,6 +348,11 @@ class StudentWindow(QWidget):
         camera_content.addWidget(self.camera_status)
         self.gaze_status = label("", "small")
         self.gaze_status.setWordWrap(True)
+        # Reserve the diagnostic block's full three-line height. Qt can
+        # otherwise shave one text-leading unit from a wrapped QLabel after
+        # other windows change the application font metrics, clipping the
+        # final gaze/head angle line in packaged Linux and Windows builds.
+        self.gaze_status.setMinimumHeight(120)
         camera_content.addWidget(self.gaze_status)
         camera_row.addLayout(camera_content, 1)
         sheet_layout.addLayout(camera_row)
