@@ -1,18 +1,17 @@
 .teacher-faces {
   display: grid;
-  gap: 20px;
+  gap: 24px;
+  min-width: 0;
 }
 .teacher-face-intro {
   display: flex;
+  align-items: flex-start;
   gap: 16px;
-  padding: 24px;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  background: var(--sheet);
+  padding: 22px 24px;
 }
 .teacher-face-intro > svg {
-  flex-shrink: 0;
-  color: var(--ink);
+  flex: none;
+  color: var(--blue);
   margin-top: 4px;
 }
 .q .teacher-face-intro h2 {
@@ -26,34 +25,36 @@
 }
 .teacher-face-columns {
   display: grid;
-  grid-template-columns: minmax(270px, 1fr) minmax(320px, 1.3fr);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 24px;
 }
 .teacher-face-card {
   padding: 24px;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  background: var(--sheet);
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 .q .teacher-face-card h3 {
-  margin: 0 0 22px;
+  margin: 0 0 20px;
   font-size: 16px;
   display: flex;
   align-items: center;
   gap: 12px;
 }
 .teacher-face-card label {
-  display: grid;
-  gap: 8px;
   margin: 18px 0;
-  font-size: 14px;
 }
-.teacher-face-card input {
-  min-width: 0;
-  width: 100%;
-  padding: 12px;
-  border: 1px solid var(--rule);
-  border-radius: 9px;
+.teacher-face-card input[type="file"] {
+  height: auto;
+  min-height: 44px;
+  padding: 10px 12px;
+  max-width: 100%;
+  font-size: 12px;
+}
+.teacher-face-card > .btn {
+  margin-top: 20px;
 }
 .teacher-face-list {
   list-style: none;
@@ -65,39 +66,76 @@
   align-items: center;
   gap: 12px;
   padding: 16px 0;
-  border-top: 1px solid var(--rule-soft);
+  border-top: 1px solid var(--line-soft);
+}
+.teacher-face-list li:first-child {
+  border-top: 0;
 }
 .teacher-face-list li > div {
   flex: 1;
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.teacher-face-list small {
-  display: block;
-  color: var(--pencil);
-  margin-top: 6px;
-}
-.teacher-face-feedback {
-  padding: 14px 18px;
+.teacher-initial {
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
-  background: var(--ink-tint);
-  color: var(--ink-strong);
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: var(--blue-tint);
+  color: var(--navy-800);
+  font-weight: 600;
+}
+.teacher-face-list small,
+.teacher-access-table small {
+  display: block;
+  color: var(--muted);
+  margin-top: 6px;
+  font-size: 12px;
+}
+.teacher-face-list .icon-btn {
+  color: var(--muted);
+}
+.teacher-face-list .icon-btn:hover {
+  color: var(--red);
+  background: var(--red-tint);
 }
 .teacher-face-feedback.error {
   background: var(--red-tint);
   color: var(--red);
+}
+.teacher-face-feedback {
+  overflow-wrap: anywhere;
+}
+.teacher-access-table {
+  margin-top: 20px;
+}
+.teacher-access-table table {
+  min-width: 620px;
+}
+.teacher-access-table th {
+  white-space: nowrap;
 }
 @media (max-width: 900px) {
   .teacher-face-columns {
     grid-template-columns: 1fr;
   }
 }
-@media (max-width: 640px) {
-  .teacher-face-access-list li {
-    flex-direction: column;
-    align-items: stretch;
+@media (max-width: 720px) {
+  .teacher-face-card {
+    padding: 18px;
   }
-  .teacher-face-access-list button {
-    align-self: flex-start;
+  .teacher-face-intro {
+    padding: 18px;
+  }
+  .teacher-face-intro > svg {
+    width: 20px;
+  }
+  .teacher-faces {
+    gap: 16px;
+  }
+  .teacher-face-columns {
+    gap: 16px;
   }
 }

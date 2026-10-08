@@ -1,10 +1,16 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Camera, LoaderCircle, Trash2, UserRound } from "lucide-react";
+import { Camera, LoaderCircle, Trash2 } from "lucide-react";
 import { api } from "./types";
+import { Pill } from "./components/Design";
 import "./teacherFaces.css";
 
 type Teacher = { id: string; name: string; created_at: number };
-type FaceDevice = { id: string; name: string; enabled: boolean; public_enrollment: boolean };
+type FaceDevice = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  public_enrollment: boolean;
+};
 
 export default function TeacherFaces() {
   const [faces, setFaces] = useState<Teacher[]>([]);
@@ -38,13 +44,18 @@ export default function TeacherFaces() {
     setError("");
     setMessage("");
     try {
-      await api(`/devices/${encodeURIComponent(device.id)}/teacher-face-access`, {
-        enabled: !device.enabled,
-      });
+      await api(
+        `/devices/${encodeURIComponent(device.id)}/teacher-face-access`,
+        {
+          enabled: !device.enabled,
+        },
+      );
       await refresh();
-      setMessage(device.enabled
-        ? "Разрешение отозвано. Сохранённые в памяти образцы перестанут использоваться не позднее чем через минуту."
-        : "Доступ компьютеру разрешён. Образцы появятся при следующем подключении к серверу.");
+      setMessage(
+        device.enabled
+          ? "Разрешение отозвано. Сохранённые в памяти образцы перестанут использоваться не позднее чем через минуту."
+          : "Доступ компьютеру разрешён. Образцы появятся при следующем подключении к серверу.",
+      );
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -107,39 +118,40 @@ export default function TeacherFaces() {
   }
   return (
     <section className="teacher-faces">
-      <div className="teacher-face-intro">
+      <div className="teacher-face-intro note ink">
         <Camera size={26} />
         <div>
-          <h2>Разблокировка преподавателем</h2>
+          <h2>Продолжение теста по лицу преподавателя</h2>
           <p>
-            Добавьте фотографию преподавателя. На заблокированном компьютере он
-            смотрит в камеру, поворачивает голову по подсказке и возвращается в
-            центр. Для проверки нужна связь с сервером; вход по паролю остаётся
-            доступен.
+            Добавьте фотографию преподавателя. На компьютере с тестом на паузе
+            он смотрит в камеру, поворачивает голову по подсказке и возвращается
+            в центр. Для проверки нужна связь с сервером; вход по паролю
+            остаётся доступен.
           </p>
           <p className="fine">
-            На компьютерах с разрешённым доступом распознанный преподаватель не учитывается как второе лицо. Проверка
-            движения — дополнительный шаг, она не гарантирует защиту от подмены
-            изображения.
+            На компьютерах с разрешённым доступом распознанный преподаватель не
+            учитывается как второе лицо. Проверка движения — дополнительный шаг,
+            она не гарантирует защиту от подмены изображения.
           </p>
         </div>
       </div>
       {error && (
-        <div className="teacher-face-feedback error" role="alert">
+        <div className="teacher-face-feedback note error" role="alert">
           {error}
         </div>
       )}
       {message && (
-        <div className="teacher-face-feedback" role="status">
+        <div className="teacher-face-feedback note ink" role="status">
           {message}
         </div>
       )}
       <div className="teacher-face-columns">
-        <form className="teacher-face-card" onSubmit={submit}>
+        <form className="teacher-face-card card" onSubmit={submit}>
           <h3>Добавить преподавателя</h3>
-          <label>
+          <label className="field">
             Имя
             <input
+              className="input"
               value={name}
               onChange={(event) => setName(event.target.value)}
               maxLength={80}
@@ -148,9 +160,10 @@ export default function TeacherFaces() {
               placeholder="Имя и фамилия"
             />
           </label>
-          <label>
+          <label className="field">
             Фотография
             <input
+              className="input"
               key={fileKey}
               type="file"
               accept="image/jpeg,image/png"
@@ -177,7 +190,7 @@ export default function TeacherFaces() {
             Добавить
           </button>
         </form>
-        <div className="teacher-face-card">
+        <div className="teacher-face-card card">
           <h3>
             Преподаватели <span className="fine">{faces.length} / 20</span>
           </h3>
@@ -189,7 +202,9 @@ export default function TeacherFaces() {
             <ul className="teacher-face-list">
               {faces.map((face) => (
                 <li key={face.id}>
-                  <UserRound size={22} />
+                  <span className="teacher-initial" aria-hidden="true">
+                    {face.name.trim().charAt(0)}
+                  </span>
                   <div>
                     <strong>{face.name}</strong>
                     <small>
@@ -200,7 +215,7 @@ export default function TeacherFaces() {
                     </small>
                   </div>
                   <button
-                    className="btn"
+                    className="icon-btn"
                     disabled={busy}
                     onClick={() => void remove(face)}
                     aria-label={`Удалить ${face.name}`}
@@ -213,7 +228,7 @@ export default function TeacherFaces() {
           )}
         </div>
       </div>
-      <section className="teacher-face-card">
+      <section className="teacher-face-card card">
         <h3>Доступ компьютеров к образцам лиц</h3>
         <p className="fine">
           Исключение преподавателей из подсчёта лиц требует передачи компьютеру
@@ -222,29 +237,60 @@ export default function TeacherFaces() {
           подключение само по себе не даёт этого разрешения.
         </p>
         <p className="fine">
-          Проверка лица для разблокировки выполняется на сервере отдельно.
+          Проверка лица для продолжения теста выполняется на сервере отдельно.
           Локальный экзамен и локальный пароль работают без этого разрешения.
         </p>
-        {loading ? <p role="status">Загружаем компьютеры…</p> : devices.length === 0 ? (
+        {loading ? (
+          <p role="status">Загружаем компьютеры…</p>
+        ) : devices.length === 0 ? (
           <p className="fine">Подключённых компьютеров пока нет.</p>
         ) : (
-          <ul className="teacher-face-list teacher-face-access-list">
-            {devices.map((device) => (
-              <li key={device.id}>
-                <div>
-                  <strong>{device.name}</strong>
-                  <small>ID: {device.id}</small>
-                  <small>{device.enabled ? "Доступ разрешён" : "Ожидает разрешения преподавателя"}</small>
-                  {device.enabled && !device.public_enrollment && (
-                    <small>Компьютер подключён по коду или установщику преподавателя.</small>
-                  )}
-                </div>
-                <button className="btn" disabled={busy} onClick={() => void setDeviceAccess(device)}>
-                  {device.enabled ? "Отозвать разрешение" : "Разрешить этому компьютеру"}
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div className="table-box teacher-access-table">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Компьютер</th>
+                  <th>Доступ к образцам</th>
+                  <th>
+                    <span className="sr-only">Действие</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {devices.map((device) => (
+                  <tr key={device.id}>
+                    <td>
+                      <strong>{device.name}</strong>
+                      <small>ID: {device.id}</small>
+                      {device.enabled && !device.public_enrollment && (
+                        <small>
+                          Подключён по коду или установщику преподавателя
+                        </small>
+                      )}
+                    </td>
+                    <td>
+                      <Pill tone={device.enabled ? "ok" : "warn"}>
+                        {device.enabled
+                          ? "Доступ разрешён"
+                          : "Ожидает разрешения"}
+                      </Pill>
+                    </td>
+                    <td>
+                      <button
+                        className={`btn sm ${device.enabled ? "" : "primary"}`}
+                        disabled={busy}
+                        onClick={() => void setDeviceAccess(device)}
+                      >
+                        {device.enabled
+                          ? "Отозвать разрешение"
+                          : "Разрешить этому компьютеру"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </section>

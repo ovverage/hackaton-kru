@@ -55,6 +55,7 @@ export type Exam = {
   mode: string;
   status: string;
   created_at: number;
+  rule_version?: string;
   simulated: boolean;
   environment: { kind: string; target_id: string; url?: string };
   participants: Record<string, Participant>;
@@ -82,6 +83,8 @@ export type Incident = {
     id: string;
     url: string;
     mime: string;
+    uploaded_at?: number;
+    expires_at?: number;
     clip_start?: number;
     clip_end?: number;
     complete?: boolean | null;
@@ -104,7 +107,7 @@ export type Snapshot = {
 export async function api<T = any>(path: string, body?: unknown): Promise<T> {
   if (import.meta.env?.DEV) {
     const { fixtureApi } = await import("./dev/fixtures");
-    const result = await fixtureApi(path);
+    const result = await fixtureApi(path, body);
     if (result.handled) return result.value as T;
   }
   const response = await fetch("/api" + path, {
@@ -144,7 +147,7 @@ export const eventNames: Record<string, string> = {
   ENVIRONMENT_ATTEMPT: "Попытка выйти из теста",
   SERVER_UNAVAILABLE: "Нет связи с сервером",
   GUARD_UNAVAILABLE: "Защита окна не работает",
-  DISPLAY_CHANGED: "Изменилось число экранов",
+  DISPLAY_CHANGED: "Изменился экран",
   CAMERA_FROZEN: "Камера замерла",
   AGENT_RESTARTED: "Qorgau перезапущен",
   AGENT_FAILURE: "Сбой Qorgau",

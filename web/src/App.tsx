@@ -1,16 +1,22 @@
 import Classroom from "./Classroom";
 import TeacherFaces from "./TeacherFaces";
-import ControlStatus from "./ControlStatus";
 import {
   Bubble,
   Clock,
   Logo,
-  NavOption,
+  NavItem,
+  MiniBar,
+  Pill,
+  Tabs,
   RegMarks,
-  Sheet,
   StepBubble,
 } from "./components/Design";
-import { preparationIssue, type TestEnvironment } from "./sessionStatus";
+import {
+  controlSignals,
+  pendingEvents,
+  preparationIssue,
+  type TestEnvironment,
+} from "./sessionStatus";
 import { useDialogFocus } from "./useDialogFocus";
 import {
   endExam,
@@ -27,11 +33,11 @@ import {
 } from "react";
 import {
   ShieldCheck,
-  LayoutDashboard,
+  LayoutGrid,
   Monitor,
   ClipboardCheck,
   History,
-  Settings2,
+  SlidersHorizontal,
   Plus,
   ArrowUpRight,
   ChevronRight,
@@ -40,11 +46,18 @@ import {
   LockKeyhole,
   UnlockKeyhole,
   Check,
-  Wifi,
-  WifiOff,
   Eye,
   Smartphone,
-  Users,
+  UsersRound,
+  Pause,
+  Globe,
+  AppWindow,
+  EyeOff,
+  MicOff,
+  Camera,
+  Trash2,
+  ChevronLeft,
+  ChevronDown,
   Download,
   LogOut,
   Video,
@@ -83,12 +96,18 @@ function Modal({
   children,
   onClose,
   wide = false,
+  className = "",
+  headerExtra,
+  avatar,
 }: {
   title: string;
   subtitle?: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
+  className?: string;
+  headerExtra?: ReactNode;
+  avatar?: string;
 }) {
   const dialog = useRef<HTMLElement>(null);
   useDialogFocus(dialog, onClose);
@@ -105,13 +124,19 @@ function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={"modal " + (wide ? "wide" : "")}
+        className={`modal ${wide ? "wide" : ""} ${className}`}
       >
         <header className="modal-head">
+          {avatar && (
+            <span className="modal-avatar" aria-hidden="true">
+              {avatar}
+            </span>
+          )}
           <div>
             <h2>{title}</h2>
             {subtitle && <p>{subtitle}</p>}
           </div>
+          {headerExtra}
           <button className="icon-btn" onClick={onClose} aria-label="Закрыть">
             <X size={20} />
           </button>
@@ -131,10 +156,12 @@ function Auth({
   const [name, setName] = useState(""),
     [password, setPassword] = useState(""),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [visible, setVisible] = useState(false);
   async function submit(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
+    setError("");
     try {
       onLogin(
         (await api("/auth/" + (setup ? "setup" : "login"), { name, password }))
@@ -149,66 +176,67 @@ function Auth({
   return (
     <div className="q auth-layout redesign-auth">
       <section className="auth-story">
-        <Logo />
+        <Logo onDark />
         <div className="auth-message">
-          <h1>Вся аудитория на&nbsp;одном экране</h1>
+          <h1>
+            Вся аудитория
+            <br />
+            на одном экране
+          </h1>
           <p>
-            Qorgau замечает телефон, второе лицо и долгий взгляд в сторону прямо
-            на компьютере ученика и присылает вам короткое видео. Было ли
-            нарушение, решаете вы.
+            Qorgau замечает телефон, второе лицо и долгий взгляд в сторону. Вы
+            получаете короткую запись и решаете, было ли нарушение.
           </p>
-          <Sheet className="auth-answer-sheet">
-            <RegMarks />
-            <div className="auth-bubbles" aria-hidden="true">
-              {Array.from({ length: 24 }, (_, index) => (
-                <Bubble
-                  key={index}
-                  size="lg"
-                  state={
-                    index === 6 || index === 13
-                      ? "pause"
-                      : index === 10 || index === 19
-                        ? "off"
-                        : "on"
-                  }
-                  flag={index === 3 || index === 15}
-                />
-              ))}
+          <div className="auth-example" aria-hidden="true">
+            <div className="auth-example-head">
+              <Bubble state="pause" /> Тест на паузе <span>09:52</span>
             </div>
-            <div className="legend auth-legend">
-              <span>
-                <Bubble state="on" size="sm" />
-                пишет тест
-              </span>
-              <span className="danger-text">
-                <Bubble state="pause" size="sm" />
-                на паузе
-              </span>
-              <span>
-                <Bubble size="sm" />
-                ждёт старта
-              </span>
-              <span>
-                <Bubble state="off" size="sm" />
-                нет связи
-              </span>
+            <div className="auth-example-body">
+              <div className="cam">
+                <Video size={38} />
+                <RegMarks light />
+              </div>
+              <div>
+                <strong>Телефон в кадре</strong>
+                <p>Айгерим Нурланова</p>
+                <small>K301-PC14</small>
+                <Pill tone="warn">Ждёт вашего решения</Pill>
+              </div>
             </div>
-          </Sheet>
+            <div className="auth-example-foot">
+              Посмотреть запись <ChevronRight size={16} />
+            </div>
+          </div>
+          <div className="auth-facts">
+            <span>
+              <Video size={18} />
+              Видео только вокруг события
+            </span>
+            <span>
+              <MicOff size={18} />
+              Звук не записывается
+            </span>
+            <span>
+              <ShieldCheck size={18} />
+              Решение за преподавателем
+            </span>
+          </div>
         </div>
         <footer>Команда PEEP. Кейс КРУ и Qostanai Hub, 2026</footer>
       </section>
       <main className="auth-form">
         <div className="auth-card">
-          <h2>{setup ? "Создание кабинета" : "Вход в кабинет"}</h2>
+          <h2>{setup ? "Создать кабинет" : "Вход в кабинет"}</h2>
           <p>
             {setup
-              ? "Создайте локальную учётную запись. Она будет управлять сеансами этой установки."
-              : "Войдите, чтобы продолжить работу с аудиторией."}
+              ? "Создайте учётную запись преподавателя для этой установки Qorgau."
+              : "Войдите, чтобы увидеть аудиторию и продолжить работу."}
           </p>
           <form onSubmit={submit}>
-            <label>
+            <label className="field">
               Имя преподавателя
               <input
+                className="input"
                 autoFocus
                 required
                 minLength={2}
@@ -219,29 +247,50 @@ function Auth({
                 placeholder="Например, Айгуль Сапарова"
               />
             </label>
-            <label>
-              Пароль
-              <input
-                required
-                type="password"
-                minLength={8}
-                maxLength={128}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete={setup ? "new-password" : "current-password"}
-                placeholder="Не меньше 8 символов"
-              />
+            <label className="field">
+              {setup ? "Придумайте пароль" : "Пароль"}
+              <span className="password-field">
+                <input
+                  className="input"
+                  required
+                  type={visible ? "text" : "password"}
+                  minLength={8}
+                  maxLength={128}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete={setup ? "new-password" : "current-password"}
+                  placeholder="Не меньше 8 символов"
+                />
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label={visible ? "Скрыть пароль" : "Показать пароль"}
+                  onClick={() => setVisible(!visible)}
+                >
+                  {visible ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </span>
             </label>
-            {error && <div className="error">{error}</div>}
-            <button className="btn primary full" disabled={busy}>
-              {busy ? (
-                <LoaderCircle className="spin" size={18} />
-              ) : (
-                <ArrowUpRight size={18} />
-              )}{" "}
+            {error && (
+              <div className="error" role="alert">
+                {error}
+              </div>
+            )}
+            <button className="btn primary block" disabled={busy}>
+              {busy && <LoaderCircle className="spin" size={18} />}
               {setup ? "Создать кабинет" : "Войти"}
             </button>
           </form>
+          <div className="auth-protection">
+            <LockKeyhole size={20} />
+            <div>
+              <strong>Вход защищён</strong>
+              <p>
+                После 5 неверных попыток — пауза на минуту. Вход действует 12
+                часов.
+              </p>
+            </div>
+          </div>
           <p className="fine">
             Видео и решения хранятся на сервере этой установки Qorgau. Камеры
             работают только на компьютерах с открытым Qorgau.
@@ -257,7 +306,7 @@ export default function App() {
       user: { name: string } | null;
     } | null>(null),
     [data, setData] = useState<Snapshot>(empty),
-    [page, setPage] = useState("devices"),
+    [page, setPage] = useState("room"),
     [connected, setConnected] = useState(false),
     [fatal, setFatal] = useState(""),
     [toast, setToast] = useState(""),
@@ -301,7 +350,9 @@ export default function App() {
       ? data.devices.filter((d) => d.online)
       : [];
   const user = auth?.user;
-  const exam = data.exams.find((x) => x.id === examId) || data.exams[0];
+  const exam =
+    data.exams.find((x) => x.id === examId) ||
+    data.exams.find((x) => x.status !== "COMPLETED");
   const devices = exam
     ? data.devices
         .filter((d) => d.exam_id === exam.id)
@@ -312,7 +363,10 @@ export default function App() {
     : [];
   const sessionActive = Boolean(exam && exam.status !== "COMPLETED");
   useEffect(() => {
-    if (sessionActive && !["room", "blocked", "teachers"].includes(page))
+    if (
+      sessionActive &&
+      !["room", "blocked", "teachers", "review"].includes(page)
+    )
       setPage("room");
     if (!sessionActive && page === "blocked") setPage("room");
   }, [sessionActive, page]);
@@ -321,7 +375,13 @@ export default function App() {
     devices.find((d) => d.id === deviceId) ||
     data.devices.find((d) => d.id === deviceId);
   const selectedEvent = data.events.find((e) => e.id === eventId);
-  const pending = data.events.filter((e) => e.decision === "PENDING");
+  const pending = pendingEvents(data.events, Infinity);
+  const queue = pendingEvents(
+    selectedEvent
+      ? data.events.filter((e) => e.exam_id === selectedEvent.exam_id)
+      : events,
+    Infinity,
+  );
   async function refresh() {
     receive(await api<Snapshot>("/snapshot"));
   }
@@ -339,7 +399,10 @@ export default function App() {
       refresh()
         .then(() => setConnected(true))
         .catch((e) => setToast(e.message));
-      return;
+      const fixtureTimer = window.setInterval(() => {
+        refresh().catch((e) => setToast(e.message));
+      }, 2000);
+      return () => window.clearInterval(fixtureTimer);
     }
     let stopped = false;
     let socket: WebSocket;
@@ -414,17 +477,17 @@ export default function App() {
     );
   const nav = sessionActive
     ? [
-        { id: "room", name: "Пишут тест", icon: Monitor },
-        { id: "blocked", name: "На паузе", icon: LockKeyhole },
-        { id: "teachers", name: "Преподаватели", icon: Users },
+        { id: "room", name: "Аудитория", icon: LayoutGrid },
+        { id: "blocked", name: "На паузе", icon: Pause },
+        { id: "teachers", name: "Преподаватели", icon: UsersRound },
       ]
     : [
-        { id: "room", name: "Аудитория", icon: LayoutDashboard },
+        { id: "room", name: "Аудитория", icon: LayoutGrid },
         { id: "review", name: "События", icon: ClipboardCheck },
         { id: "history", name: "Сеансы и отчёты", icon: History },
         { id: "devices", name: "Компьютеры", icon: Monitor },
-        { id: "rules", name: "Правила контроля", icon: Settings2 },
-        { id: "teachers", name: "Преподаватели", icon: Users },
+        { id: "rules", name: "Правила контроля", icon: SlidersHorizontal },
+        { id: "teachers", name: "Преподаватели", icon: UsersRound },
       ];
   return (
     <div className="q shell app">
@@ -436,7 +499,7 @@ export default function App() {
             setPage("room");
           }}
         >
-          <Logo />
+          <Logo onDark />
         </button>
         <nav className="nav" aria-label="Разделы">
           {nav.map((n) => (
@@ -447,7 +510,9 @@ export default function App() {
               onClick={() => setPage(n.id)}
               className={page === n.id ? "active" : ""}
             >
-              <NavOption
+              <NavItem
+                icon={n.icon}
+                tone={n.id === "blocked" ? "red" : "amber"}
                 badge={
                   n.id === "blocked"
                     ? devices.filter((d) => d.state.access === "LOCKED").length
@@ -457,7 +522,7 @@ export default function App() {
                 }
               >
                 {n.name}
-              </NavOption>
+              </NavItem>
             </button>
           ))}
         </nav>
@@ -504,14 +569,14 @@ export default function App() {
                   ? "На паузе"
                   : page === "room"
                     ? sessionActive
-                      ? exam?.title || "Пишут тест"
+                      ? exam?.title || "Аудитория"
                       : "Аудитория"
                     : page === "review"
                       ? "События"
                       : page === "history"
                         ? "Сеансы и отчёты"
                         : page === "devices"
-                          ? "Компьютеры аудитории"
+                          ? "Компьютеры"
                           : page === "teachers"
                             ? "Преподаватели"
                             : "Правила контроля"}
@@ -519,17 +584,17 @@ export default function App() {
               <p>
                 {["room", "blocked"].includes(page)
                   ? exam
-                    ? `${exam.title} · ${exam.group}`
-                    : "Подключите компьютеры и начните первый сеанс."
+                    ? `Группа ${exam.group}, аудитория ${exam.room}. ${sessionActive ? "Тест идёт с " + shortClock(exam.created_at) + (exam.environment.kind === "BROWSER" ? " в Qorgau Browser" : " в программе на компьютере") : "Завершённый сеанс"}`
+                    : "Подготовьте компьютеры, выберите тест и начните сеанс."
                   : page === "review"
-                    ? "Изучите контекст и подтвердите или отклоните событие."
+                    ? "Посмотрите запись и примите решение по каждому событию."
                     : page === "history"
-                      ? "Результаты контроля, решения и записи каждого сеанса."
+                      ? "События, решения и отчёты по проведённым тестам."
                       : page === "devices"
-                        ? "Здесь только компьютеры с работающим приложением Qorgau."
+                        ? "Только те, где Qorgau открыт прямо сейчас. Подготовьте их перед тестом."
                         : page === "teachers"
-                          ? "Лица преподавателей для подтверждения на рабочем месте."
-                          : "Отдельные счётчики направлений. Контекст вместо автоматических обвинений."}
+                          ? "Лица преподавателей для продолжения теста на компьютере ученика."
+                          : "Что замечает Qorgau, когда ставит тест на паузу и что решаете вы."}
               </p>
             </div>
             {!sessionActive &&
@@ -541,62 +606,24 @@ export default function App() {
                   <Plus size={18} /> Новый сеанс
                 </button>
               )}
-            {page === "devices" && (
-              <a className="btn primary" href="/api/student/download">
-                <Download size={18} /> Скачать приложение
+            {page === "room" && !sessionActive && (
+              <a className="btn" href="/api/student/download">
+                <Download size={18} /> Скачать Qorgau для учеников
               </a>
             )}
           </div>
           {["room", "blocked"].includes(page) && (
             <>
               {!exam ? (
-                <section className="welcome panel">
-                  <div className="welcome-icon">
-                    <Monitor size={35} />
-                  </div>
-                  <Badge tone="green">
-                    Подключено компьютеров: {liveDevices.length}
-                  </Badge>
-                  <h2>Компьютеры появляются автоматически</h2>
-                  <p>
-                    Установите и запустите Qorgau на компьютере ученика. Он
-                    появится в кабинете после подключения к серверу. Включите
-                    камеру и выберите компьютер для контроля.
-                  </p>
-                  <div className="button-row">
-                    <button
-                      className="btn primary"
-                      disabled={!liveDevices.length}
-                      onClick={() => setNewExam(true)}
-                    >
-                      <Play size={18} /> Новый сеанс
-                    </button>
-                    <button className="btn" onClick={() => setPage("devices")}>
-                      Компьютеры онлайн · {liveDevices.length}{" "}
-                      <ArrowUpRight size={16} />
-                    </button>
-                    <a className="btn" href="/api/student/download">
-                      <Download size={16} /> Скачать Qorgau
-                    </a>
-                  </div>
-                  <div className="welcome-steps">
-                    <div>
-                      <span>01</span>
-                      <strong>Выберите компьютеры</strong>
-                      <p>Только подключённые агенты</p>
-                    </div>
-                    <div>
-                      <span>02</span>
-                      <strong>Начните контроль</strong>
-                      <p>Тест остаётся в привычной системе</p>
-                    </div>
-                    <div>
-                      <span>03</span>
-                      <strong>Проверьте события</strong>
-                      <p>Решения сохраняются в отчёте</p>
-                    </div>
-                  </div>
-                </section>
+                <BeforeRoom
+                  devices={liveDevices}
+                  exams={data.exams}
+                  events={data.events}
+                  onDevices={() => setPage("devices")}
+                  onHistory={() => setPage("history")}
+                  onNew={() => setNewExam(true)}
+                  onReview={setEventId}
+                />
               ) : (
                 <Classroom
                   exam={exam}
@@ -607,6 +634,11 @@ export default function App() {
                   onExam={setExamId}
                   onDevice={setDeviceId}
                   onEvent={setEventId}
+                  onUnlock={(id) => {
+                    const d = devices.find((device) => device.id === id);
+                    if (d) ask(d, "UNLOCK");
+                  }}
+                  onReview={() => setPage("review")}
                   lockedOnly={page === "blocked"}
                   onStart={() =>
                     run(
@@ -633,264 +665,42 @@ export default function App() {
             </>
           )}
           {page === "review" && (
-            <section className="panel">
-              <div className="panel-toolbar">
-                <div>
-                  <h2>
-                    Очередь проверки{" "}
-                    <span className="count">{pending.length}</span>
-                  </h2>
-                  <p>Отклонение события само по себе не снимает блокировку.</p>
-                </div>
-              </div>
-              <EventTable events={data.events} onSelect={setEventId} />
-            </section>
+            <EventsPage
+              events={data.events}
+              exams={data.exams}
+              onSelect={setEventId}
+            />
           )}
           {page === "history" && (
-            <div className="history-list">
-              {data.exams.length === 0 ? (
-                <Empty text="Здесь появятся ваши сеансы и отчёты" />
-              ) : (
-                data.exams.map((e) => {
-                  const ev = data.events.filter((x) => x.exam_id === e.id);
-                  return (
-                    <article className="panel history-card" key={e.id}>
-                      <div className="history-title">
-                        <span className="session-icon">
-                          <ClipboardCheck size={23} />
-                        </span>
-                        <div>
-                          <h2>{e.title}</h2>
-                          <p>
-                            {new Date(e.created_at * 1000).toLocaleDateString(
-                              "ru-RU",
-                            )}{" "}
-                            · {e.group} · {e.room}
-                          </p>
-                        </div>
-                        <Badge
-                          tone={e.status === "COMPLETED" ? "neutral" : "green"}
-                        >
-                          {e.status === "COMPLETED"
-                            ? "Завершён"
-                            : e.status === "RUNNING"
-                              ? "Идёт контроль"
-                              : "Готов к запуску"}
-                        </Badge>
-                      </div>
-                      <div className="history-metrics">
-                        <div>
-                          <strong>{Object.keys(e.participants).length}</strong>
-                          <span>учеников</span>
-                        </div>
-                        <div>
-                          <strong>{ev.length}</strong>
-                          <span>событий</span>
-                        </div>
-                        <div>
-                          <strong>
-                            {
-                              ev.filter((x) => x.decision === "CONFIRMED")
-                                .length
-                            }
-                          </strong>
-                          <span>подтверждено</span>
-                        </div>
-                        <div>
-                          <strong>
-                            {ev.filter((x) => x.decision === "PENDING").length}
-                          </strong>
-                          <span>на проверке</span>
-                        </div>
-                        <button
-                          className="btn"
-                          onClick={() => {
-                            setExamId(e.id);
-                            setPage("room");
-                          }}
-                        >
-                          Открыть сеанс <ChevronRight size={16} />
-                        </button>
-                        <a
-                          className="btn"
-                          href={"/api/exams/" + e.id + "/report.csv"}
-                        >
-                          <Download size={16} /> Отчёт CSV
-                        </a>
-                      </div>
-                      <div className="table-scroll">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Ученик</th>
-                              <th>Вниз</th>
-                              <th>Влево</th>
-                              <th>Вправо</th>
-                              <th>Телефон</th>
-                              <th>На проверке</th>
-                              <th>Паузы</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {Object.values(e.participants).map((d) => {
-                              const own = ev.filter(
-                                  (x) => x.device_id === d.id,
-                                ),
-                                valid = own.filter(
-                                  (x) => x.decision !== "REJECTED",
-                                );
-                              return (
-                                <tr key={d.id}>
-                                  <td>
-                                    <strong>{d.student}</strong>
-                                    <small>{d.name}</small>
-                                  </td>
-                                  {directions.map(([k]) => (
-                                    <td key={k}>
-                                      {
-                                        valid.filter(
-                                          (x) => x.type === "GAZE_" + k,
-                                        ).length
-                                      }
-                                    </td>
-                                  ))}
-                                  <td>
-                                    {
-                                      valid.filter(
-                                        (x) => x.type === "PHONE_DETECTED",
-                                      ).length
-                                    }
-                                  </td>
-                                  <td>
-                                    {
-                                      own.filter(
-                                        (x) => x.decision === "PENDING",
-                                      ).length
-                                    }
-                                  </td>
-                                  <td>{d.state.locks}</td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                      <p className="table-note">
-                        События за весь сеанс, кроме отклонённых. Текущие
-                        счётчики после разблокировки показаны в аудитории.
-                      </p>
-                    </article>
-                  );
-                })
-              )}
-            </div>
+            <HistoryPage
+              exams={data.exams}
+              events={data.events}
+              onOpen={(id) => {
+                setExamId(id);
+                setPage("room");
+              }}
+              onReview={setEventId}
+            />
           )}
           {page === "devices" && (
-            <>
-              <div className="notice">
-                <Download size={18} />
-                <span>
-                  Для работы без кабинета и подключения к серверу:{" "}
-                  <a href="/api/student/download-offline">
-                    скачать Qorgau Offline
-                  </a>
-                  . Настройка и управление выполняются на компьютере.
-                </span>
-              </div>
-              <div className="notice">
-                <Monitor size={18} />
-                <span>
-                  Студент устанавливает Qorgau или открывает EXE. Компьютер
-                  автоматически появляется здесь — адрес и код вводить не нужно.
-                </span>
-              </div>
-              {liveDevices.length === 0 ? (
-                <Empty text="Нет работающих агентов. Запустите Qorgau на компьютере ученика." />
-              ) : (
-                <div className="panel table-scroll table-box">
-                  <table className="table omr">
-                    <thead>
-                      <tr>
-                        <th>Рабочее место</th>
-                        <th className="c">Приложение</th>
-                        <th className="c">Камера</th>
-                        <th className="c">Взгляд</th>
-                        <th className="c">Защита</th>
-                        <th>Доступ</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {liveDevices.map((d) => (
-                        <tr key={d.id}>
-                          <td>
-                            <strong>{d.name}</strong>
-                            <small>{d.student}</small>
-                            {preparationIssue(d, "BROWSER") && (
-                              <small className="todo">
-                                {preparationIssue(d, "BROWSER")}
-                              </small>
-                            )}
-                          </td>
-                          <td className="c">
-                            <Bubble state={d.online ? "ink" : "off"} />
-                          </td>
-                          <td className="c">
-                            <Bubble
-                              state={
-                                d.capabilities.camera &&
-                                !d.capabilities.camera_fault
-                                  ? "ink"
-                                  : "warn"
-                              }
-                            />
-                          </td>
-                          <td className="c">
-                            <Bubble state={gazeEnabled(d) ? "ink" : "warn"} />
-                          </td>
-                          <td className="c">
-                            <Bubble
-                              state={
-                                d.capabilities.desktop_monitor ? "ink" : "warn"
-                              }
-                            />
-                          </td>
-                          <td>
-                            {d.revoked_at
-                              ? "Отозван"
-                              : !d.simulated && (
-                                  <button
-                                    className="btn"
-                                    disabled={
-                                      busy || d.state.lifecycle === "RUNNING"
-                                    }
-                                    onClick={() => ask(d, "REVOKE")}
-                                  >
-                                    Отозвать доступ
-                                  </button>
-                                )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              <p className="fine">
-                Если приложение закрыто или связь потеряна, компьютер исчезнет
-                из списка в течение 6 секунд. История завершённых сеансов
-                остаётся в отчётах.
-              </p>
-            </>
+            <Computers
+              devices={liveDevices}
+              busy={busy}
+              onRevoke={(d) => ask(d, "REVOKE")}
+            />
           )}
           {page === "teachers" && <TeacherFaces />}
           {page === "rules" && (
             <>
-              <div className="notice">
-                <ShieldCheck size={18} />
-                <span>
-                  Правила версии 3.0 зафиксированы для прототипа. Пороговые
-                  значения видны ученику и преподавателю.
-                </span>
+              <div className="legend rules-legend">
+                <Pill tone="pause">
+                  <Bubble state="pause" size="xs" />
+                  Тест на паузе
+                </Pill>
+                <Pill tone="warn">
+                  <Bubble state="warn" size="xs" />
+                  Ждёт решения, тест идёт
+                </Pill>
               </div>
               <div className="panel rules-sheet">
                 <section className="rule-group">
@@ -901,7 +711,7 @@ export default function App() {
                   <Rule
                     number={1}
                     title="Три отметки за взгляд в одну сторону"
-                    text="Взгляд вниз, влево или вправо дольше 5 секунд даёт одну отметку. Стороны считаются отдельно; третья отметка ставит тест на паузу."
+                    text="Взгляд вниз, влево или вправо 5 секунд и дольше даёт одну отметку. Стороны считаются отдельно; третья отметка ставит тест на паузу."
                   />
                   <Rule
                     number={2}
@@ -916,7 +726,7 @@ export default function App() {
                   <Rule
                     number={4}
                     title="Сбой окружения"
-                    text="Окно теста закрыто, нет связи с сервером, изменилось число экранов, открыт удалённый рабочий стол или камера замерла."
+                    text="Окно теста закрыто, нет связи с сервером, изменился экран, открыт удалённый рабочий стол или камера замерла."
                   />
                 </section>
                 <section className="rule-group">
@@ -971,6 +781,10 @@ export default function App() {
       {newExam && (
         <NewExam
           devices={liveDevices}
+          onRules={() => {
+            setNewExam(false);
+            setPage("rules");
+          }}
           onClose={() => setNewExam(false)}
           onCreate={async (body) => {
             const e = await api<Exam>("/exams", body);
@@ -983,8 +797,21 @@ export default function App() {
       )}
       {selectedDevice && deviceId && (
         <Modal
-          title={selectedDevice.student}
-          subtitle={selectedDevice.name + " · " + "локальный агент"}
+          title={selectedDevice.student || selectedDevice.name}
+          avatar={(selectedDevice.student || selectedDevice.name)
+            .split(" ")
+            .slice(0, 2)
+            .map((s) => s[0])
+            .join("")}
+          subtitle={
+            selectedDevice.name +
+            (exam
+              ? (selectedDevice.state.lifecycle === "RUNNING"
+                  ? " · пишет с "
+                  : " · начало сеанса ") + shortClock(exam.created_at)
+              : "")
+          }
+          className="device-modal"
           onClose={() => setDeviceId(null)}
           wide
         >
@@ -998,12 +825,15 @@ export default function App() {
                 {selectedDevice.state.access === "LOCKED"
                   ? "Тест на паузе"
                   : selectedDevice.state.lifecycle === "RUNNING"
-                    ? "Под контролем"
+                    ? "Пишет тест"
                     : selectedDevice.state.lifecycle === "COMPLETED"
                       ? "Сеанс завершён"
-                      : "Ожидает начала"}
+                      : "Ждёт старта"}
               </Badge>
               <span>Круг {selectedDevice.state.epoch}</span>
+              {exam?.rule_version && (
+                <span className="fine">Правила сеанса {exam.rule_version}</span>
+              )}
               {selectedDevice.state.reason && (
                 <span>
                   {eventNames[selectedDevice.state.reason] ||
@@ -1011,13 +841,6 @@ export default function App() {
                 </span>
               )}
             </div>
-            <ControlStatus device={selectedDevice} />
-            {typeof selectedDevice.capabilities.model_version === "string" && (
-              <p className="fine device-model-version">
-                Модели: {selectedDevice.capabilities.model_version}
-              </p>
-            )}
-            {gazeEnabled(selectedDevice) && <Counters d={selectedDevice} />}
             <div className="button-row">
               {selectedDevice.exam_id === exam?.id &&
                 selectedDevice.state.lifecycle === "READY" && (
@@ -1067,7 +890,65 @@ export default function App() {
                   </>
                 )}
             </div>
-            <h3 className="subheading">Записи этого компьютера</h3>
+            <DeviceTimeline
+              device={selectedDevice}
+              exam={data.exams.find((e) => e.id === selectedDevice.exam_id)}
+              events={data.events.filter(
+                (e) =>
+                  e.device_id === selectedDevice.id &&
+                  e.exam_id === selectedDevice.exam_id,
+              )}
+            />
+            <div className="device-columns">
+              <section>
+                <h3>Контроль на компьютере</h3>
+                <div className="device-control">
+                  {controlSignals(selectedDevice).map((signal, i) => {
+                    const Icon = [Camera, Eye, ShieldCheck][i];
+                    return (
+                      <div key={signal.label}>
+                        <span className="control-tile">
+                          <Icon size={20} />
+                        </span>
+                        <span>
+                          <strong>{signal.label}</strong>
+                          <small>{signal.detail}</small>
+                        </span>
+                        <Bubble
+                          state={
+                            signal.tone === "ready"
+                              ? "on"
+                              : signal.tone === "attention"
+                                ? "warn"
+                                : "off"
+                          }
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+                {typeof selectedDevice.capabilities.model_version ===
+                  "string" && (
+                  <p className="fine device-model-version">
+                    Модели: {selectedDevice.capabilities.model_version}
+                  </p>
+                )}
+              </section>
+              <section>
+                <h3>Отметки за взгляд в этом круге</h3>
+                <Counters d={selectedDevice} />
+                <p className="fine">
+                  5 секунд в сторону — одна отметка. Третья в одну сторону
+                  ставит тест на паузу.
+                </p>
+              </section>
+            </div>
+            <h3 className="subheading">
+              Записи этого компьютера{" "}
+              <span className="count">
+                {events.filter((e) => e.device_id === selectedDevice.id).length}
+              </span>
+            </h3>
             <div className="device-evidence">
               {events
                 .filter((e) => e.device_id === selectedDevice.id)
@@ -1079,18 +960,31 @@ export default function App() {
                     </header>
                     {e.media.length ? (
                       e.media.map((media) => (
-                        <video
-                          key={media.id}
-                          controls
-                          preload="metadata"
-                          src={media.url}
-                          aria-label={`${eventNames[e.type] || e.type} — ${selectedDevice.name}`}
-                          onLoadedMetadata={(v) => {
-                            const offset = e.at - (media.clip_start || 0);
-                            if (offset > 0 && offset < v.currentTarget.duration)
-                              v.currentTarget.currentTime = offset;
-                          }}
-                        />
+                        <div className="cam" key={media.id}>
+                          <RegMarks light />
+                          {media.mime.startsWith("image/") ? (
+                            <img
+                              src={media.url}
+                              alt={`Кадр: ${eventNames[e.type] || e.type}`}
+                            />
+                          ) : (
+                            <video
+                              key={media.id}
+                              controls
+                              preload="metadata"
+                              src={media.url}
+                              aria-label={`${eventNames[e.type] || e.type} — ${selectedDevice.name}`}
+                              onLoadedMetadata={(v) => {
+                                const offset = e.at - (media.clip_start || 0);
+                                if (
+                                  offset > 0 &&
+                                  offset < v.currentTarget.duration
+                                )
+                                  v.currentTarget.currentTime = offset;
+                              }}
+                            />
+                          )}
+                        </div>
                       ))
                     ) : (
                       <div className="empty">
@@ -1116,7 +1010,7 @@ export default function App() {
                         className="btn small"
                         onClick={() => setEventId(e.id)}
                       >
-                        Проверить событие
+                        Разобрать
                       </button>
                     </footer>
                   </article>
@@ -1158,7 +1052,10 @@ export default function App() {
       )}
       {selectedEvent && (
         <EventReview
+          key={selectedEvent.id}
           event={selectedEvent}
+          queue={queue}
+          onSelect={setEventId}
           onClose={() => setEventId(null)}
           onUpdate={refresh}
           notify={setToast}
@@ -1192,7 +1089,7 @@ export default function App() {
                   setAction(null);
                 },
                 action.type === "UNLOCK"
-                  ? "Компьютер разблокирован. Тест продолжается."
+                  ? "Тест продолжается. Начался новый круг отметок."
                   : "Решение выполнено",
               );
             }}
@@ -1201,10 +1098,10 @@ export default function App() {
               {action.type === "REVOKE"
                 ? "Сохранённый токен компьютера перестанет работать. История сеансов сохранится; для нового подключения понадобится новая регистрация."
                 : action.type === "UNLOCK"
-                  ? "Начнётся новый цикл трёх счётчиков. Все события и решения сохранятся в истории."
+                  ? "Начнётся новый круг трёх счётчиков. Все события и решения сохранятся в истории."
                   : action.type === "END_AND_RELEASE"
                     ? "Контроль этого ученика завершится, блокировка будет снята. Внешний тест автоматически не отправляется."
-                    : "Состояние будет заблокировано по решению преподавателя. В режиме наблюдения операционная система остаётся доступной."}
+                    : "Тест будет поставлен на паузу по решению преподавателя. В режиме наблюдения операционная система остаётся доступной."}
             </p>
             <label>
               Причина решения
@@ -1247,6 +1144,871 @@ export default function App() {
     </div>
   );
 }
+const shortClock = (at: number) =>
+  new Date(at * 1000).toLocaleTimeString("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+const eventAge = (at: number) => {
+  const minutes = Math.max(0, Math.floor((Date.now() / 1000 - at) / 60));
+  return minutes < 1
+    ? "меньше минуты"
+    : minutes < 60
+      ? `${minutes} мин`
+      : `${Math.floor(minutes / 60)} ч`;
+};
+const eventTotals = (events: Incident[]) => ({
+  confirmed: events.filter((e) => e.decision === "CONFIRMED").length,
+  rejected: events.filter((e) => e.decision === "REJECTED").length,
+  pending: events.filter((e) => e.decision === "PENDING").length,
+});
+const dateLabel = (at: number) =>
+  new Date(at * 1000).toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+  });
+function QuietNumber({ value }: { value: number }) {
+  return value ? <>{value}</> : <span className="zero">—</span>;
+}
+function Tick({ yes, label }: { yes: boolean; label: string }) {
+  return (
+    <span
+      className={`tick ${yes ? "" : "no"}`}
+      role="img"
+      aria-label={`${label}: ${yes ? "готово" : "нужно действие"}`}
+    >
+      {yes && <Check size={13} aria-hidden="true" />}
+    </span>
+  );
+}
+function EventThumb({
+  event,
+  compact = false,
+}: {
+  event: Incident;
+  compact?: boolean;
+}) {
+  const media = event.media.find((m) => m.url);
+  const duration = event.media.reduce(
+    (total, m) => total + Math.max(0, (m.clip_end ?? 0) - (m.clip_start ?? 0)),
+    0,
+  );
+  return (
+    <div
+      className={`cam event-thumb ${compact ? "compact" : ""}`}
+      aria-hidden="true"
+    >
+      {media ? (
+        media.mime.startsWith("image/") ? (
+          <img src={media.url} alt="" />
+        ) : (
+          <video src={media.url} preload="metadata" muted />
+        )
+      ) : (
+        <Video size={compact ? 18 : 28} />
+      )}
+      <RegMarks light />
+      {!compact && (
+        <span className="play">
+          <Play size={18} />
+        </span>
+      )}
+      {duration > 0 && <span className="tc">{duration.toFixed(0)} с</span>}
+    </div>
+  );
+}
+function BeforeRoom({
+  devices,
+  exams,
+  events,
+  onDevices,
+  onHistory,
+  onNew,
+  onReview,
+}: {
+  devices: Device[];
+  exams: Exam[];
+  events: Incident[];
+  onDevices: () => void;
+  onHistory: () => void;
+  onNew: () => void;
+  onReview: (id: string) => void;
+}) {
+  const ready = devices.filter((d) => !preparationIssue(d, "BROWSER"));
+  const notReady = devices.filter((d) => preparationIssue(d, "BROWSER"));
+  const recent = exams
+    .filter((e) => e.status === "COMPLETED")
+    .sort((a, b) => b.created_at - a.created_at)
+    .slice(0, 3);
+  return (
+    <>
+      <section className="card before-readiness">
+        <div className="before-ready">
+          <p>Компьютеры аудитории</p>
+          <h2>
+            <strong>{ready.length}</strong> из {devices.length}
+            <br />
+            <span>готовы к тесту</span>
+          </h2>
+          <div className="sbar">
+            <span
+              style={{
+                width: `${devices.length ? (ready.length / devices.length) * 100 : 0}%`,
+                background: "var(--navy-800)",
+              }}
+            />
+            <span style={{ flex: 1, background: "var(--amber-fill)" }} />
+          </div>
+          <div className="legend">
+            <span>
+              <Bubble state="on" size="xs" />
+              {ready.length} готовы
+            </span>
+            <span>
+              <Bubble state="warn" size="xs" />
+              {notReady.length} нужно подготовить
+            </span>
+          </div>
+          {devices.length === 0 && (
+            <p className="fine">
+              Запустите Qorgau на компьютере ученика — он появится здесь
+              автоматически.
+            </p>
+          )}
+        </div>
+        <div className="before-todo">
+          <h3>Что сделать перед тестом</h3>
+          {notReady.length ? (
+            notReady.slice(0, 4).map((d) => (
+              <div className="preparation-row" key={d.id}>
+                <strong>{d.name}</strong>
+                <span>{preparationIssue(d, "BROWSER")}</span>
+              </div>
+            ))
+          ) : (
+            <div className="note ink">
+              <CheckCheck size={20} />
+              <span>
+                {devices.length
+                  ? "Все подключённые компьютеры готовы. Можно создать сеанс."
+                  : "Скачайте Qorgau и откройте его на компьютерах учеников."}
+              </span>
+            </div>
+          )}
+          <button className="btn quiet" onClick={onDevices}>
+            Все компьютеры <ChevronRight size={16} />
+          </button>
+        </div>
+      </section>
+      <section className="before-guide">
+        <h2>Как провести тест</h2>
+        <div className="before-steps">
+          {[
+            [
+              "Подготовьте компьютеры",
+              "Откройте Qorgau и проверьте камеру на каждом компьютере.",
+            ],
+            [
+              "Создайте сеанс",
+              "Выберите сайт или программу, компьютеры и нажмите «Начать тест».",
+            ],
+            [
+              "Принимайте решения",
+              "Если появилась пауза, посмотрите запись и решите, продолжать ли тест.",
+            ],
+          ].map(([title, text], i) => (
+            <article className="card" key={title}>
+              <StepBubble
+                number={i + 1}
+                state={
+                  i === 0 && devices.length
+                    ? "done"
+                    : i === 1 && devices.length
+                      ? "now"
+                      : ""
+                }
+              />
+              <h3>{title}</h3>
+              <p>{text}</p>
+              {i === 1 && (
+                <button className="btn quiet sm" onClick={onNew}>
+                  Новый сеанс <ChevronRight size={14} />
+                </button>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="card recent-sessions">
+        <div className="card-head">
+          <h2>Недавние сеансы</h2>
+          <button className="btn quiet sm" onClick={onHistory}>
+            Все сеансы и отчёты <ChevronRight size={16} />
+          </button>
+        </div>
+        {recent.length ? (
+          recent.map((e) => {
+            const own = events.filter((x) => x.exam_id === e.id);
+            const pending = pendingEvents(own, Infinity);
+            return (
+              <div className="recent-row" key={e.id}>
+                <div>
+                  <span className="fine">
+                    {dateLabel(e.created_at)} · {shortClock(e.created_at)}
+                  </span>
+                  <h3>{e.title}</h3>
+                  <p>{Object.keys(e.participants).length} компьютеров</p>
+                </div>
+                <Pill tone={pending.length ? "warn" : "ok"}>
+                  {pending.length
+                    ? `${pending.length} событий ждут решения`
+                    : own.length
+                      ? `${own.length} событий, всё решено`
+                      : "Без событий"}
+                </Pill>
+                <div className="actions">
+                  {pending.length > 0 && (
+                    <button
+                      className="btn primary sm"
+                      onClick={() => onReview(pending[0].id)}
+                    >
+                      Разобрать
+                    </button>
+                  )}
+                  <a className="btn sm" href={`/api/exams/${e.id}/report.csv`}>
+                    <Download size={15} />
+                    Отчёт
+                  </a>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="empty">Здесь появятся завершённые сеансы.</div>
+        )}
+      </section>
+    </>
+  );
+}
+function EventsPage({
+  events,
+  exams,
+  onSelect,
+}: {
+  events: Incident[];
+  exams: Exam[];
+  onSelect: (id: string) => void;
+}) {
+  const [filter, setFilter] = useState("ALL"),
+    [session, setSession] = useState("ALL"),
+    [showAll, setShowAll] = useState(false);
+  const selected = events.filter(
+      (e) => session === "ALL" || e.exam_id === session,
+    ),
+    totals = eventTotals(selected);
+  const waiting = pendingEvents(selected, Infinity),
+    resolved = selected
+      .filter(
+        (e) =>
+          e.decision !== "PENDING" &&
+          (filter === "ALL" || filter === e.decision),
+      )
+      .sort((a, b) => b.created_at - a.created_at);
+  return (
+    <div className="events-page">
+      <div className="events-actions">
+        <select
+          className="select"
+          aria-label="Сеанс событий"
+          value={session}
+          onChange={(e) => {
+            setSession(e.target.value);
+            setShowAll(false);
+          }}
+        >
+          <option value="ALL">Все сеансы</option>
+          {exams.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.title}
+            </option>
+          ))}
+        </select>
+        <button
+          className="btn primary"
+          disabled={!waiting.length}
+          onClick={() => onSelect(waiting[0].id)}
+        >
+          Разобрать по очереди <ChevronRight size={16} />
+        </button>
+      </div>
+      <div className="filters-row">
+        <Tabs
+          value={filter}
+          onChange={(value) => {
+            setFilter(value);
+            setShowAll(false);
+          }}
+          ariaLabel="Решение по событию"
+          items={[
+            { value: "ALL", label: "Все", count: selected.length },
+            {
+              value: "PENDING",
+              label: "Ждут решения",
+              count: totals.pending,
+              tone: "warn",
+            },
+            { value: "CONFIRMED", label: "Нарушение", count: totals.confirmed },
+            {
+              value: "REJECTED",
+              label: "Нарушения нет",
+              count: totals.rejected,
+            },
+          ]}
+        />
+        <p className="fine">
+          «Нарушения нет» убирает отметку, но не снимает паузу.
+        </p>
+      </div>
+      {(filter === "ALL" || filter === "PENDING") && (
+        <section className="card event-group waiting">
+          <div className="card-head">
+            <h2>
+              Ждут решения <span className="count">{waiting.length}</span>
+            </h2>
+            {waiting.length > 0 && (
+              <span className="fine">
+                Самое старое ждёт{" "}
+                {eventAge(Math.min(...waiting.map((e) => e.created_at)))}
+              </span>
+            )}
+          </div>
+          <EventTable events={waiting} onSelect={onSelect} />
+        </section>
+      )}
+      {filter !== "PENDING" && (
+        <section className="card event-group">
+          <div className="card-head">
+            <h2>
+              Решено <span className="count">{resolved.length}</span>
+            </h2>
+          </div>
+          <EventTable
+            events={showAll ? resolved : resolved.slice(0, 4)}
+            onSelect={onSelect}
+          />
+          {resolved.length > 4 && (
+            <div className="card-foot">
+              <span className="fine">
+                Показаны последние {showAll ? resolved.length : 4} из{" "}
+                {resolved.length}
+              </span>
+              <button
+                className="btn quiet sm"
+                onClick={() => setShowAll(!showAll)}
+              >
+                {showAll ? "Свернуть" : "Показать все"}
+              </button>
+            </div>
+          )}
+        </section>
+      )}
+    </div>
+  );
+}
+function HistoryPage({
+  exams,
+  events,
+  onOpen,
+  onReview,
+}: {
+  exams: Exam[];
+  events: Incident[];
+  onOpen: (id: string) => void;
+  onReview: (id: string) => void;
+}) {
+  const [filter, setFilter] = useState("ALL");
+  const sorted = [...exams].sort((a, b) => b.created_at - a.created_at);
+  const [expanded, setExpanded] = useState<string[]>([]);
+  const latestExamId = sorted[0]?.id;
+  const expandedInitially = useRef(false);
+  useEffect(() => {
+    if (!expandedInitially.current && latestExamId) {
+      setExpanded([latestExamId]);
+      expandedInitially.current = true;
+    }
+  }, [latestExamId]);
+  const unresolved = (e: Exam) =>
+      events.some((x) => x.exam_id === e.id && x.decision === "PENDING"),
+    confirmed = (e: Exam) =>
+      events.some((x) => x.exam_id === e.id && x.decision === "CONFIRMED");
+  return (
+    <div className="history-list">
+      <div className="filters-row">
+        <Tabs
+          value={filter}
+          onChange={setFilter}
+          ariaLabel="Фильтр сеансов"
+          items={[
+            { value: "ALL", label: "Все", count: exams.length },
+            {
+              value: "PENDING",
+              label: "С нерешёнными",
+              count: exams.filter(unresolved).length,
+              tone: "warn",
+            },
+            {
+              value: "CONFIRMED",
+              label: "С нарушениями",
+              count: exams.filter(confirmed).length,
+            },
+          ]}
+        />
+        <div className="legend">
+          <span>
+            <Bubble state="pause" size="xs" />
+            Нарушение
+          </span>
+          <span>
+            <Bubble state="ink" size="xs" />
+            Нарушения нет
+          </span>
+          <span>
+            <Bubble state="warn" size="xs" />
+            Ждёт решения
+          </span>
+        </div>
+      </div>
+      {sorted
+        .filter(
+          (e) =>
+            filter === "ALL" ||
+            (filter === "PENDING" ? unresolved(e) : confirmed(e)),
+        )
+        .map((e) => {
+          const ev = events.filter((x) => x.exam_id === e.id),
+            totals = eventTotals(ev),
+            isOpen = expanded.includes(e.id);
+          return (
+            <article className="card history-card" key={e.id}>
+              <div className="history-title">
+                <div>
+                  <h2>
+                    {e.title}{" "}
+                    <Pill tone="ok">
+                      {e.status === "COMPLETED"
+                        ? "Завершён"
+                        : e.status === "RUNNING"
+                          ? "Тест идёт"
+                          : "Ждёт старта"}
+                    </Pill>
+                  </h2>
+                  <p>
+                    {dateLabel(e.created_at)} · начало в{" "}
+                    {shortClock(e.created_at)} · {e.group} · {e.room}
+                  </p>
+                </div>
+                <div className="actions">
+                  <button className="btn sm" onClick={() => onOpen(e.id)}>
+                    Открыть сеанс
+                  </button>
+                  <a className="btn sm" href={`/api/exams/${e.id}/report.csv`}>
+                    <Download size={16} />
+                    Отчёт CSV
+                  </a>
+                </div>
+              </div>
+              <div className="history-metrics">
+                <div>
+                  <strong>{Object.keys(e.participants).length}</strong>
+                  <span>Учеников</span>
+                </div>
+                <div>
+                  <strong>
+                    <QuietNumber value={ev.length} />
+                  </strong>
+                  <span>Событий</span>
+                  <MiniBar {...totals} />
+                </div>
+                <div>
+                  <strong className={totals.confirmed ? "danger-text" : ""}>
+                    <QuietNumber value={totals.confirmed} />
+                  </strong>
+                  <span>Нарушений</span>
+                </div>
+                <div className={totals.pending ? "pending-metric" : ""}>
+                  <strong>
+                    <QuietNumber value={totals.pending} />
+                  </strong>
+                  <span>Ждут решения</span>
+                  {totals.pending > 0 && (
+                    <button
+                      className="btn primary sm"
+                      onClick={() =>
+                        onReview(pendingEvents(ev, Infinity)[0].id)
+                      }
+                    >
+                      Разобрать
+                    </button>
+                  )}
+                </div>
+              </div>
+              {isOpen && (
+                <>
+                  <div className="table-box">
+                    <table className="table dense">
+                      <thead>
+                        <tr>
+                          <th>Ученик</th>
+                          {[
+                            "Вниз",
+                            "Влево",
+                            "Вправо",
+                            "Телефон",
+                            "Ждут решения",
+                            "Паузы",
+                          ].map((t) => (
+                            <th className="c" key={t}>
+                              {t}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.values(e.participants).map((d) => {
+                          const own = ev.filter((x) => x.device_id === d.id),
+                            valid = own.filter(
+                              (x) => x.decision !== "REJECTED",
+                            );
+                          return (
+                            <tr key={d.id}>
+                              <td>
+                                <strong>{d.student || d.name}</strong>
+                                <small>{d.name}</small>
+                              </td>
+                              {directions.map(([k]) => (
+                                <td className="c" key={k}>
+                                  <QuietNumber
+                                    value={
+                                      valid.filter(
+                                        (x) => x.type === "GAZE_" + k,
+                                      ).length
+                                    }
+                                  />
+                                </td>
+                              ))}
+                              <td className="c">
+                                <QuietNumber
+                                  value={
+                                    valid.filter(
+                                      (x) => x.type === "PHONE_DETECTED",
+                                    ).length
+                                  }
+                                />
+                              </td>
+                              <td className="c warn-text">
+                                <QuietNumber
+                                  value={
+                                    own.filter((x) => x.decision === "PENDING")
+                                      .length
+                                  }
+                                />
+                              </td>
+                              <td className="c">
+                                <QuietNumber value={d.state.locks} />
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="table-note">
+                    Учтены все события сеанса, кроме решений «Нарушения нет».
+                    Отметки текущего круга показаны в аудитории.
+                  </p>
+                </>
+              )}
+              <div className="card-foot">
+                <button
+                  className="btn quiet sm"
+                  onClick={() =>
+                    setExpanded(
+                      isOpen
+                        ? expanded.filter((id) => id !== e.id)
+                        : [...expanded, e.id],
+                    )
+                  }
+                >
+                  {isOpen ? "Скрыть учеников" : "Показать учеников"}
+                  <ChevronDown size={16} />
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      {!exams.length && <Empty text="Здесь появятся ваши сеансы и отчёты" />}
+    </div>
+  );
+}
+function Computers({
+  devices,
+  busy,
+  onRevoke,
+}: {
+  devices: Device[];
+  busy: boolean;
+  onRevoke: (d: Device) => void;
+}) {
+  const ready = devices.filter((d) => !preparationIssue(d, "BROWSER")),
+    notReady = devices.filter((d) => preparationIssue(d, "BROWSER"));
+  return (
+    <>
+      <section className="card computers-card">
+        <div className="readiness-head">
+          <h2>
+            <strong>{ready.length}</strong> из {devices.length}{" "}
+            <span>готовы к тесту</span>
+          </h2>
+          <div className="legend">
+            <span>
+              <Tick yes label="Готов" />
+              Всё готово
+            </span>
+            <span>
+              <Tick yes={false} label="Нужно действие" />
+              Нужно действие ученика
+            </span>
+          </div>
+        </div>
+        {devices.length ? (
+          <div className="table-box">
+            <table className="table dense readiness-table">
+              <thead>
+                <tr>
+                  <th>Компьютер</th>
+                  {[
+                    "Связь",
+                    "Камера",
+                    "Взгляд",
+                    "Защита окна",
+                    "Qorgau Browser",
+                  ].map((t) => (
+                    <th className="c" key={t}>
+                      {t}
+                    </th>
+                  ))}
+                  <th>Что сделать</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  [false, notReady],
+                  [true, ready],
+                ].map(([isReady, group]) => {
+                  const list = group as Device[];
+                  return list.length ? (
+                    <DeviceReadinessGroup
+                      key={String(isReady)}
+                      ready={Boolean(isReady)}
+                      devices={list}
+                      busy={busy}
+                      onRevoke={onRevoke}
+                    />
+                  ) : null;
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="empty">
+            <Monitor size={30} />
+            <p>
+              Нет подключённых компьютеров. Запустите Qorgau на компьютере
+              ученика.
+            </p>
+          </div>
+        )}
+      </section>
+      <div className="readiness-download note ink">
+        <Download size={24} />
+        <div>
+          <strong>Qorgau для компьютеров учеников</strong>
+          <p>
+            Установите приложение или откройте EXE. Компьютер появится здесь
+            автоматически.
+          </p>
+          <div className="actions">
+            <a className="btn primary sm" href="/api/student/download">
+              Скачать Qorgau
+            </a>
+            <a className="btn sm" href="/api/student/download-offline">
+              Qorgau Offline
+            </a>
+          </div>
+          <p className="fine">
+            В автономном режиме настройка и управление выполняются на компьютере
+            ученика.
+          </p>
+        </div>
+      </div>
+      <p className="fine">
+        Если приложение закрыто или связь потеряна, компьютер исчезнет из списка
+        в течение 6 секунд. История остаётся в отчётах.
+      </p>
+    </>
+  );
+}
+function DeviceReadinessGroup({
+  ready,
+  devices,
+  busy,
+  onRevoke,
+}: {
+  ready: boolean;
+  devices: Device[];
+  busy: boolean;
+  onRevoke: (d: Device) => void;
+}) {
+  return (
+    <>
+      <tr className={`grp ${ready ? "" : "warn"}`}>
+        <td colSpan={8}>
+          {ready ? "Готовы" : "Не готовы"} · {devices.length}
+        </td>
+      </tr>
+      {devices.map((d) => (
+        <tr key={d.id} className={ready ? "" : "needs-action"}>
+          <td>
+            <strong>{d.name}</strong>
+            {typeof d.capabilities.agent_version === "string" && (
+              <small>Qorgau {d.capabilities.agent_version}</small>
+            )}
+          </td>
+          <td className="c">
+            <Tick yes={d.online} label="Связь" />
+          </td>
+          <td className="c">
+            <Tick
+              yes={Boolean(
+                d.capabilities.camera && !d.capabilities.camera_fault,
+              )}
+              label="Камера"
+            />
+          </td>
+          <td className="c">
+            <Tick yes={gazeEnabled(d)} label="Взгляд" />
+          </td>
+          <td className="c">
+            <Tick
+              yes={Boolean(
+                d.capabilities.window_guard && !d.capabilities.guard_fault,
+              )}
+              label="Защита окна"
+            />
+          </td>
+          <td className="c">
+            <Tick
+              yes={d.targets.some((t) => t.id === "qorgau-browser")}
+              label="Qorgau Browser"
+            />
+          </td>
+          <td className={ready ? "muted" : "warn-text"}>
+            {preparationIssue(d, "BROWSER") || "Готов"}
+          </td>
+          <td>
+            <button
+              className="icon-btn revoke-access"
+              disabled={busy || d.state.lifecycle === "RUNNING"}
+              onClick={() => onRevoke(d)}
+              aria-label={`Отозвать доступ ${d.name}`}
+            >
+              <Trash2 size={17} />
+            </button>
+          </td>
+        </tr>
+      ))}
+    </>
+  );
+}
+function DeviceTimeline({
+  device,
+  exam,
+  events,
+}: {
+  device: Device;
+  exam?: Exam;
+  events: Incident[];
+}) {
+  if (!exam) return null;
+  const now = Date.now() / 1000,
+    end =
+      exam.status === "COMPLETED"
+        ? Math.max(exam.created_at, ...events.map((e) => e.created_at))
+        : now;
+  const span = Math.max(1, end - exam.created_at),
+    position = (at: number) =>
+      `${Math.max(0, Math.min(100, ((at - exam.created_at) / span) * 100))}%`;
+  const pause =
+    device.state.access === "LOCKED"
+      ? [...events]
+          .sort((a, b) => b.created_at - a.created_at)
+          .find((e) => e.type === device.state.reason)
+      : undefined;
+  return (
+    <section className="device-timeline">
+      <div className="card-head">
+        <h3>Ход теста</h3>
+        <span className="fine">
+          {shortClock(exam.created_at)} —{" "}
+          {exam.status === "COMPLETED" ? "последнее событие" : "сейчас"}
+        </span>
+      </div>
+      {pause && (
+        <div className="note pause">
+          <Pause size={18} />
+          <span>
+            Тест на паузе с {shortClock(pause.created_at)}:{" "}
+            {eventNames[pause.type] || pause.type}
+          </span>
+        </div>
+      )}
+      <div className="test-progress" aria-label="События от начала сеанса">
+        <span className="progress-running" />
+        {pause && (
+          <span
+            className="progress-paused"
+            style={{ left: position(pause.created_at) }}
+          />
+        )}
+        {events.map((e) => (
+          <button
+            key={e.id}
+            type="button"
+            className={`progress-event ${e.id === pause?.id ? "paused" : ""}`}
+            style={{ left: position(e.created_at) }}
+            aria-label={`${shortClock(e.created_at)}: ${eventNames[e.type] || e.type}`}
+            title={`${shortClock(e.created_at)}: ${eventNames[e.type] || e.type}`}
+          />
+        ))}
+      </div>
+      <div className="progress-events">
+        {[...events]
+          .sort((a, b) => a.created_at - b.created_at)
+          .map((e) => (
+            <span key={e.id}>
+              <Bubble size="xs" state={e.id === pause?.id ? "pause" : "ink"} />
+              <span>
+                <strong>{shortClock(e.created_at)}</strong>
+                <small>{eventNames[e.type] || e.type}</small>
+              </span>
+            </span>
+          ))}
+      </div>
+    </section>
+  );
+}
+
 function Counters({ d }: { d: Device }) {
   if (
     !d.simulated &&
@@ -1274,7 +2036,7 @@ function Counters({ d }: { d: Device }) {
               <i
                 key={n}
                 className={
-                  d.state.counts[id] >= n ? (n === 3 ? "red" : "amber") : ""
+                  d.state.counts[id] >= n ? (n === 3 ? "red" : "filled") : ""
                 }
               />
             ))}
@@ -1301,12 +2063,45 @@ function Rule({
   title: string;
   text: string;
 }) {
+  const flows: Record<
+    number,
+    [string, string, "pause" | "warn" | "ok" | ""][]
+  > = {
+    1: [
+      ["5 секунд в одну сторону", "+1 отметка", ""],
+      ["3 отметки в одну сторону", "Тест на паузе", "pause"],
+    ],
+    2: [["2 уверенных обнаружения подряд", "Тест на паузе", "pause"]],
+    3: [
+      ["Лица нет 3 секунды", "Ждёт решения", "warn"],
+      ["Лица нет 10 секунд", "Техническая пауза", "pause"],
+    ],
+    4: [["Контроль недоступен", "Тест на паузе", "pause"]],
+    5: [["Второе лицо от 1 секунды", "Ждёт решения", "warn"]],
+    6: [["3 взгляда за минуту, всего от 6 с", "Ждёт решения", "warn"]],
+    7: [["Подъём и удержание телефона", "Ждёт решения", "warn"]],
+    8: [["«Продолжить тест»", "Новый круг отметок", "ok"]],
+    9: [["Конец контроля", "История сохранена", "ok"]],
+  };
   return (
     <article className="rule">
       <div className="rule-text">
         <StepBubble number={number} />
-        <h3>{title}</h3>
-        <p>{text}</p>
+        <div>
+          <h3>{title}</h3>
+          <p>{text}</p>
+        </div>
+      </div>
+      <div className="rule-flow">
+        {flows[number]?.map(([condition, outcome, tone]) => (
+          <div className="flow" key={condition}>
+            <span className="cond">{condition}</span>
+            <span className="lead" />
+            <span className="out">
+              <Pill tone={tone}>{outcome}</Pill>
+            </span>
+          </div>
+        ))}
       </div>
     </article>
   );
@@ -1324,63 +2119,84 @@ function EventTable({
       <p>Событий пока нет</p>
     </div>
   ) : (
-    <div className="table-scroll">
-      <table>
+    <div className="table-box">
+      <table className="table">
         <thead>
           <tr>
-            <th>Ученик / время</th>
+            <th>Ученик</th>
             <th>Событие</th>
-            <th>Видео</th>
-            <th>Решение</th>
+            <th>Запись</th>
+            <th>
+              {events[0].decision === "PENDING" ? "Статус" : "Ваше решение"}
+            </th>
             <th />
           </tr>
         </thead>
         <tbody>
-          {events.map((e) => (
-            <tr key={e.id}>
-              <td>
-                <strong>{e.student}</strong>
-                <small>
-                  {e.device_name} · {clock(e.created_at)}
-                </small>
-              </td>
-              <td>
-                <strong>{eventNames[e.type] || e.type}</strong>
-                <small>
-                  {e.category === "CRITICAL"
-                    ? "Критическое событие"
-                    : "Наблюдение агента"}
-                </small>
-              </td>
-              <td>
-                {e.media.length ? (
-                  <span className="with-icon">
-                    <Video size={15} /> {e.media.length} фрагм.
-                  </span>
-                ) : (
-                  <span className="muted">Нет записи</span>
-                )}
-              </td>
-              <td>
-                <Badge
-                  tone={
-                    e.decision === "CONFIRMED"
-                      ? "red"
-                      : e.decision === "REJECTED"
-                        ? "green"
-                        : "amber"
-                  }
-                >
-                  {decisionNames[e.decision]}
-                </Badge>
-              </td>
-              <td>
-                <button className="btn small" onClick={() => onSelect(e.id)}>
-                  Проверить <ChevronRight size={14} />
-                </button>
-              </td>
-            </tr>
-          ))}
+          {events.map((e, i) => {
+            const review = e.reviews.at(-1);
+            return (
+              <tr key={e.id}>
+                <td>
+                  <strong>{e.student || e.device_name}</strong>
+                  <small>{e.device_name}</small>
+                </td>
+                <td>
+                  <strong>{eventNames[e.type] || e.type}</strong>
+                  <small>
+                    {dateLabel(e.created_at)} · {clock(e.created_at)}
+                  </small>
+                </td>
+                <td>
+                  {e.media.length ? (
+                    <div className="event-record">
+                      <EventThumb event={e} compact />
+                      <span>
+                        {e.media.some(
+                          (m) =>
+                            m.clip_end !== undefined &&
+                            m.clip_start !== undefined,
+                        )
+                          ? `${e.media.reduce((sum, m) => sum + Math.max(0, (m.clip_end ?? 0) - (m.clip_start ?? 0)), 0).toFixed(0)} с`
+                          : `${e.media.length} фрагм.`}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="muted">Без записи</span>
+                  )}
+                </td>
+                <td>
+                  <Pill
+                    tone={
+                      e.decision === "PENDING"
+                        ? "warn"
+                        : e.decision === "CONFIRMED"
+                          ? "pause"
+                          : "ok"
+                    }
+                  >
+                    {e.decision === "PENDING"
+                      ? `Ждёт · ${eventAge(e.created_at)}`
+                      : decisionNames[e.decision]}
+                  </Pill>
+                  {review && (
+                    <small>
+                      {review.author}, в {shortClock(review.at)}
+                    </small>
+                  )}
+                </td>
+                <td>
+                  <button
+                    className={`btn sm ${e.decision === "PENDING" && i === 0 ? "primary" : "quiet"}`}
+                    onClick={() => onSelect(e.id)}
+                  >
+                    {e.decision === "PENDING" ? "Разобрать" : "Открыть"}
+                    <ChevronRight size={15} />
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -1390,10 +2206,12 @@ function NewExam({
   devices,
   onClose,
   onCreate,
+  onRules,
 }: {
   devices: Device[];
   onClose: () => void;
   onCreate: (body: unknown) => Promise<void>;
+  onRules: () => void;
 }) {
   const available = devices.filter(
     (d) =>
@@ -1406,8 +2224,16 @@ function NewExam({
   const [selected, setSelected] = useState<string[]>(
     available.filter(ready).map((d) => d.id),
   );
+  const selectionInitialized = useRef(available.length > 0);
+  useEffect(() => {
+    if (!selectionInitialized.current && available.length > 0) {
+      setSelected(available.filter(ready).map((d) => d.id));
+      selectionInitialized.current = true;
+    }
+  }, [devices, environment]);
   const [studentNames, setStudentNames] = useState<Record<string, string>>({});
   const [title, setTitle] = useState("Контроль аудитории");
+  const [showAll, setShowAll] = useState(false);
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const chosen = available.filter((d) => selected.includes(d.id) && ready(d));
@@ -1441,164 +2267,266 @@ function NewExam({
       setBusy(false);
     }
   }
+  const prepared = available.filter(ready),
+    unprepared = available.filter((d) => !ready(d));
   return (
     <Modal
-      title="Новый сеанс контроля"
-      subtitle="Выберите среду тестирования и подготовленные компьютеры."
+      title="Новый сеанс"
+      subtitle="Где пройдёт тест и на каких компьютерах"
       onClose={onClose}
+      className="new-exam-modal"
       wide
     >
-      <form className="modal-body" onSubmit={submit}>
-        <label>
-          Название сеанса
-          <input
-            autoFocus
-            required
-            minLength={2}
-            maxLength={120}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </label>
-        <fieldset className="environment-choice">
-          <legend>Где проходит тест</legend>
-          <div className="environment-options">
-            {(
-              [
-                [
-                  "BROWSER",
-                  "Сайт в Qorgau Browser",
-                  "Одно окно без вкладок, переходы в пределах сайта",
-                ],
-                [
-                  "WINDOW",
-                  "Окно приложения",
-                  "Окно программы, выбранное на компьютере ученика",
-                ],
-              ] as const
-            ).map(([kind, label, description]) => (
-              <label
-                className={environment === kind ? "selected" : ""}
-                key={kind}
-              >
+      <form onSubmit={submit}>
+        <div className="new-exam-grid">
+          <div className="new-exam-settings">
+            <label className="field">
+              Название
+              <input
+                className="input"
+                autoFocus
+                required
+                minLength={2}
+                maxLength={120}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </label>
+            <fieldset className="environment-choice">
+              <legend>Где проходит тест</legend>
+              <div className="environment-options">
+                {(
+                  [
+                    [
+                      "BROWSER",
+                      "Сайт в Qorgau Browser",
+                      "Одно окно без вкладок. Переходы в пределах сайта.",
+                    ],
+                    [
+                      "WINDOW",
+                      "Программа на компьютере",
+                      "Окно, которое ученик выбрал в Qorgau заранее.",
+                    ],
+                  ] as const
+                ).map(([kind, label, description]) => (
+                  <label
+                    className={environment === kind ? "selected" : ""}
+                    key={kind}
+                  >
+                    <input
+                      type="radio"
+                      name="test-environment"
+                      value={kind}
+                      checked={environment === kind}
+                      onChange={() => {
+                        setEnvironment(kind);
+                        setSelected(
+                          available
+                            .filter((d) => preparationIssue(d, kind) === null)
+                            .map((d) => d.id),
+                        );
+                      }}
+                    />
+                    <span className="environment-icon">
+                      {kind === "BROWSER" ? (
+                        <Globe size={22} />
+                      ) : (
+                        <AppWindow size={22} />
+                      )}
+                    </span>
+                    <span>
+                      <strong>{label}</strong>
+                      <small>{description}</small>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            {environment === "BROWSER" && (
+              <label className="field">
+                Адрес теста
                 <input
-                  type="radio"
-                  name="test-environment"
-                  value={kind}
-                  checked={environment === kind}
-                  onChange={() => {
-                    setEnvironment(kind);
-                    setSelected(
-                      available
-                        .filter((d) => preparationIssue(d, kind) === null)
-                        .map((d) => d.id),
-                    );
-                  }}
+                  className="input"
+                  type="url"
+                  required
+                  pattern="https?://.+"
+                  value={testUrl}
+                  onChange={(e) => setTestUrl(e.target.value)}
+                  placeholder="https://example.kz/test"
+                  autoComplete="url"
                 />
-                <span>
-                  <strong>{label}</strong>
-                  <small>{description}</small>
+                <span className="field-help">
+                  Прямая ссылка на тест. Другие сайты и новые окна открыть не
+                  получится.
                 </span>
               </label>
-            ))}
-          </div>
-        </fieldset>
-        {environment === "BROWSER" && (
-          <label>
-            Адрес теста
-            <input
-              type="url"
-              required
-              pattern="https?://.+"
-              value={testUrl}
-              onChange={(e) => setTestUrl(e.target.value)}
-              placeholder="https://example.kz/test"
-              autoComplete="url"
-            />
-            <span className="field-help">
-              Используйте прямую ссылку на тест. Переходы на другой сайт и новые
-              окна блокируются.
-            </span>
-          </label>
-        )}
-        <h3 className="subheading">
-          Компьютеры онлайн <span className="count">{chosen.length}</span>
-        </h3>
-        {!available.length ? (
-          <div className="notice">
-            Нет свободных компьютеров онлайн. Запустите Qorgau или завершите
-            предыдущий сеанс.
-          </div>
-        ) : (
-          <div className="check-list">
-            {available.map((d) => (
-              <div className="workstation-assignment" key={d.id}>
-                <label className="workstation-choice">
-                  <input
-                    type="checkbox"
-                    checked={chosen.some((c) => c.id === d.id)}
-                    disabled={!ready(d)}
-                    onChange={(e) =>
-                      setSelected(
-                        e.target.checked
-                          ? [...selected, d.id]
-                          : selected.filter((id) => id !== d.id),
-                      )
-                    }
-                  />
-                  <strong>{d.name}</strong>
-                  {!ready(d) && (
-                    <small>{preparationIssue(d, environment)}</small>
-                  )}
-                </label>
-                <input
-                  aria-label={`Ученик на ${d.name}`}
-                  placeholder="Имя ученика (необязательно)"
-                  maxLength={80}
-                  disabled={!ready(d)}
-                  value={studentNames[d.id] || ""}
-                  onChange={(e) =>
-                    setStudentNames({ ...studentNames, [d.id]: e.target.value })
-                  }
-                />
+            )}
+            <section className="card rules-preview">
+              <div className="card-head">
+                <h3>Правила контроля</h3>
+                <button
+                  className="btn quiet sm"
+                  type="button"
+                  onClick={onRules}
+                >
+                  Посмотреть все
+                </button>
               </div>
-            ))}
+              <div>
+                <span>Три отметки за взгляд в одну сторону</span>
+                <Pill tone="pause">пауза</Pill>
+              </div>
+              <div>
+                <span>Телефон в кадре два раза подряд</span>
+                <Pill tone="pause">пауза</Pill>
+              </div>
+              <div>
+                <span>Второе лицо, подъём телефона и другое</span>
+                <Pill tone="warn">проверка</Pill>
+              </div>
+            </section>
+            <div className="note ink">
+              <Pause size={20} />
+              <span>
+                Если тест встанет на паузу, продолжить его можете только вы.
+                Ученик зовёт вас кнопкой на экране или клавишами{" "}
+                <strong>Ctrl+Alt+Q</strong>.
+              </span>
+            </div>
+            {chosen.some((d) => !gazeEnabled(d)) && (
+              <div className="note warn">
+                У части компьютеров контроль взгляда выключен. Подготовьте его
+                перед началом теста.
+              </div>
+            )}
+          </div>
+          <section className="new-exam-devices">
+            <div className="new-exam-device-head">
+              <div>
+                <h3>Компьютеры</h3>
+                <p className="fine">
+                  Выбрано{" "}
+                  <strong>
+                    {chosen.length} из {available.length}
+                  </strong>
+                  . Имена можно не вводить.
+                </p>
+              </div>
+              <button
+                className="btn sm"
+                type="button"
+                onClick={() => setSelected(prepared.map((d) => d.id))}
+              >
+                Выбрать все готовые
+              </button>
+            </div>
+            {!available.length && (
+              <div className="note">
+                Нет свободных компьютеров онлайн. Запустите Qorgau или завершите
+                предыдущий сеанс.
+              </div>
+            )}
+            {prepared.length > 0 && (
+              <div className="card assignment-group">
+                <header>
+                  <span>
+                    <Bubble state="on" size="xs" />
+                    Готовы, {prepared.length}
+                  </span>
+                  <span>Ученик</span>
+                </header>
+                {(showAll ? prepared : prepared.slice(0, 6)).map((d) => (
+                  <div className="workstation-assignment" key={d.id}>
+                    <label className="workstation-choice">
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(d.id)}
+                        onChange={(e) =>
+                          setSelected(
+                            e.target.checked
+                              ? [...selected, d.id]
+                              : selected.filter((id) => id !== d.id),
+                          )
+                        }
+                      />
+                      <strong>{d.name}</strong>
+                    </label>
+                    <input
+                      className="input"
+                      aria-label={`Ученик на ${d.name}`}
+                      placeholder="Имя, если нужно"
+                      maxLength={80}
+                      value={studentNames[d.id] || ""}
+                      onChange={(e) =>
+                        setStudentNames({
+                          ...studentNames,
+                          [d.id]: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                ))}
+                {prepared.length > 6 && (
+                  <button
+                    type="button"
+                    className="btn quiet sm block"
+                    onClick={() => setShowAll(!showAll)}
+                  >
+                    {showAll
+                      ? "Скрыть"
+                      : "Ещё " + (prepared.length - 6) + " компьютеров"}
+                    <ChevronDown size={16} />
+                  </button>
+                )}
+              </div>
+            )}
+            {unprepared.length > 0 && (
+              <div className="card assignment-group unprepared">
+                <header>
+                  <span>
+                    <Bubble state="warn" size="xs" />
+                    Не готовы, {unprepared.length}. Сначала исправьте
+                  </span>
+                </header>
+                {unprepared.map((d) => (
+                  <div className="workstation-assignment" key={d.id}>
+                    <label className="workstation-choice">
+                      <input type="checkbox" disabled />
+                      <strong>{d.name}</strong>
+                    </label>
+                    <span className="warn-text">
+                      {preparationIssue(d, environment)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+        {error && (
+          <div className="error new-exam-error" role="alert">
+            {error}
           </div>
         )}
-        <div className="notice">
-          <Eye size={17} />
-          <span>
-            {environment === "BROWSER"
-              ? "На каждом компьютере откроется сайт теста в Qorgau Browser."
-              : "Каждый компьютер откроет выбранное в Qorgau окно на весь экран."}{" "}
-            При блокировке продолжить сможет только преподаватель. Ctrl+Alt+Q
-            вызывает преподавателя.
-          </span>
-        </div>
-        {chosen.some((d) => !gazeEnabled(d)) && (
-          <div className="notice">
-            У части компьютеров контроль взгляда выключен. Обновите приложение
-            Qorgau и подготовьте контроль взгляда перед началом теста.
+        <footer className="modal-foot">
+          <p className="fine">
+            Тест не начнётся сразу: сначала сеанс появится в аудитории.
+          </p>
+          <div className="actions">
+            <button className="btn" type="button" onClick={onClose}>
+              Отмена
+            </button>
+            <button className="btn primary" disabled={busy || !chosen.length}>
+              {busy && <LoaderCircle className="spin" size={17} />}Создать сеанс
+              на {chosen.length} компьютерах
+            </button>
           </div>
-        )}
-        {error && <div className="error">{error}</div>}
-        <div className="button-row end">
-          <button className="btn" type="button" onClick={onClose}>
-            Отмена
-          </button>
-          <button className="btn primary" disabled={busy || !chosen.length}>
-            {busy ? (
-              <LoaderCircle className="spin" size={17} />
-            ) : (
-              <Plus size={17} />
-            )}{" "}
-            Создать сеанс
-          </button>
-        </div>
+        </footer>
       </form>
     </Modal>
   );
 }
+
 function EvidenceTimeline({
   event,
   mediaIndex,
@@ -1641,7 +2569,7 @@ function EvidenceTimeline({
           начало эпизода
         </span>
         <span>
-          <Bubble state="warn" size="xs" />
+          <Bubble state="pause" size="xs" />
           срабатывание
         </span>
         {media.complete === false && (
@@ -1656,11 +2584,15 @@ function EvidenceTimeline({
 }
 function EventReview({
   event: e,
+  queue,
+  onSelect,
   onClose,
   onUpdate,
   notify,
 }: {
   event: Incident;
+  queue: Incident[];
+  onSelect: (id: string) => void;
   onClose: () => void;
   onUpdate: () => Promise<void>;
   notify: (s: string) => void;
@@ -1668,7 +2600,16 @@ function EventReview({
   const [reason, setReason] = useState(""),
     [busy, setBusy] = useState(false),
     [index, setIndex] = useState(0);
+  const expiresAt = e.media[index]?.expires_at;
+  const queueIndex = queue.findIndex((event) => event.id === e.id);
+  const successor = useRef(queue[queueIndex + 1]?.id);
+  const next =
+    queueIndex >= 0
+      ? queue[queueIndex + 1] || queue.find((event) => event.id !== e.id)
+      : queue.find((event) => event.id === successor.current) || queue[0];
+  const previous = queueIndex > 0 ? queue[queueIndex - 1] : undefined;
   async function decide(decision: string) {
+    successor.current = next?.id;
     setBusy(true);
     try {
       await api("/events/" + e.id + "/review", {
@@ -1688,151 +2629,242 @@ function EventReview({
   return (
     <Modal
       title={eventNames[e.type] || e.type}
-      subtitle={e.student + " · " + e.device_name + " · " + clock(e.created_at)}
+      subtitle={`${e.student || e.device_name}, ${e.device_name}, ${dateLabel(e.created_at)} в ${clock(e.created_at)}`}
       onClose={onClose}
       wide
+      className="event-review-modal"
+      headerExtra={
+        <div className="event-navigator">
+          <button
+            className="icon-btn"
+            disabled={!previous || busy}
+            aria-label="Предыдущее событие"
+            onClick={() => previous && onSelect(previous.id)}
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <span>
+            {queueIndex >= 0
+              ? `Событие ${queueIndex + 1} из ${queue.length}`
+              : "Событие разобрано"}
+          </span>
+          <button
+            className="icon-btn"
+            disabled={!next || busy}
+            aria-label="Следующее событие"
+            onClick={() => next && onSelect(next.id)}
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      }
     >
-      <div className="modal-body">
-        <div className="student-status">
-          <Badge
-            tone={
-              e.decision === "PENDING"
-                ? "amber"
-                : e.decision === "REJECTED"
-                  ? "green"
-                  : "red"
-            }
-          >
-            {decisionNames[e.decision]}
-          </Badge>
-
-          <span>Версия решения {e.revision}</span>
-        </div>
-        {e.media.length ? (
-          <>
-            <video
-              className="evidence-video"
-              aria-label={`Запись события: ${eventNames[e.type] || e.type}`}
-              key={e.media[index]?.id}
-              controls
-              preload="metadata"
-              onLoadedMetadata={(x) => {
-                const offset = e.at - (e.media[index]?.clip_start || 0);
-                if (offset > 0 && offset < x.currentTarget.duration)
-                  x.currentTarget.currentTime = offset;
-              }}
-              src={e.media[index]?.url}
-            />
-            {e.media.length > 1 && (
-              <select
-                aria-label="Фрагмент видео"
-                value={index}
-                onChange={(x) => setIndex(Number(x.target.value))}
-              >
-                {e.media.map((m, i) => (
-                  <option key={m.id} value={i}>
-                    Фрагмент {i + 1}
-                  </option>
-                ))}
-              </select>
-            )}
-            {e.media[index]?.complete === false && (
-              <p role="status">
-                Запись неполная: отсутствует часть нужного интервала. Разрывы:{" "}
-                {e.media[index]?.gaps
-                  ?.map(([a, b]) => `${a.toFixed(1)}–${b.toFixed(1)} с`)
-                  .join(", ") || "начало или конец фрагмента"}
-                .
+      <div className="event-review-grid">
+        <section className="event-review-main">
+          <div className="student-status">
+            <Pill
+              tone={
+                e.decision === "PENDING"
+                  ? "warn"
+                  : e.decision === "CONFIRMED"
+                    ? "pause"
+                    : "ok"
+              }
+            >
+              {decisionNames[e.decision]}
+            </Pill>
+            <span className="fine">Версия решения {e.revision}</span>
+          </div>
+          {e.media.length ? (
+            <>
+              <div className="cam evidence-camera">
+                <RegMarks light />
+                {e.media[index]?.url ? (
+                  e.media[index].mime.startsWith("image/") ? (
+                    <img
+                      className="evidence-image"
+                      src={e.media[index].url}
+                      alt={`Кадр события: ${eventNames[e.type] || e.type}`}
+                    />
+                  ) : (
+                    <video
+                      className="evidence-video"
+                      aria-label={`Запись события: ${eventNames[e.type] || e.type}`}
+                      key={e.media[index]?.id}
+                      controls
+                      preload="metadata"
+                      onLoadedMetadata={(x) => {
+                        const offset = e.at - (e.media[index]?.clip_start || 0);
+                        if (offset > 0 && offset < x.currentTarget.duration)
+                          x.currentTarget.currentTime = offset;
+                      }}
+                      src={e.media[index]?.url}
+                    />
+                  )
+                ) : (
+                  <div className="video-empty">
+                    <Video size={38} />
+                    <p>Предпросмотр записи недоступен</p>
+                  </div>
+                )}
+              </div>
+              {e.media.length > 1 && (
+                <select
+                  className="select"
+                  aria-label="Фрагмент видео"
+                  value={index}
+                  onChange={(x) => setIndex(Number(x.target.value))}
+                >
+                  {e.media.map((m, i) => (
+                    <option key={m.id} value={i}>
+                      Фрагмент {i + 1}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <EvidenceTimeline event={e} mediaIndex={index} />
+              {e.media[index]?.complete === false && (
+                <div className="note warn" role="status">
+                  Запись неполная: отсутствует часть нужного интервала. Разрывы:{" "}
+                  {e.media[index]?.gaps
+                    ?.map(([a, b]) => `${a.toFixed(1)}–${b.toFixed(1)} с`)
+                    .join(", ") || "начало или конец фрагмента"}
+                  .
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="video-empty">
+              <Video size={34} />
+              <h3>Запись не прикреплена</h3>
+              <p>
+                {e.media_expired_at
+                  ? "Срок хранения записи истёк. Событие и решения сохранены."
+                  : "Компьютер ещё не передал фрагмент. Решение доступно, но визуального подтверждения пока нет."}
               </p>
-            )}
-          </>
-        ) : (
-          <div className="video-empty">
-            <Video size={34} />
-            <h3>Запись не прикреплена</h3>
-            <p>
-              {e.media_expired_at
-                ? "Срок хранения записи истёк. Событие и решения сохранены."
-                : "Агент ещё не передал фрагмент. Решение доступно, но визуального подтверждения пока нет."}
-            </p>
-          </div>
-        )}
-        <EvidenceTimeline event={e} mediaIndex={index} />
-        <div className="evidence-info">
-          <span>
-            Начало: <strong>{e.start.toFixed(1)} с</strong>
-          </span>
-          <span>
-            Срабатывание: <strong>{e.at.toFixed(1)} с</strong>
-          </span>
-          {e.duration && (
-            <span>
-              Длительность: <strong>{e.duration.toFixed(1)} с</strong>
-            </span>
+            </div>
           )}
-        </div>
-        {e.type === "PHONE_AIM_REVIEW" && (
-          <div className="notice evidence-context">
-            <Smartphone size={18} />
-            <span>
-              Система отметила подъём и удержание телефона. По этому событию
-              нельзя установить направление объектива или факт снимка —
-              проверьте запись.
-            </span>
-          </div>
-        )}
-        <p className="fine">
-          Время указано от начала контроля. Автоматическое событие — основание
-          для проверки; оно не является доказательством нарушения само по себе.
-        </p>
-        <p className="fine">
-          Видео автоматически удаляется через 2 часа после загрузки. Журнал
-          событий и решения сохраняются.
-        </p>
-        <label>
-          Комментарий к решению
-          <textarea
-            value={reason}
-            maxLength={500}
-            onChange={(x) => setReason(x.target.value)}
-            placeholder="Что видно на записи и почему вы приняли это решение"
-          />
-        </label>
-        <div className="button-row">
-          <button
-            className="btn"
-            disabled={busy || !reason.trim()}
-            onClick={() => decide("REJECTED")}
-          >
-            <X size={16} /> Нарушения нет
-          </button>
-          <button
-            className="btn primary"
-            disabled={busy || !reason.trim()}
-            onClick={() => decide("CONFIRMED")}
-          >
-            <Check size={16} /> Это нарушение
-          </button>
-        </div>
-        <p className="fine">
-          Отклонение корректирует счётчик, но не разблокирует ученика
-          автоматически.
-        </p>
-        {e.reviews.length > 0 && (
-          <div className="review-log">
-            <h3>История решений</h3>
-            {[...e.reviews].reverse().map((r, i) => (
+          {e.type === "PHONE_AIM_REVIEW" && (
+            <div className="note ink evidence-context">
+              <Smartphone size={18} />
+              <span>
+                Система отметила подъём и удержание телефона. Направление
+                объектива и факт снимка не установлены — проверьте запись.
+              </span>
+            </div>
+          )}
+          <section className="review-log">
+            <h3>История события</h3>
+            <div>
+              <Bubble state="ink" size="xs" />
+              <span>
+                <strong>Qorgau отметил событие</strong>
+                <small>{clock(e.created_at)}</small>
+              </span>
+            </div>
+            {e.reviews.map((review, i) => (
               <div key={i}>
-                <strong>
-                  {decisionNames[r.decision as keyof typeof decisionNames]} ·{" "}
-                  {r.author}
-                </strong>
-                <small>{clock(r.at)}</small>
-                <p>{r.reason}</p>
+                <Bubble
+                  state={review.decision === "CONFIRMED" ? "pause" : "ink"}
+                  size="xs"
+                />
+                <span>
+                  <strong>
+                    {
+                      decisionNames[
+                        review.decision as keyof typeof decisionNames
+                      ]
+                    }
+                  </strong>
+                  <small>
+                    {review.author}, {clock(review.at)}
+                  </small>
+                  <p>{review.reason}</p>
+                </span>
               </div>
             ))}
+          </section>
+        </section>
+        <aside className="event-review-aside">
+          <dl className="event-details">
+            <div>
+              <dt>Начало эпизода</dt>
+              <dd>{clock(e.created_at - (e.at - e.start))}</dd>
+            </div>
+            <div>
+              <dt>Срабатывание</dt>
+              <dd>{clock(e.created_at)}</dd>
+            </div>
+            {e.duration !== undefined && (
+              <div>
+                <dt>Длительность</dt>
+                <dd>{e.duration.toFixed(1)} с</dd>
+              </div>
+            )}
+            {expiresAt && (
+              <div>
+                <dt>Хранится до</dt>
+                <dd>
+                  {dateLabel(expiresAt)}, {shortClock(expiresAt)}
+                </dd>
+              </div>
+            )}
+          </dl>
+          <p className="fine">
+            Видео удаляется через 2 часа после загрузки. Журнал событий и
+            решения сохраняются.
+          </p>
+          <p className="fine">
+            Событие — повод посмотреть запись. Решение о нарушении принимаете
+            вы.
+          </p>
+          <label className="field">
+            Комментарий к решению
+            <textarea
+              className="input"
+              value={reason}
+              maxLength={500}
+              onChange={(x) => setReason(x.target.value)}
+              placeholder="Что видно на записи и почему вы приняли это решение"
+            />
+          </label>
+          <div className="decision-actions">
+            <button
+              className="btn block"
+              disabled={busy || !reason.trim()}
+              onClick={() => decide("REJECTED")}
+            >
+              <Check size={18} />
+              Нарушения нет
+            </button>
+            <button
+              className="btn dark block"
+              disabled={busy || !reason.trim()}
+              onClick={() => decide("CONFIRMED")}
+            >
+              <ShieldCheck size={18} />
+              Это нарушение
+            </button>
           </div>
-        )}
+          <p className="fine">
+            Решение «Нарушения нет» убирает отметку. Пауза снимается отдельно
+            кнопкой «Продолжить тест».
+          </p>
+          {next && (
+            <button
+              className="next-event"
+              disabled={busy}
+              onClick={() => onSelect(next.id)}
+            >
+              <span>
+                <small>Дальше в очереди</small>
+                <strong>{eventNames[next.type] || next.type}</strong>
+                <span>{next.student || next.device_name}</span>
+              </span>
+              <ChevronRight size={20} />
+            </button>
+          )}
+        </aside>
       </div>
     </Modal>
   );
