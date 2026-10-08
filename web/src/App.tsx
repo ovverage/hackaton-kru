@@ -254,12 +254,12 @@ function Auth({
                   className="input"
                   required
                   type={visible ? "text" : "password"}
-                  minLength={8}
+                  minLength={setup ? 8 : 1}
                   maxLength={128}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete={setup ? "new-password" : "current-password"}
-                  placeholder="Не меньше 8 символов"
+                  placeholder={setup ? "Не меньше 8 символов" : "Введите пароль"}
                 />
                 <button
                   type="button"

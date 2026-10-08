@@ -116,6 +116,7 @@ jobs:
               runtime = report['runtime'] if name == 'installer-selftest.json' else report
               assert runtime['frozen'] and runtime['model_version'] == models['version']
               assert runtime['model_files'] == expected_models
+              assert runtime['browser_navigation_recovery'] is True
           checksums = dict(line.split('  ', 1)[::-1] for line in (root / 'SHA256SUMS.txt').read_text(encoding='utf-8-sig').splitlines() if line)
           with (root / 'Qorgau-Student.exe').open('rb') as stream:
               assert hashlib.file_digest(stream, 'sha256').hexdigest() == checksums['Qorgau-Student.exe']

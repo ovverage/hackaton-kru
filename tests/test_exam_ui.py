@@ -62,7 +62,7 @@ def test_native_browser_navigation_uses_exact_origin():
 
     reports = []
     page = SimpleNamespace(
-        allowed_origin=origin("https://test.example"), on_attempt=reports.append
+        allowed_origin=origin("https://test.example"), report_attempt=reports.append
     )
     assert ExamPage.acceptNavigationRequest(
         page, QUrl("https://test.example/next"), None, True
@@ -75,7 +75,7 @@ def test_native_browser_navigation_uses_exact_origin():
     ):
         assert not ExamPage.acceptNavigationRequest(page, QUrl(url), None, True)
         assert not ExamPage.acceptNavigationRequest(page, QUrl(url), None, False)
-    assert len(reports) == 8
+    assert len(reports) == 4  # Rejected passive iframes are not student attempts.
 
 
 def test_gaze_warning_is_also_visible_in_observe_mode(app, tmp_path, monkeypatch):
