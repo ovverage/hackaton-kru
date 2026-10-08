@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: Successful run of Verify and package Qorgau
+        description: Completed run with successful verification and Windows packaging jobs
         required: true
         type: string
       tag:
@@ -22,27 +22,49 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
       SOURCE_RUN: ${{ inputs.run_id }}
       RELEASE_TAG: ${{ inputs.tag }}
     steps:
-      - name: Require a successful build from this repository
+      - name: Require successful build jobs from this repository
         id: verified
         run: |
           [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
           gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" > run.json
-          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN/jobs" > jobs.json
+          gh api --paginate --slurp "repos/$GH_REPO/actions/runs/$SOURCE_RUN/jobs?filter=all&per_page=100" > job-pages.json
           python - <<'PY'
-          import json, os
+          import json, os, pathlib, re
           run = json.load(open('run.json'))
-          jobs = {j['name']: j['conclusion'] for j in json.load(open('jobs.json'))['jobs']}
+          jobs = {}
+          for page in json.load(open('job-pages.json')):
+              for job in page['jobs']:
+                  old = jobs.get(job['name'])
+                  if old is None or (job.get('run_attempt', 0), job['id']) > (old.get('run_attempt', 0), old['id']):
+                      jobs[job['name']] = job
+          assert run['id'] == int(os.environ['SOURCE_RUN'])
           assert run['head_repository']['full_name'] == os.environ['GH_REPO']
           assert run['path'] == '.github/workflows/release.yml'
-          assert run['conclusion'] == 'success'
-          assert jobs.get('verify') == jobs.get('windows') == jobs.get('server-face') == 'success'
+          assert run['status'] == 'completed'
+          assert re.fullmatch('[0-9a-f]{40}', run['head_sha'])
+          for name in ('verify', 'windows', 'server-face'):
+              job = jobs[name]
+              assert job['status'] == 'completed' and job['conclusion'] == 'success'
+              assert job['head_sha'] == run['head_sha'] and job['run_id'] == run['id']
+              assert isinstance(job['run_attempt'], int) and 1 <= job['run_attempt'] <= run['run_attempt']
+          # A transfer timeout may leave deploy cancelled while all build jobs
+          # passed. Record its actual state; independently verify the deployed
+          # bytes below before allowing publication. There is no bypass input.
+          proof = {'run': {key: run.get(key) for key in
+                   ('id', 'head_sha', 'status', 'conclusion', 'run_attempt')},
+                   'jobs': {name: {key: job.get(key) for key in
+                            ('id', 'name', 'run_id', 'head_sha', 'run_attempt', 'status', 'conclusion')}
+                            for name, job in jobs.items()},
+                   'job_selection': 'Newest (run_attempt, id) for each name across every job page'}
+          (pathlib.Path(os.environ['RUNNER_TEMP']) / 'qorgau-verified-source.json').write_text(json.dumps(proof))
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write('sha=' + run['head_sha'] + '\n')
           PY
@@ -94,6 +116,58 @@ jobs:
               assert runtime['mode'] == ('offline' if name == 'offline-selftest.json' else 'online')
           PY
           zip -r artifacts/Qorgau-Web.zip web-bundle
+      - name: Independently verify the live deployment and complete public EXE
+        env:
+          VERIFIED_SHA: ${{ steps.verified.outputs.sha }}
+        run: |
+          python - <<'PY'
+          import datetime, hashlib, json, os, pathlib, re, tomllib, urllib.request
+          base = 'https://212.19.134.23'
+          version = tomllib.load(open('pyproject.toml', 'rb'))['project']['version']
+          checksums = dict(line.split('  ', 1)[::-1] for line in
+                           pathlib.Path('artifacts/SHA256SUMS.txt').read_text(encoding='utf-8-sig').splitlines() if line)
+          expected = checksums['Qorgau-Student.exe']
+          expected_size = pathlib.Path('artifacts/Qorgau-Student.exe').stat().st_size
+          headers = {'Cache-Control': 'no-cache', 'Accept-Encoding': 'identity'}
+          def get_json(path):
+              with urllib.request.urlopen(urllib.request.Request(base + path, headers=headers), timeout=120) as response:
+                  assert response.status == 200
+                  data = response.read(2 * 1024 * 1024 + 1)
+                  assert len(data) <= 2 * 1024 * 1024
+                  return json.loads(data)
+          health = get_json('/api/health')
+          assert health['status'] == 'ok' and health['version'] == version
+          deployment = get_json('/deployment.json')
+          assert deployment['commit'] == os.environ['VERIFIED_SHA']
+          assert deployment['student_sha256'] == expected
+          assert re.fullmatch('[0-9a-f]{64}', deployment['archive_sha256'])
+          digest, size, magic = hashlib.sha256(), 0, b''
+          with urllib.request.urlopen(urllib.request.Request(base + '/api/student/download', headers=headers), timeout=120) as response:
+              assert response.status == 200
+              while block := response.read(1024 * 1024):
+                  if not magic:
+                      magic = block[:2]
+                  size += len(block)
+                  assert size <= expected_size
+                  digest.update(block)
+          assert size == expected_size and magic == b'MZ' and digest.hexdigest() == expected
+          assert get_json('/deployment.json') == deployment
+          after = get_json('/api/health')
+          assert after['status'] == 'ok' and after['version'] == version
+          source = json.loads((pathlib.Path(os.environ['RUNNER_TEMP']) / 'qorgau-verified-source.json').read_text())
+          proof = {'status': 'passed', 'version': version, 'source_commit': os.environ['VERIFIED_SHA'],
+                   'source_run': int(os.environ['SOURCE_RUN']), 'build_evidence': source,
+                   'checked_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                   'deployment': deployment, 'public_exe': {'url': base + '/api/student/download',
+                   'bytes': size, 'sha256': digest.hexdigest(), 'magic_hex': magic.hex()},
+                   'tls_verification': 'Default certificate and hostname validation',
+                   'scope': 'Successful build jobs plus independent live HTTPS deployment verification; source deploy job status is preserved.'}
+          pathlib.Path('artifacts/public-deployment-verification.json').write_text(json.dumps(proof, indent=2) + '\n')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              deploy = source['jobs'].get('deploy', {})
+              summary.write(f"Verified live {version}, commit {proof['source_commit']}, complete EXE SHA256 {expected}. "
+                            f"Source CI deploy conclusion: {deploy.get('conclusion', 'not present')}.\n")
+          PY
       - name: Tag and publish that exact commit
         env:
           VERIFIED_SHA: ${{ steps.verified.outputs.sha }}
